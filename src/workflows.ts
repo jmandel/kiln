@@ -1,0 +1,701 @@
+import type { Stores, ID, Artifact, Context } from './types';
+import { sha256, nowIso } from './helpers';
+import { getTargets, PROMPTS } from './prompts';
+import { runLLMTask, buildPrompt as buildLLMPrompt } from './llmTask';
+import { makeContext, runWorkflow, PauseForApprovalError } from './engine';
+import { validateResource } from './validator';
+import { analyzeCodings, finalizeUnresolved } from './codingAnalysis';
+import { generateAndRefineResources } from './services/fhirGeneration';
+
+// Helpers
+
+async function readBrief(ctx: Context, section: string): Promise<Artifact | undefined> {
+  const list = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'SectionBrief' && a.tags?.section === section);
+  return list.at(-1);
+}
+
+async function latestDraftVersion(ctx: Context, section: string): Promise<number> {
+  const list = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'SectionDraft' && a.tags?.section === section);
+  if (!list.length) return 1;
+  return Math.max(...list.map((a: Artifact) => Number(a.version)));
+}
+
+async function readDraft(ctx: Context, section: string, version: number): Promise<Artifact | undefined> {
+  const list = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) =>
+    a.kind === 'SectionDraft' && a.tags?.section === section && Number(a.version) === version
+  );
+  return list[0];
+}
+
+async function readNote(ctx: Context, version?: number): Promise<Artifact | undefined> {
+  const list = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NoteDraft');
+  const arr = list.sort((a: Artifact, b: Artifact) => Number(b.version) - Number(a.version));
+  if (version != null) return arr.find((a: Artifact) => Number(a.version) === version);
+  return arr[0];
+}
+
+async function getPriorSectionsSummary(ctx: Context, currentSectionIndex: number, outline: any): Promise<string> {
+  const approvedList = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) =>
+    a.kind === 'SectionDraft' && a.tags?.action === 'approve'
+  ) || [];
+  const approvedSections = approvedList.sort((a: any, b: any) =>
+    outline.sections.findIndex((s: any) => s.title === (a.tags?.section || '')) -
+    outline.sections.findIndex((s: any) => s.title === (b.tags?.section || ''))
+  );
+  const priors = approvedSections
+    .slice(0, currentSectionIndex)
+    .map((a: Artifact) => `<section name="${a.tags?.section}">${(a.content || '').substring(0, 200)}...</section>`) 
+    .join('\n');
+  return priors || '<priorSections>No prior sections.</priorSections>';
+}
+
+async function getOutlineFromSteps(ctx: Context): Promise<any> {
+  const outlines = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NarrativeOutline');
+  const last = outlines.at(-1);
+  if (last?.content) {
+    try { return JSON.parse(last.content); } catch { /* ignore */ }
+  }
+  return await (ctx as any).getStepResult?.('phase:planning:plan_outline');
+}
+
+function buildPrompt(key: keyof typeof PROMPTS, params: any): string { return buildLLMPrompt(key, params); }
+
+function definePhase(_name: string, _boundaryTags: Record<string, any>, taskFns: Array<(ctx: Context, params?: any) => Promise<void>>): (ctx: Context, params?: any) => Promise<void> {
+  return async (ctx: Context, params?: any) => {
+    for (const taskFn of taskFns) await taskFn(ctx, params);
+  };
+}
+
+function revisionLoop(options: {
+  title?: string;
+  target: number;
+  maxRevs: number;
+  approvalThreshold?: number;
+  getLatestVersion: (ctx: Context, key: string) => Promise<number>;
+  draftTask: (ctx: Context, version: number, params: any) => Promise<void>;
+  critiqueTask: (ctx: Context, version: number, params: any) => Promise<{ score: number }>;
+  decideTask: (ctx: Context, version: number, score: number, params: any) => Promise<void>;
+}) {
+  return async (ctx: Context, params: any) => {
+    let version = await options.getLatestVersion(ctx, (params).section || 'note') ?? 1;
+    let attempt = 1;
+    while (attempt <= options.maxRevs) {
+      await options.draftTask(ctx, version, params);
+      const { score } = await options.critiqueTask(ctx, version, params);
+      if (options.approvalThreshold && score < options.approvalThreshold) {
+        throw new PauseForApprovalError(`rev:${options.title || 'loop'}:v${version}`, `Score ${score} < threshold ${options.approvalThreshold}; approve/revise?`);
+      }
+      await options.decideTask(ctx, version, score, params);
+      if (score >= options.target || attempt >= options.maxRevs) break;
+      version++;
+      attempt++;
+    }
+  };
+}
+
+// Workflow Tasks
+function createPlanOutlineTask(sketch: string) {
+  return async (ctx: Context) => {
+    const { result: outline } = await runLLMTask<any>(ctx, 'plan_outline', 'plan_outline', { sketch }, {
+      expect: 'json',
+      tags: { phase: 'planning' },
+      artifact: { kind: 'NarrativeOutline', version: 1, title: 'Outline v1', tags: { phase: 'planning', responseJson: undefined }, contentType: 'json' }
+    });
+  };
+}
+
+function createRealizeOutlineTask() {
+  return async (ctx: Context) => {
+    const outline = await getOutlineFromSteps(ctx);
+    // Find the NarrativeOutline artifact to propagate prompt/raw
+    const outlineArtifacts = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: any) => a.kind === 'NarrativeOutline');
+    const outlineArt = outlineArtifacts.at(-1);
+    const oTags = outlineArt?.tags || {};
+    for (const s of outline.sections) {
+      await ctx.createArtifact({
+        kind: 'SectionBrief',
+        version: 1,
+        title: `Brief: ${s.title}`,
+        content: s.brief,
+        tags: { section: s.title, phase: 'planning', prompt: oTags.prompt, raw: oTags.raw },
+        links: outlineArt ? [ { dir: 'from' as const, role: 'derived_from', ref: { type: 'artifact' as const, id: outlineArt.id } } ] : [],
+        autoProduced: false
+      });
+    }
+  };
+}
+
+function createSectionDraftTask(section: string, sectionIndex: number) {
+  return async (ctx: Context, version: number, { section: sec, outline, sketch }: any) => {
+    const brief = await readBrief(ctx, sec);
+    const guidance = outline?.guidance || '';
+    const priorSummary = await getPriorSectionsSummary(ctx, sectionIndex, outline);
+    await runLLMTask<string>(ctx, 'draft_section', 'draft_section', { section: sec, brief: brief?.content || '', sketch, guidance, priorSummary }, {
+      expect: 'text',
+      tags: { phase: 'sections', section: sec, version },
+      artifact: { kind: 'SectionDraft', version, title: `Draft ${sec} v${version}`, tags: { section: sec, verb: 'draft' }, links: [ ...(brief ? [{ dir: 'from' as const, role: 'uses', ref: { type: 'artifact' as const, id: brief.id } }] : []) ], contentType: 'text' }
+    });
+  };
+}
+
+function createSectionCritiqueTask(section: string, sectionIndex: number) {
+  return async (ctx: Context, version: number, { section: sec, outline, sketch }: any) => {
+    const draft = await readDraft(ctx, sec, version);
+    const brief = await readBrief(ctx, sec);
+    const guidance = outline?.guidance || '';
+    const priorSummary = await getPriorSectionsSummary(ctx, sectionIndex, outline);
+    const TARGETS = getTargets();
+    const { result: c, artifactId } = await runLLMTask<any>(ctx, 'critique_section', 'critique_section', { section: sec, draft: draft?.content || '', brief: brief?.content || '', sketch, guidance, priorSummary }, {
+      expect: 'json', tags: { phase: 'sections', section: sec, version },
+      artifact: { kind: 'SectionCritique', version: 1, title: `Critique ${sec} for v${version}`, tags: { section: sec, draftVersion: version, threshold: TARGETS.SECTION, verb: 'critique', responseJson: undefined }, links: [ ...(draft ? [{ dir: 'from' as const, role: 'critiques', ref: { type: 'artifact' as const, id: draft.id } }] : []) ], contentType: 'json' }
+    });
+    // Update tags with computed score/responseJson on the created artifact if available
+    if (artifactId) {
+      const art = await ctx.stores.artifacts.get(artifactId);
+      if (art) {
+        await ctx.stores.artifacts.upsert({ ...art, tags: { ...(art.tags || {}), score: c.score, responseJson: c } });
+      }
+    }
+    return { score: (c as any).score };
+  };
+}
+
+function createSectionDecideTask(section: string) {
+  const TARGETS = getTargets();
+  return async (ctx: Context, version: number, score: number, { section: sec }: any) => {
+    const approved = score >= TARGETS.SECTION;
+    const draft = await readDraft(ctx, sec, version);
+    const critList = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'SectionCritique' && a.tags?.draftVersion === version);
+    const crit = critList.at(-1);
+    await ctx.createArtifact({
+      kind: 'Decision', version: 1, title: `${approved ? 'Approve' : 'Rewrite'} ${sec} v${version}`,
+      content: `${approved ? 'approve' : 'rewrite'} ${sec} v${version}`,
+      tags: { section: sec, draftVersion: version, action: approved ? 'approve' : 'rewrite', score },
+      links: [
+        draft ? { dir: 'from', role: 'decides_on', ref: { type: 'artifact', id: draft.id } } : undefined,
+        crit ? { dir: 'from', role: 'based_on', ref: { type: 'artifact', id: crit.id } } : undefined
+      ].filter(Boolean) as any
+    });
+    if (approved && draft) {
+      await ctx.stores.artifacts.upsert({
+        ...draft,
+        tags: { ...draft.tags, action: 'approve' }
+      });
+    }
+  };
+}
+
+function createNoteDraftTask(_initial: number) {
+  // draftTask will be invoked as (ctx, ver, params)
+  return async (ctx: Context, ver: number, { outline, sketch }: any) => {
+    const guidance = outline?.guidance || '';
+    const sectionSummaries = await getSectionSummaries(ctx, outline);
+    await runLLMTask<string>(ctx, 'assemble_note', 'assemble_note', { sketch, guidance, sectionSummaries }, { expect: 'text', tags: { phase: 'note_review', version: ver }, artifact: { kind: 'NoteDraft', version: ver, title: `Note Draft v${ver}`, tags: { verb: 'draft' }, contentType: 'text' } });
+  };
+}
+
+function createNoteCritiqueTask(_initial: number) {
+  // critiqueTask will be invoked as (ctx, ver, params)
+  return async (ctx: Context, ver: number, { outline, sketch }: any) => {
+    const note = await readNote(ctx, ver);
+    const guidance = outline?.guidance || '';
+    const sectionSummaries = await getSectionSummaries(ctx, outline);
+    const { result: c, artifactId } = await runLLMTask<any>(ctx, 'critique_note', 'critique_note', { noteDraft: note?.content || '', sketch, guidance, sectionSummaries }, {
+      expect: 'json', tags: { phase: 'note_review', version: ver },
+      artifact: { kind: 'NoteCritique', version: 1, title: `Critique Note v${ver}`, tags: { noteVersion: ver, verb: 'critique' }, links: [ ...(note ? [{ dir: 'from' as const, role: 'critiques', ref: { type: 'artifact' as const, id: note.id } }] : []) ], contentType: 'json' }
+    });
+    if (artifactId) {
+      const art = await ctx.stores.artifacts.get(artifactId);
+      if (art) {
+        await ctx.stores.artifacts.upsert({ ...art, tags: { ...(art.tags || {}), score: (c as any).score, threshold: getTargets().NOTE, responseJson: c } });
+      }
+    }
+    return { score: (c as any).score };
+  };
+}
+
+function createNoteDecideTask(_initial: number) {
+  const TARGETS = getTargets();
+  // decideTask will be invoked as (ctx, ver, score, params)
+  return async (ctx: Context, ver: number, score: number, _params: any) => {
+    const approved = score >= TARGETS.NOTE;
+    const note = await readNote(ctx, ver);
+    const critList = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NoteCritique' && a.tags?.noteVersion === ver);
+    const crit = critList.at(-1);
+    await ctx.createArtifact({
+      kind: 'NoteDecision', version: 1, title: `${approved ? 'Approve' : 'Rewrite'} Note v${ver}`,
+      content: `${approved ? 'approve' : 'rewrite'} Note v${ver}`,
+      tags: { noteVersion: ver, action: approved ? 'approve' : 'rewrite', score },
+      links: [
+        note ? { dir: 'from', role: 'decides_on', ref: { type: 'artifact', id: note.id } } : undefined,
+        crit ? { dir: 'from', role: 'based_on', ref: { type: 'artifact', id: crit.id } } : undefined
+      ].filter(Boolean) as any,
+      autoProduced: false
+    });
+    if (approved && note) {
+      await ctx.stores.artifacts.upsert({
+        ...note,
+        tags: { ...note.tags, action: 'approve' }
+      });
+    }
+  };
+}
+
+function createNoteRewriteTask(version: number) {
+  return async (ctx: Context, { outline, sketch }: any) => {
+    const note = await readNote(ctx, version);
+    const critList = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NoteCritique' && a.tags?.noteVersion === version);
+    const crit = critList.at(-1);
+    const guidance = outline.guidance;
+    await runLLMTask<string>(ctx, 'rewrite_note', 'rewrite_note', { noteDraft: note?.content || '', critique: crit?.content || '', sketch, guidance }, { expect: 'text', tags: { phase: 'note_review', version }, artifact: { kind: 'NoteDraft', version: version + 1, title: `Rewritten Note v${version + 1}`, tags: { verb: 'rewrite', basedOn: version }, contentType: 'text' } });
+  };
+}
+
+async function getSectionSummaries(ctx: Context, outline: any): Promise<string> {
+  if (!outline || !Array.isArray(outline.sections)) return '<sectionSummaries />';
+  let summaries = '';
+  for (const sec of outline.sections) {
+    const v = await latestDraftVersion(ctx, sec.title);
+    const draft = await readDraft(ctx, sec.title, v);
+    summaries += `<section name="${sec.title}">${(draft?.content || '').substring(0, 200)}...</section>\n`;
+  }
+  return `<sectionSummaries>${summaries}</sectionSummaries>`;
+}
+
+function buildDocumentWorkflow(input: { title: string; sketch: string }) {
+  const TARGETS = getTargets();
+  const planTask = createPlanOutlineTask(input.sketch);
+
+  const planningPhase = definePhase(
+    'Planning',
+    { phase: 'planning' },
+    [
+      async (ctx) => await planTask(ctx),
+      createRealizeOutlineTask()
+    ]
+  );
+
+  const sectionsPhase = definePhase(
+    'Sections',
+    { phase: 'sections' },
+    [
+      async (ctx) => {
+        if (!(await ctx.isPhaseComplete('planning'))) {
+          await planningPhase(ctx, {});
+        }
+        const outline = await getOutlineFromSteps(ctx);
+        const sections = Array.isArray(outline?.sections) ? outline.sections : [];
+        if (!sections.length) {
+          throw new Error('Outline missing/invalid (no sections). Check phase:planning:plan_outline step for errors.');
+        }
+        for (let i = 0; i < sections.length; i++) {
+          const sec = sections[i];
+          const sectionLoop = revisionLoop({
+            target: TARGETS.SECTION,
+            maxRevs: TARGETS.SECTION_MAX_REVS,
+            approvalThreshold: TARGETS.SECTION * 0.8,
+            getLatestVersion: latestDraftVersion,
+            draftTask: createSectionDraftTask(sec.title, i),
+            critiqueTask: createSectionCritiqueTask(sec.title, i),
+            decideTask: createSectionDecideTask(sec.title),
+            title: `Section: ${sec.title}`
+          });
+          await sectionLoop(ctx, { section: sec.title, outline, sketch: input.sketch });
+        }
+      }
+    ]
+  );
+
+  const assemblyPhase = definePhase('Assembly', { phase: 'assembly' }, [
+    async (ctx) => {
+      const outline = await getOutlineFromSteps(ctx);
+      const guidance = outline?.guidance || '';
+      const sectionSummaries = outline ? await getSectionSummaries(ctx, outline) : '<sectionSummaries />';
+      await runLLMTask<string>(ctx, 'assemble_note', 'assemble_note', { sketch: input.sketch, guidance, sectionSummaries }, { expect: 'text', tags: { phase: 'assembly' }, artifact: { kind: 'NoteDraft', version: 1, title: 'Note v1', tags: { phase: 'assembly' }, contentType: 'text' } });
+    }
+  ]);
+
+  const noteReviewPhase = definePhase('Note Review', { phase: 'note_review' }, [
+    async (ctx) => {
+      const outline = await getOutlineFromSteps(ctx);
+      const noteLoop = revisionLoop({
+        target: TARGETS.NOTE,
+        maxRevs: TARGETS.NOTE_MAX_REVS,
+        approvalThreshold: TARGETS.NOTE * 0.8,
+        getLatestVersion: async (ctx: Context) => {
+          const list = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NoteDraft');
+          if (!list.length) return 1;
+          return Math.max(...list.map((a: Artifact) => Number(a.version)));
+        },
+        draftTask: createNoteDraftTask(1),
+        critiqueTask: createNoteCritiqueTask(1),
+        decideTask: createNoteDecideTask(1),
+        title: 'Note Revision'
+      });
+      await noteLoop(ctx, { outline, sketch: input.sketch });
+    }
+  ]);
+
+  const finalizedPhase = definePhase('Finalized', { phase: 'finalized' }, [
+    async (ctx) => {
+      const latest = await readNote(ctx);
+      const outline = await getOutlineFromSteps(ctx);
+      const guidance = outline?.guidance || '';
+      await runLLMTask<string>(ctx, 'finalize_note', 'finalize_note', { noteDraft: latest?.content || '', sketch: input.sketch, guidance }, { expect: 'text', tags: { phase: 'finalized' }, artifact: { kind: 'ReleaseCandidate', version: 1, title: 'RC v1', tags: { phase: 'finalized' }, contentType: 'text' } });
+    }
+  ]);
+
+  const fhirEncodingPhase = definePhase('FHIR Encoding', { phase: 'fhir' }, [
+    async (ctx) => {
+      // 1. Get the final narrative text
+      const releaseCandidateArtifacts = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a) => a.kind === 'ReleaseCandidate');
+      const releaseCandidate = releaseCandidateArtifacts.sort((a,b) => b.version - a.version)[0];
+      if (!releaseCandidate?.content) {
+        throw new Error('ReleaseCandidate note not found to start FHIR encoding.');
+      }
+      const note_text = releaseCandidate.content;
+
+      // 2. Create the Composition plan, aligning sections with the drafted note (## headings)
+      const sectionRegex = /^##\s*(.*?)\s*\n([\s\S]*?)(?=\n##\s|$)/gm;
+      const sectionTitles: string[] = [];
+      let m;
+      while ((m = sectionRegex.exec(note_text)) !== null) {
+        const title = (m[1] || '').trim();
+        if (title) sectionTitles.push(title);
+      }
+      const compositionPrompt = buildPrompt('fhir_composition_plan', { note_text, section_titles: sectionTitles });
+      const { result: planResult, meta: planMeta } = await (ctx as any).callLLMEx('fhir_composition_plan', compositionPrompt, { expect: 'json', tags: { phase: 'fhir' } });
+      let compositionPlan = stitchSectionNarratives(planResult, note_text);
+      await (await import('./services/artifacts')).emitJsonArtifact(ctx, {
+        kind: 'FhirCompositionPlan',
+        title: 'FHIR Composition Plan',
+        content: compositionPlan,
+        tags: { phase: 'fhir', prompt: planMeta.prompt, raw: planMeta.raw },
+        links: [ { dir: 'from', role: 'produced', ref: { type: 'step', id: planMeta.stepKey } } ]
+      });
+
+      // 3. Extract all placeholder references and generate resources in parallel
+      const references: { reference: string, display: string }[] = [];
+      if (Array.isArray(compositionPlan.section)) {
+        for (const section of compositionPlan.section) {
+          if (Array.isArray(section.entry)) {
+            for (const entry of section.entry) {
+              if (entry.reference && entry.display) {
+                references.push({ reference: entry.reference, display: entry.display });
+              }
+            }
+          }
+        }
+      }
+
+      // Capture subject/encounter references from the Composition to reuse in resource generation
+      // Support both Reference-object and bare-string forms from the LLM plan
+      const subjectRef = (typeof compositionPlan?.subject === 'string')
+        ? compositionPlan.subject
+        : (compositionPlan?.subject?.reference as string | undefined);
+      const encounterRef = (typeof compositionPlan?.encounter === 'string')
+        ? compositionPlan.encounter
+        : (compositionPlan?.encounter?.reference as string | undefined);
+
+      // Generate + validate-refine per resource via service (emits per-resource artifacts + traces)
+      const generatedResources: any[] = await generateAndRefineResources(ctx, note_text, references, subjectRef, encounterRef);
+
+      // Let LLM outputs stand; we only pass subject_ref/encounter_ref as guidance in the prompt.
+
+      // 4. Analyze codings and produce pre-recoding report
+      const { report: preReport } = await ctx.step('analyze_codings', async () => {
+        return await analyzeCodings(generatedResources);
+      }, { title: 'Analyze Codings (pre)', tags: { phase: 'fhir' } });
+      await ctx.createArtifact({ kind: 'CodingValidationReport', version: 1, title: 'Coding Validation Report (pre-recoding)', content: JSON.stringify({ items: preReport }, null, 2), tags: { phase: 'fhir', stage: 'pre' } });
+
+      // 5. Group unresolved by unique key and recode per group
+      const unresolvedItems = preReport.filter((i: any) => i.status === 'recoding');
+      type Group = { key: string; displaySet: string[]; systemSet: string[]; members: Array<{ resourceRef?: string; pointer: string; resourceType?: string; id?: string; original: any }> };
+      const groups = new Map<string, Group>();
+      const norm = (s?: string) => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+      for (const it of unresolvedItems) {
+        const hasCode = it.original?.system && it.original?.code;
+        const key = hasCode ? `code:${it.original.system}|${it.original.code}` : `display:${norm(it.original?.display)}|${it.original?.system || 'any'}`;
+        const g = groups.get(key) || { key, displaySet: [], systemSet: [], members: [] };
+        if (it.original?.display) { const d = norm(it.original.display); if (!g.displaySet.includes(d)) g.displaySet.push(d); }
+        if (it.original?.system) { const s = String(it.original.system); if (!g.systemSet.includes(s)) g.systemSet.push(s); }
+        g.members.push({ resourceRef: it.resourceRef, pointer: it.pointer, resourceType: it.resourceType, id: it.id, original: it.original });
+        groups.set(key, g);
+      }
+
+      // Recoder per group
+      let recodedResources: any[] = JSON.parse(JSON.stringify(generatedResources));
+      const attemptLogs: Record<string, { attempts: any[]; failureReason?: string } | undefined> = {};
+      for (const g of groups.values()) {
+        const first = g.members[0];
+        const resourceType = first.resourceType || 'Unknown';
+        const placeholder = { path: 'code', jsonPointer: first.pointer, potentialDisplays: g.displaySet, potentialSystems: g.systemSet } as any;
+        const out = await (await import('./terminologyResolverV2')).resolveOneCode?.(ctx as any, placeholder, resourceType, { supportedSystems: [], bigSystems: [], builtinFhirCodeSystems: [] } as any, true);
+        if (out?.code) {
+          for (const m of g.members) {
+            const ref = m.resourceRef; if (!ref) continue;
+            const [rt, rid] = ref.split('/');
+            const targetRes = recodedResources.find(r => r.resourceType === rt && (r.id || '') === (rid || ''));
+            if (!targetRes) continue;
+            const tgt = (function getByPtr(root: any, pointer: string) {
+              try { const segs = pointer.split('/').filter(Boolean).map(s => decodeURIComponent(s)); let cur = root; for (const s of segs) { if (cur == null) return null; cur = Array.isArray(cur) ? cur[Number(s)] : cur[s]; } return cur && typeof cur === 'object' ? cur : null; } catch { return null; }
+            })(targetRes, m.pointer);
+            if (tgt && typeof tgt === 'object') {
+              tgt.system = out.code.system; tgt.code = out.code.code; tgt.display = out.code.display;
+              delete tgt._proposed_coding; delete tgt._potential_displays; delete tgt._potential_systems; delete (tgt as any)._potential_codes;
+            }
+            const compositeKey = `${ref}:${m.pointer}`;
+            attemptLogs[compositeKey] = { attempts: out.attempts || [], failureReason: out.failureReason };
+          }
+        } else {
+          for (const m of g.members) {
+            const ref = m.resourceRef; if (!ref) continue;
+            const compositeKey = `${ref}:${m.pointer}`;
+            attemptLogs[compositeKey] = { attempts: out?.attempts || [], failureReason: out?.failureReason };
+          }
+        }
+      }
+
+      // 6. Analyze again post-recoding and create reports
+      const { report: postReport } = await ctx.step('analyze_codings_post', async () => {
+        return await analyzeCodings(recodedResources);
+      }, { title: 'Analyze Codings (post)', tags: { phase: 'fhir' } });
+      await ctx.createArtifact({ kind: 'CodingValidationReport', version: 1, title: 'Coding Validation Report (post-recoding)', content: JSON.stringify({ items: postReport }, null, 2), tags: { phase: 'fhir', stage: 'post' } });
+
+      // Build a detailed recoding report
+      if (groups.size > 0) {
+        const resByRef = new Map<string, any>();
+        for (const r of recodedResources as any[]) { const ref = r?.resourceType ? `${r.resourceType}/${r.id || ''}` : undefined; if (ref) resByRef.set(ref, r); }
+        const getByPointer = (root: any, pointer: string): any | null => { try { const segs = pointer.split('/').filter(Boolean).map(s => decodeURIComponent(s)); let cur = root; for (const s of segs) { if (cur == null) return null; cur = Array.isArray(cur) ? cur[Number(s)] : cur[s]; } return cur && typeof cur === 'object' ? cur : null; } catch { return null; } };
+        const items: any[] = [];
+        for (const g of groups.values()) {
+          for (const m of g.members) {
+            const ref = m.resourceRef; if (!ref) continue;
+            const compositeKey = `${ref}:${m.pointer}`;
+            const log = attemptLogs[compositeKey];
+            const postStatus = postReport.find(it => it.resourceRef === ref && it.pointer === m.pointer)?.status;
+            let final: { system?: string; code?: string; display?: string } | undefined;
+            const resObj = resByRef.get(ref);
+            if (resObj) { const tgt = getByPointer(resObj, m.pointer); if (tgt && typeof tgt === 'object' && typeof tgt.system === 'string' && typeof tgt.code === 'string') { final = { system: tgt.system, code: tgt.code, display: tgt.display }; } }
+            const attemptsArr = Array.isArray(log?.attempts) ? log.attempts : [];
+            items.push({ pointer: m.pointer, resourceRef: ref, original: m.original, outcome: postStatus === 'ok' ? 'recoded' : 'unresolved', final, attempts: attemptsArr.length, queries: attemptsArr.map(a => ({ query: a.query, hits: a.hitCount })), steps: attemptsArr.map(a => ({ query: a.query, systems: a.systems, hitCount: a.hitCount, sample: a.sample, decision: a.decision })) });
+          }
+        }
+        await ctx.createArtifact({ kind: 'CodingRecodingReport', version: 1, title: 'Coding Recoding Report (post-recoding)', content: JSON.stringify({ items }, null, 2), tags: { phase: 'fhir', stage: 'post' } });
+      }
+
+      // 7. Finalize unresolved in-place with extensions
+      const unresolvedPointers = postReport.filter((i: any) => i.status !== 'ok').map((i: any) => i.pointer);
+      const finalResources = unresolvedPointers.length ? finalizeUnresolved(recodedResources, unresolvedPointers, attemptLogs) : recodedResources;
+
+      // Create artifacts for final resources
+      for (let i = 0; i < finalResources.length; i++) {
+        const r: any = finalResources[i];
+        const ref = references[i];
+        await ctx.createArtifact({
+          kind: 'FhirResource',
+          version: 1,
+          title: ref?.reference || `${r.resourceType}/${r.id || ''}`,
+          content: JSON.stringify(r, null, 2),
+          tags: { phase: 'fhir', resourceType: r.resourceType, coded: true, from: ref?.display }
+        });
+      }
+
+
+      // 5. Stitch the final bundle
+      const finalComposition = { ...compositionPlan } as any;
+      // Normalize subject/encounter to Reference objects for valid FHIR
+      if (typeof finalComposition.subject === 'string') {
+        finalComposition.subject = { reference: finalComposition.subject };
+      }
+      if (typeof finalComposition.encounter === 'string') {
+        finalComposition.encounter = { reference: finalComposition.encounter };
+      }
+      if (!finalComposition.id) {
+        const h = await sha256(ctx.documentId + ':' + Date.now());
+        finalComposition.id = `composition-${h.slice(0, 8)}`;
+      } else if (typeof finalComposition.id === 'string' && finalComposition.id.length > 64) {
+        finalComposition.id = String(finalComposition.id).slice(0, 64);
+      }
+      // Clean up the display fields from the final composition's references
+      if (Array.isArray(finalComposition.section)) {
+        for (const section of finalComposition.section) {
+          if (Array.isArray(section.entry)) {
+            for (const entry of section.entry) {
+              delete entry.display; // Remove the descriptive text, keeping only the reference
+            }
+          }
+        }
+      }
+
+      const fhirBase = (typeof localStorage !== 'undefined' && (localStorage.getItem('FHIR_BASE_URL') || localStorage.getItem('FHIR_BASE') )) || 'https://fhir.example.org';
+      const base = String(fhirBase).replace(/\/$/, '');
+      const bundle = {
+          resourceType: "Bundle",
+          type: "document",
+          id: `bundle-${ctx.documentId}`,
+          entry: [
+            { fullUrl: `${base}/${finalComposition.resourceType || 'Composition'}/${finalComposition.id}`, resource: finalComposition },
+            ...finalResources.map((r: any) => ({
+              fullUrl: `${base}/${r.resourceType}/${r.id || ''}`,
+              resource: r
+            }))
+          ]
+      };
+
+      // Prune empty arrays anywhere in the bundle (omit those properties)
+      (function pruneEmptyArrays(node: any) {
+        if (!node || typeof node !== 'object') return;
+        if (Array.isArray(node)) {
+          for (const item of node) pruneEmptyArrays(item);
+          return;
+        }
+        for (const k of Object.keys(node)) {
+          const v: any = (node as any)[k];
+          if (Array.isArray(v)) {
+            if (v.length === 0) { delete (node as any)[k]; }
+            else { v.forEach(pruneEmptyArrays); }
+          } else if (v && typeof v === 'object') {
+            pruneEmptyArrays(v);
+          }
+        }
+      })(bundle);
+
+      await ctx.createArtifact({
+          kind: 'FhirBundle',
+          version: 1,
+          title: 'FHIR Document Bundle',
+          content: JSON.stringify(bundle, null, 2),
+          tags: { phase: 'fhir' }
+      });
+
+      // Validate and create report
+      const validationResult = await ctx.step('validate_bundle', async () => {
+        return await validateResource(bundle);
+      }, { title: 'Validate FHIR Bundle', tags: { phase: 'fhir' } });
+      await ctx.createArtifact({
+        kind: 'ValidationReport',
+        version: 1,
+        title: 'FHIR Bundle Validation Report',
+        content: JSON.stringify(validationResult, null, 2),
+        tags: { phase: 'fhir', valid: validationResult.valid }
+      });
+      if (!validationResult.valid) {
+          console.warn('FHIR Bundle is not valid', validationResult.issues);
+      }
+    }
+  ]);
+
+  return [planningPhase, sectionsPhase, assemblyPhase, noteReviewPhase, finalizedPhase, fhirEncodingPhase];
+}
+
+function stitchSectionNarratives(compositionPlan: any, noteText: string): any {
+    // 1. Parse the original note into sections based on Markdown H2s
+    const noteSections = new Map<string, string>();
+    const sectionRegex = /^##\s*(.*?)\s*\n([\s\S]*?)(?=\n##\s|$)/gm;
+    let match;
+    while ((match = sectionRegex.exec(noteText)) !== null) {
+        const title = match[1].trim();
+        const content = match[2].trim();
+        noteSections.set(canonicalizeHeader(title), content);
+    }
+
+    // 2. Iterate through the composition and stitch in the narratives
+    if (Array.isArray(compositionPlan.section)) {
+        for (const section of compositionPlan.section) {
+            if (section.text?.div) {
+                const placeholderMatch = String(section.text.div).match(/\{\{##\s*(.*?)\s*\}\}/);
+                if (placeholderMatch && placeholderMatch[1]) {
+                    const titleToFind = placeholderMatch[1].trim();
+                    const content = noteSections.get(canonicalizeHeader(titleToFind));
+                    if (content) {
+                        // Replace placeholder with actual content, ensuring it's escaped for XHTML
+                        const escapedContent = content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>');
+                        section.text.div = `<div xmlns="http://www.w3.org/1999/xhtml">${escapedContent}</div>`;
+                        section.text.status = 'additional';
+                    } else {
+                        // If no matching section is found, leave a note in the div
+                        section.text.div = `<div xmlns="http://www.w3.org/1999/xhtml">Narrative for section '${titleToFind}' not found in source note.</div>`;
+                        section.text.status = 'additional';
+                    }
+                }
+            }
+        }
+    }
+    return compositionPlan;
+}
+
+function canonicalizeHeader(header: string): string {
+    return header.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+export async function runDocumentWorkflow(stores: Stores, input: { title: string; sketch: string }): Promise<void> {
+  const documentId = `doc:${await sha256(input.title + ':' + input.sketch)}`;
+  const workflowId = `wf:${await sha256(documentId + ':' + Date.now())}`;
+  await stores.documents.create(documentId, input.title, input.sketch);
+  await stores.workflows.create(workflowId, documentId, 'document_drafting');
+  const pipeline = buildDocumentWorkflow(input);
+  await runWorkflow(stores, workflowId, documentId, pipeline);
+}
+
+export async function resume(stores: Stores): Promise<void> {
+  const resumables = await stores.workflows.listResumable();
+  for (const r of resumables) {
+    const doc = await stores.documents.get(r.documentId);
+    if (doc && doc.sketch) {
+      const input = { title: doc.title, sketch: doc.sketch };
+      const pipeline = buildDocumentWorkflow(input);
+      await runWorkflow(stores, r.id, r.documentId, pipeline);
+    }
+  }
+}
+
+// Resume workflows for a specific document, even if the workflow status is 'done',
+// as long as there are pending/running/failed steps for that document.
+export async function resumeDocument(stores: Stores, documentId: ID): Promise<void> {
+  try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'resume.begin', documentId })); } catch {}
+  const doc = await stores.documents.get(documentId);
+  if (!doc || !doc.sketch) return;
+  const input = { title: doc.title, sketch: doc.sketch };
+
+  // Find candidate workflow IDs from steps for this document
+  const steps = await stores.steps.listByDocument(documentId);
+  const byWf = new Map<ID, { pending: number; running: number; failed: number }>();
+  for (const s of steps) {
+    const cur = byWf.get(s.workflowId as ID) || { pending: 0, running: 0, failed: 0 };
+    if (s.status === 'pending') cur.pending++;
+    if (s.status === 'running') cur.running++;
+    if (s.status === 'failed') cur.failed++;
+    byWf.set(s.workflowId as ID, cur);
+  }
+
+  const pipeline = buildDocumentWorkflow(input);
+  const wfIds = Array.from(byWf.entries())
+    .filter(([_, c]) => c.pending > 0 || c.running > 0 || c.failed > 0)
+    .map(([wfId]) => wfId);
+
+  if (wfIds.length) {
+    // Clear prior artifacts/links for a clean replay output (keep steps for cache/replay)
+    await stores.artifacts.deleteByDocument(documentId);
+    await stores.links.deleteByDocument(documentId);
+    for (const wfId of wfIds) {
+      await stores.workflows.setStatus(wfId, 'running');
+      await runWorkflow(stores, wfId, documentId, pipeline);
+    }
+    try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'resume.end', documentId, mode: 'resume', workflows: wfIds })); } catch {}
+    return;
+  }
+  // All steps may be done, but we still want a replay (cached) for debugging.
+  // Pick the workflowId of the most recent step and run the pipeline; caching will replay quickly.
+  const latestStep = steps.slice().sort((a, b) => b.ts.localeCompare(a.ts))[0];
+  const replayWfId = latestStep?.workflowId as ID | undefined;
+  if (replayWfId) {
+    await stores.artifacts.deleteByDocument(documentId);
+    await stores.links.deleteByDocument(documentId);
+    await stores.workflows.setStatus(replayWfId, 'running');
+    await runWorkflow(stores, replayWfId, documentId, pipeline);
+  }
+  try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'resume.end', documentId, mode: 'replay', workflowId: replayWfId })); } catch {}
+  return;
+}
+// createLLMProduct removed; artifacts are created directly using callLLMEx metadata
