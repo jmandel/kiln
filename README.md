@@ -122,10 +122,11 @@ The engine ensures workflows are **resumable**: Failed or pending steps can be r
 
 ### Clone and Install
 
-1. Clone the repository:
+1. Clone the repository and initialize submodules:
    ```bash
    git clone <repo-url> kiln
    cd kiln
+   git submodule update --init --recursive
    ```
 
 2. Install frontend dependencies:
@@ -133,24 +134,25 @@ The engine ensures workflows are **resumable**: Failed or pending steps can be r
    bun install
    ```
 
-3. Set up the server (in `server/` directory):
+3. Set up the server:
    ```bash
    cd server
-   bun install  # Install Bun dependencies
+   bun install  # Install server dependencies
    bun run setup  # Download FHIR validator JAR and set up large-vocabularies submodule
    ```
 
    The `setup` script:
    - Downloads the latest FHIR validator JAR from HL7.
-   - Initializes the `large-vocabularies` Git submodule (contains LOINC, SNOMED CT, RxNorm NDJSON files).
+   - Updates the `large-vocabularies` Git submodule (contains LOINC, SNOMED CT, RxNorm NDJSON files).
    - Creates the `db/` directory for the SQLite terminology database.
+   - Note: The FHIR validator may show SLF4J logger warnings - these are non-critical and can be ignored.
 
 ### Set Up Vocabularies
 
 The server requires a terminology database for code resolution during FHIR generation. Run the loader script to populate it:
 
 ```bash
-cd server  # If not already in server/
+# Still in server/ directory from previous step
 bun run load-terminology  # Loads LOINC, SNOMED CT, RxNorm, FHIR valuesets, and UTG
 ```
 
@@ -188,20 +190,25 @@ The database is saved to `./server/db/terminology.sqlite`. If you update vocabul
 
 1. Start the development server (from project root):
    ```bash
+   cd ..  # Return to project root from server/
    bun dev
+   # Or if port 3000 is in use:
+   PORT=5173 bun dev  # Use any available port
    ```
 
    This runs a single Bun server that serves:
-   - **UI**: Static HTML/JS/CSS at `http://localhost:3000` (or the assigned port).
+   - **UI**: Static HTML/JS/CSS at `http://localhost:3000` (or the specified port).
    - **API**: FHIR terminology (`/tx/*`) and validation (`/validate/*`) endpoints at the same origin.
+   - **FHIR Validator**: Automatically starts on a random port (shown in console output).
    - The server auto-reloads on code changes for hot development.
 
    Output:
    ```
+   Starting FHIR validator server on port 8679...  # Random port
    ✅ Dev server (UI + API mounted) at http://localhost:3000
    ```
 
-2. Open the app in your browser: Visit `http://localhost:3000`.
+2. Open the app in your browser: Visit `http://localhost:3000` (or your specified port).
 
 3. Configure LLM Access:
    - Click the settings gear icon.
@@ -219,8 +226,11 @@ The database is saved to `./server/db/terminology.sqlite`. If you update vocabul
 
 - **Hot Reload**: The `bun dev` command watches for changes and reloads the server automatically.
 - **Tests**: Run `bun test` in root (frontend) or `bun test` in `server/` (backend).
-- **Vocab Updates**: Re-run `server/scripts/load-terminology.ts` after pulling submodule updates.
-- **Custom Ports**: Set `PORT` env var for a different port (default: 3000).
+- **Vocab Updates**: Re-run `bun run load-terminology` in `server/` after pulling submodule updates.
+- **Custom Ports**: Set `PORT` env var for a different port (default: 3000):
+  ```bash
+  PORT=8080 bun dev  # Use port 8080 instead of 3000
+  ```
 
 ## Key Concepts
 
@@ -273,11 +283,14 @@ All are persisted and visualized.
 
 ## Troubleshooting
 
+- **Port Already in Use**: If port 3000 is occupied, use `PORT=<number> bun dev` with an available port.
 - **No Terminology Results**: Ensure `bun run load-terminology` completed successfully. Check `./server/db/terminology.sqlite`.
 - **Validator Errors**: Verify Java 11+ is installed. Check server logs for Java issues.
+- **SLF4J Warnings**: The FHIR validator shows SLF4J logger warnings - these are harmless and can be ignored.
 - **Workflow Stuck**: Use "Clear Cache" in the dashboard to re-run steps.
 - **API Key Issues**: Confirm your LLM provider key is valid and has quota.
 - **LocalStorage Full**: Switch to IndexedDB (automatic fallback) or clear browser storage.
+- **Directory Navigation Issues**: Make sure you're in the correct directory for each step (root for frontend, `server/` for backend setup).
 
 ## Contributing
 
