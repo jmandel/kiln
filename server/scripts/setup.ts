@@ -8,8 +8,11 @@ import { existsSync } from "fs";
 import { mkdir } from "fs/promises";
 import { $ } from "bun";
 
-const VALIDATOR_VERSION = "6.4.2"; // Latest stable version
-const VALIDATOR_URL = `https://github.com/hapifhir/org.hl7.fhir.core/releases/download/${VALIDATOR_VERSION}/validator_cli.jar`;
+// If VALIDATOR_VERSION is set, fetch that exact release; otherwise fetch the latest release
+const VALIDATOR_VERSION = Bun.env.VALIDATOR_VERSION; // e.g., "6.6.7"
+const VALIDATOR_URL = VALIDATOR_VERSION
+  ? `https://github.com/hapifhir/org.hl7.fhir.core/releases/download/${VALIDATOR_VERSION}/validator_cli.jar`
+  : `https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar`;
 const VALIDATOR_PATH = "./validator.jar";
 const LARGE_VOCAB_REPO = "https://github.com/jmandel/fhir-concept-publication-demo";
 const LARGE_VOCAB_PATH = "./large-vocabularies";
@@ -20,7 +23,11 @@ async function downloadValidator() {
     return;
   }
 
-  console.log(`📥 Downloading FHIR validator v${VALIDATOR_VERSION}...`);
+  console.log(
+    VALIDATOR_VERSION
+      ? `📥 Downloading FHIR validator v${VALIDATOR_VERSION}...`
+      : `📥 Downloading latest FHIR validator (no VALIDATOR_VERSION set)...`
+  );
   try {
     const response = await fetch(VALIDATOR_URL);
     if (!response.ok) {

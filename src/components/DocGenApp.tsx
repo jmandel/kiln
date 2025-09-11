@@ -435,11 +435,9 @@ export default function DocGenApp(): React.ReactElement {
                   className="p-2 hover:bg-gray-100 rounded-md"
                   onClick={() => setConfigOpen(true)}
                   aria-label="Settings"
+                  title="Settings"
                 >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M12 1v6m0 6v6m10.392-6.5l-5.196 3m-10.392 0l-5.196-3m15.588 0l-5.196-3m-10.392 0l5.196-3"/>
-                  </svg>
+                  <span role="img" aria-label="Settings" className="text-lg">⚙️</span>
                 </button>
                 
               </div>
