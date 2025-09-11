@@ -18,11 +18,6 @@ const LARGE_VOCAB_REPO = "https://github.com/jmandel/fhir-concept-publication-de
 const LARGE_VOCAB_PATH = "./large-vocabularies";
 
 async function downloadValidator() {
-  if (existsSync(VALIDATOR_PATH)) {
-    console.log("✅ Validator JAR already exists");
-    return;
-  }
-
   console.log(
     VALIDATOR_VERSION
       ? `📥 Downloading FHIR validator v${VALIDATOR_VERSION}...`
