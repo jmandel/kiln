@@ -3,11 +3,11 @@
  * Static build:
  * - bun build index.html viewer.html --outdir dist
  * - copy ./examples -> dist/examples
- * - generate dist/examples/index.json containing inline examples
+ * - generate dist/examples/index.json containing links to example files
  */
 
 import { $ } from "bun";
-import { mkdir, cp, readdir, readFile, writeFile, stat } from "fs/promises";
+import { mkdir, cp, readdir, writeFile, stat } from "fs/promises";
 import { resolve, join, basename } from "path";
 
 async function ensureDir(p: string) {
@@ -31,9 +31,9 @@ async function generateExamplesIndex() {
   const dir = resolve("examples");
   const outDir = resolve("dist", "examples");
   const outFile = join(outDir, "index.json");
-  console.log("🧾 generating examples/index.json");
+  console.log("🧾 generating examples/index.json (links only)");
 
-  const items: Array<{ name: string; file: string; content: any }> = [];
+  const items: Array<{ name: string; url: string }> = [];
 
   const list = await readdir(dir);
   for (const f of list) {
@@ -41,13 +41,8 @@ async function generateExamplesIndex() {
     const p = join(dir, f);
     const st = await stat(p);
     if (!st.isFile()) continue;
-    try {
-      const text = await readFile(p, "utf8");
-      const json = JSON.parse(text);
-      items.push({ name: basename(f, ".json"), file: `examples/${f}`, content: json });
-    } catch (e) {
-      console.warn("Skipping invalid JSON:", f, e);
-    }
+    // Keep it simple: don't inline content; just reference file path relative to dist root
+    items.push({ name: basename(f, ".json"), url: `examples/${f}` });
   }
 
   await writeFile(outFile, JSON.stringify({ examples: items }, null, 2));
@@ -62,4 +57,3 @@ async function main() {
 }
 
 main().catch(err => { console.error(err); process.exit(1); });
-
