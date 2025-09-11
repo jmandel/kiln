@@ -27,10 +27,12 @@ export async function searchTerminology(query: string | string[], systems?: stri
   const TERMINOLOGY_SERVER = getTerminologyServerURL();
 
   const queries = Array.isArray(query) ? query : [query];
-  const response = await fetch(`${TERMINOLOGY_SERVER}/search`, {
+  const body = JSON.stringify({ queries, systems, limit });
+  // Use unified server (/tx/search)
+  const response = await fetch(`${TERMINOLOGY_SERVER}/tx/search`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ queries, systems, limit })
+    body
   });
   
   if (!response.ok) {
@@ -38,12 +40,16 @@ export async function searchTerminology(query: string | string[], systems?: stri
   }
   
   const data = await response.json();
-  const results = (Array.isArray(data?.results) ? data.results : []) as Array<{ query: string; hits: TerminologyHit[]; count?: number }>;
+  const results = (Array.isArray(data?.results) ? data.results : []) as Array<{ query: string; hits: TerminologyHit[]; count?: number; fullSystem?: boolean; guidance?: string }>;
   const flatHits = results.flatMap(r => Array.isArray(r.hits) ? r.hits : []);
   const perQuery = results.map(r => ({ query: r.query, count: Array.isArray(r.hits) ? r.hits.length : (r.count ?? 0) }));
+  const fullSystem = results.some(r => !!r.fullSystem);
+  const guidance = (results.find(r => typeof r.guidance === 'string' && String(r.guidance).trim())?.guidance) as string | undefined;
   return {
     hits: flatHits,
     count: flatHits.length,
+    guidance,
+    fullSystem,
     perQuery,
     perQueryHits: results
   };

@@ -64,11 +64,13 @@ export const STORAGE_KEYS = {
 
 // Resolve the Terminology Server base URL consistently across environments
 export function getTerminologyServerURL(): string {
-  // Browser/localStorage
+  // Browser: prefer same-origin; allow override via localStorage
   try {
-    if (typeof localStorage !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const v = localStorage.getItem('TERMINOLOGY_SERVER_URL');
       if (v && v.trim()) return v;
+      // Same-origin relative base
+      return '';
     }
   } catch {}
   // Global override (e.g., set on window/globalThis)
@@ -88,17 +90,18 @@ export function getTerminologyServerURL(): string {
     const v = b?.env?.TERMINOLOGY_SERVER_URL;
     if (v && String(v).trim()) return String(v);
   } catch {}
-  // Default fallback
-  return 'http://localhost:3456';
+  // Default to unified server base for non-browser callers
+  return 'http://localhost:3500';
 }
 
 // Base URL for FHIR validation (type-level endpoints are appended)
 export function getFhirValidatorBaseURL(): string {
-  // Browser/localStorage
+  // Browser: prefer same-origin; allow override via localStorage
   try {
-    if (typeof localStorage !== 'undefined') {
+    if (typeof window !== 'undefined') {
       const v = localStorage.getItem('FHIR_VALIDATOR_BASE_URL') || localStorage.getItem('VALIDATOR_URL');
       if (v && v.trim()) return v;
+      return '';
     }
   } catch {}
   // Global override
@@ -118,6 +121,6 @@ export function getFhirValidatorBaseURL(): string {
     const bv = b?.env?.FHIR_VALIDATOR_BASE_URL || b?.env?.VALIDATOR_URL;
     if (bv && String(bv).trim()) return String(bv);
   } catch {}
-  // Default to HAPI R4 base; we'll call type-level $validate
-  return 'https://hapi.fhir.org/baseR4';
+  // Default to unified server (non-browser)
+  return 'http://localhost:3500';
 }

@@ -1,0 +1,22 @@
+{
+  "name": "v6",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --hot src/server.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "marked": "^16.2.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  }
+}

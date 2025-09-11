@@ -129,6 +129,9 @@ High-level goals:
    - You MUST set \`Composition.subject\` and \`Composition.encounter\` as Reference objects with a \`reference\` field, for example:
      • \`{"reference":"Patient/<some-id>"}\`
      • \`{"reference":"Encounter/<some-id>"}\`
+     Include an informative \`display\` for each Reference to guide downstream synthesis:
+      • For Patient, summarize salient demographics and context from the note (e.g., age, sex, any key identifiers or risk factors mentioned).
+      • For Encounter, summarize the clinical setting and reason/context (e.g., inpatient vs outpatient, date/time if present, chief complaint/reason, service type).
      Use these same references consistently throughout related resources (e.g., Observation.subject, ServiceRequest.subject), so the document refers to a single patient and encounter.
 2) For each entity mentioned in the note, add a placeholder \`Reference\` in the appropriate section's \`entry\` array.
    - Diagnoses/conditions → \`Condition\`.
@@ -152,7 +155,7 @@ High-level goals:
      • \`reference\`: "<ResourceType>/<temp-id>" (e.g., "Observation/obs-ldl-1", "DiagnosticReport/report-lipid-1").
      • \`display\`: A concise instruction describing what to generate, including grouping relationships and key facets.
        For example, for a lipid panel: the DiagnosticReport display should list the intended analyte Observation IDs and names (LDL, HDL, TG, Total Cholesterol). Each analyte Observation display should name its analyte, intended units if present, and refer back to the panel/report ID.
-7) Section narratives: For each section, set \`section.text.div\` to the template variable for the source note header using \`{{##Section Title}}\`.
+7) Section narratives: For each section, set \`section.text.div\` to the template variable \`{{Section Title}}\` matching the source note header.
 
 Clinical Note:
 <note>
@@ -183,6 +186,7 @@ Generate the FHIR resource that matches the description and target type. Ensure 
 
 Representation guidance (important):
 - Observations: Keep each Observation focused on a single analyte/facet/assertion. Use \`component\` only when representing one logical measurement with parts (e.g., blood pressure). Prefer separate Observations for lab panel analytes. Use \`partOf\` to point child Observations to the parent panel Observation or DiagnosticReport when described.
+- Observations (code selection): When a specific observation code exists for the single measurement, use that specific code rather than a panel code. Do not use panel Observation codes if a more specific measurement code is appropriate.
 - DiagnosticReport: When description indicates a panel/report with multiple analytes, populate \`result\` with references to the listed Observation IDs. Category should match (e.g., 'laboratory', 'imaging').
 - Panel Observation: When the description indicates a panel Observation, populate \`hasMember\` with the listed child Observation IDs.
 - Orders (ServiceRequest) vs performed (Procedure): If the target type is \`ServiceRequest\`, generate an order (do NOT include results). If the target type is \`Procedure\`, reflect a performed intervention.
@@ -199,7 +203,8 @@ ${ips_example}
 ` : ''}
 
 Coding guidance (important):
-- Emit real \`Coding\` entries with \`system\`, \`code\`, and \`display\` for all \`CodeableConcept\`s. Prefer canonical systems based on context (e.g., SNOMED for problems/findings, LOINC for observations/tests, RxNorm for medications, FHIR built-in code systems for enumerations). Avoid LOINC Part (LP...) codes unless the attribute explicitly requires a Part; prefer test/answer list codes for LOINC.
+- Emit real \`Coding\` entries with \`system\`, \`code\`, and \`display\` for all \`CodeableConcept\`s. Prefer canonical systems based on context (e.g., SNOMED for problems/findings, LOINC for observations/tests, RxNorm for medications, FHIR built-in code systems for enumerations).
+- LOINC selection: use standard LOINC test/observable codes for single measurements; do NOT use LOINC Part (\`LP...\`) or LOINC Answer (\`LA...\`) codes unless a specific attribute explicitly requires a Part/Answer.
 - If the note does not justify a specific code, pick the most precise code you can justify from the canonical system (we will verify and auto-correct later if needed). Do NOT emit custom placeholder fields.
 
 Return ONLY the generated FHIR resource as a single JSON object.`
@@ -211,24 +216,57 @@ Return ONLY the generated FHIR resource as a single JSON object.`
     validatorErrors,
     attempts,
     searchNotebook,
+    warnings,
     budgetRemaining
   }: {
     resource: any,
     unresolvedCodings: any[],
     validatorErrors: Array<{ path?: string; severity?: string; message: string }>,
     attempts: Record<string, { queries: string[] }>,
-    searchNotebook: Record<string, Array<{ query: string; systems?: string[]; meta?: any; hitsTopN: Array<{ system: string; code: string; display?: string }> }>>,
+    searchNotebook: Record<string, Array<{ query: string; systems?: string[]; meta?: any; resultsByQuery?: Array<{ query: string; hits: Array<{ system: string; code: string; display?: string }> }> }>>,
+    warnings?: Array<{ pointer: string; invalid?: Array<{ system?: string; code?: string }>; partials?: Array<{ path: string }>; message?: string }> ,
     budgetRemaining: number
   }) => `You are a FHIR resource repair assistant. Your task is to reduce coding/validation issues for a single resource using minimal, safe edits.
 
 Allowed actions (choose exactly one per turn):
 - "search_for_coding": request a terminology search for a specific JSON pointer. This does not mutate the resource.
 - "update": propose a JSON Patch (RFC6902) with any edits needed to improve correctness and validation.
-- "stop": end early if no safe improvement is possible within the budget.
 
 Guidance:
 - Prefer minimal edits that preserve clinical meaning and coherence.
 - Changes will be re-validated and accepted only if they improve overall correctness.
+
+Patch constraints (important):
+- When modifying a Coding, update the full Coding entry in one operation. Prefer replacing the entire coding object at the pointer, e.g., {"system":"...","code":"...","display":"..."}.
+- Do NOT change a coding's "/code" without also setting "/system" and "/display" for the same coding in the same update.
+- You MUST only propose codes that appear in the Search Notebook results for THIS pointer (from the most recent searches shown). Do NOT invent or select codes that are not listed.
+ - Whole-subtree edits: When fixing structured datatypes (e.g., Coding, Quantity, Dosage, CodeableConcept), prefer replacing the entire object at that JSON pointer in a single operation rather than emitting many property-level patches. This keeps changes atomic, auditable, and less error‑prone.
+ - UCUM units: For Quantity fields, always use UCUM (system = "http://unitsofmeasure.org") and set unit/code accordingly; UCUM units are allowed even if not listed in the Search Notebook.
+ - Focus scope: Prefer to fix one pointer (one Coding or one datatype subtree) per update. Avoid mixing many unrelated edits in a single patch so validation can clearly attribute improvements.
+- If no suitable code is present in the Search Notebook for this pointer, prefer:
+  1) action "search_for_coding" with new, concise terms and appropriate systems; or
+  2) if still no suitable code is found (or budget is low), action "update" that REMOVES the entire coding object at that pointer (e.g., { op: "remove", path: "/.../coding/0" }) rather than emitting a partial/incorrect code.
+- Never emit a code-only change without system/display; never choose a code outside the notebook; if neither a valid replacement nor a beneficial structural change is possible, use action "stop".
+
+Coding guidance (LOINC selection):
+- When selecting LOINC codes, prefer standard test/observable codes for single measurements.
+- Do NOT propose LOINC Part (\`LP...\`) or LOINC Answer (\`LA...\`) codes unless an attribute explicitly requires Part/Answer usage.
+
+${warnings && warnings.length ? `Previous Attempt Feedback (read carefully):
+${warnings.map(w => {
+  if (w.invalid && w.invalid.length) {
+    const items = w.invalid.map((i:any)=>{
+      const base = `${i.system||''}|${i.code||''}`;
+      return i.canonicalDisplay ? `${base} (canonical display: "${i.canonicalDisplay}")` : base;
+    }).join(', ');
+    return `- Invalid codes at ${w.pointer || '(unspecified)'}: ${items}`;
+  }
+  if (w.partials && w.partials.length) {
+    return `- Partial update at ${w.pointer || '(unspecified)'}: when changing a Coding's code, also set system and display in the same replacement.`;
+  }
+  return w.message ? `- ${w.message}` : '';
+}).join('\n')}
+` : ''}
 
 Search and modeling guidance (keep forward progress):
 - Term picking: start with the core concept (1–3 tokens). If no hits, try synonyms or a simpler hypernym; avoid repeating the same phrase.
@@ -245,6 +283,8 @@ Budget remaining (turns): ${budgetRemaining}
 Current Resource (JSON):
 ${JSON.stringify(resource, null, 2)}
 
+${warnings && warnings.length ? `Warnings (filtered, not applied in the previous step):\n${warnings.map(w => `- pointer: ${w.pointer}${w.invalid && w.invalid.length ? ` — removed: ${w.invalid.map(i => `${i.system}|${i.code}`).join(', ')}` : ''}${w.partials && w.partials.length ? ` — dropped partial property edits` : ''}${w.message ? ` — ${w.message}` : ''}`).join('\n')}` : ''}
+
 Unresolved Codings:
 ${JSON.stringify(unresolvedCodings, null, 2)}
 
@@ -254,11 +294,27 @@ ${JSON.stringify(validatorErrors, null, 2)}
 Prior Attempts (per pointer):
 ${JSON.stringify(attempts, null, 2)}
 
-Search Notebook (per pointer, prior searches and top hits):
+Search Notebook (per pointer, prior searches and results by query):
 ${JSON.stringify(searchNotebook, null, 2)}
 
 Output JSON ONLY, matching one of these shapes:
-{ "action": "search_for_coding", "pointer": "/path", "terms": ["term1","term2"], "systems": ["http://snomed.info/sct"], "rationale": "..." }
-{ "action": "update", "patch": [{ "op": "replace", "path": "/valueCodeableConcept/coding/0", "value": {"system":"...","code":"...","display":"..."}}], "rationale": "..." }
-{ "action": "stop", "rationale": "..." }`
+{ "rationale": "...", "action": "search_for_coding", "pointer": "/path", "terms": ["term1","term2"], "systems": ["http://snomed.info/sct"] }
+
+{ "rationale": "Describe why these changes improve validity/minimize issues.", "action": "update", "patch": [
+  // General update (example): fix invalid property or add a required field
+  { "op": "remove",  "path": "/description" },
+  { "op": "replace", "path": "/status", "value": "active" }
+] }
+
+{ "rationale": "Whole-coding replacement per constraints; code appears in Search Notebook.", "action": "update", "patch": [
+  // Coding update (example): replace the entire Coding object when changing codes
+  { "op": "replace", "path": "/valueCodeableConcept/coding/0", "value": {"system":"...","code":"...","display":"..."}}
+] }
+
+{ "rationale": "No suitable code in Search Notebook; removing invalid/placeholder coding.", "action": "update", "patch": [
+  // Coding removal (example): when no suitable code can be found in the notebook
+  { "op": "remove", "path": "/valueCodeableConcept/coding/0" }
+] }
+
+`
 };

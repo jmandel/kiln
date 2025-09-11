@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "strict": true,
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
+    "types": ["bun-types"],
+    "baseUrl": ".",
+    "paths": {
+      "@services/*": ["src/services/*"]
+    }
+  },
+  "include": ["src", "scripts", "tests"],
+  "exclude": ["node_modules"]
+}
+

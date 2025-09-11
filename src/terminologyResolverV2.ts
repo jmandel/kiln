@@ -11,7 +11,7 @@ export interface TerminologyCapabilities {
 async function getTerminologyCapabilities(): Promise<TerminologyCapabilities> {
   try {
     const TERMINOLOGY_SERVER = getTerminologyServerURL();
-    const response = await fetch(`${TERMINOLOGY_SERVER}/capabilities`);
+    const response = await fetch(`${TERMINOLOGY_SERVER}/tx/capabilities`);
     if (response.ok) {
       return await response.json();
     }
@@ -66,8 +66,22 @@ export async function resolveResourceCodes(
         const codeBatch = placeholders.slice(j, Math.min(j + CODE_BATCH_SIZE, placeholders.length));
         
         await Promise.all(codeBatch.map(async (placeholder) => {
-          const stepKey = `resolve_code_${resourceType}_${resourceIndex}_${placeholder.path.replace(/\./g, '_')}`;
-          
+          const sig = await (async () => {
+            try {
+              const seed = {
+                resourceType,
+                resourceIndex,
+                pointer: placeholder.jsonPointer || placeholder.path,
+                potentialDisplays: placeholder.potentialDisplays || [],
+                potentialSystems: placeholder.potentialSystems || [],
+                potentialCodes: (placeholder as any).potentialCodes || []
+              };
+              const { sha256 } = await import('./helpers');
+              return await sha256(JSON.stringify(seed));
+            } catch { return `${resourceType}:${resourceIndex}:${placeholder.path}`; }
+          })();
+          const stepKey = `resolve_code:${sig}`;
+
           const resolvedCode = await ctx.step(stepKey, async () => {
             const out = await resolveOneCode(
               ctx,
@@ -75,7 +89,7 @@ export async function resolveResourceCodes(
               resourceType,
               capabilities
             );
-            return out?.code || null;
+          return out?.code || null;
           }, { 
             title: `Resolve ${resourceType}.${placeholder.path}`,
             tags: { 
@@ -135,7 +149,21 @@ export async function resolveResourceCodesWithLogs(
       for (let j = 0; j < placeholders.length; j += CODE_BATCH_SIZE) {
         const codeBatch = placeholders.slice(j, Math.min(j + CODE_BATCH_SIZE, placeholders.length));
         await Promise.all(codeBatch.map(async (placeholder) => {
-          const stepKey = `resolve_code_${resourceType}_${resourceIndex}_${placeholder.path.replace(/\./g, '_')}`;
+          const sig = await (async () => {
+            try {
+              const seed = {
+                resourceType,
+                resourceIndex,
+                pointer: placeholder.jsonPointer || placeholder.path,
+                potentialDisplays: placeholder.potentialDisplays || [],
+                potentialSystems: placeholder.potentialSystems || [],
+                potentialCodes: (placeholder as any).potentialCodes || []
+              };
+              const { sha256 } = await import('./helpers');
+              return await sha256(JSON.stringify(seed));
+            } catch { return `${resourceType}:${resourceIndex}:${placeholder.path}`; }
+          })();
+          const stepKey = `resolve_code:${sig}`;
           const out = await ctx.step(stepKey, async () => {
             return await resolveOneCode(ctx, placeholder, resourceType, capabilities, true);
           }, {

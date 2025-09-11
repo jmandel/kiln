@@ -6,6 +6,7 @@ import { makeContext, runWorkflow, PauseForApprovalError } from './engine';
 import { validateResource } from './validator';
 import { analyzeCodings, finalizeUnresolved } from './codingAnalysis';
 import { generateAndRefineResources } from './services/fhirGeneration';
+import { emitJsonArtifact } from './services/artifacts';
 
 // Helpers
 
@@ -66,6 +67,12 @@ function definePhase(_name: string, _boundaryTags: Record<string, any>, taskFns:
   };
 }
 
+// Produce a short id suffix from a hash so we keep ids consistent (e.g., "composition-<8>")
+async function shortHash(seed: string, len: number = 8): Promise<string> {
+  const h = await sha256(seed);
+  return h.slice(0, len);
+}
+
 function revisionLoop(options: {
   title?: string;
   target: number;
@@ -112,14 +119,12 @@ function createRealizeOutlineTask() {
     const outlineArt = outlineArtifacts.at(-1);
     const oTags = outlineArt?.tags || {};
     for (const s of outline.sections) {
-      await ctx.createArtifact({
+      await emitJsonArtifact(ctx, {
         kind: 'SectionBrief',
-        version: 1,
         title: `Brief: ${s.title}`,
         content: s.brief,
         tags: { section: s.title, phase: 'planning', prompt: oTags.prompt, raw: oTags.raw },
-        links: outlineArt ? [ { dir: 'from' as const, role: 'derived_from', ref: { type: 'artifact' as const, id: outlineArt.id } } ] : [],
-        autoProduced: false
+        links: outlineArt ? [ { dir: 'from' as const, role: 'derived_from', ref: { type: 'artifact' as const, id: outlineArt.id } } ] : undefined
       });
     }
   };
@@ -167,14 +172,12 @@ function createSectionDecideTask(section: string) {
     const draft = await readDraft(ctx, sec, version);
     const critList = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'SectionCritique' && a.tags?.draftVersion === version);
     const crit = critList.at(-1);
-    await ctx.createArtifact({
-      kind: 'Decision', version: 1, title: `${approved ? 'Approve' : 'Rewrite'} ${sec} v${version}`,
+    await emitJsonArtifact(ctx, {
+      kind: 'Decision',
+      title: `${approved ? 'Approve' : 'Rewrite'} ${sec} v${version}`,
       content: `${approved ? 'approve' : 'rewrite'} ${sec} v${version}`,
       tags: { section: sec, draftVersion: version, action: approved ? 'approve' : 'rewrite', score },
-      links: [
-        draft ? { dir: 'from', role: 'decides_on', ref: { type: 'artifact', id: draft.id } } : undefined,
-        crit ? { dir: 'from', role: 'based_on', ref: { type: 'artifact', id: crit.id } } : undefined
-      ].filter(Boolean) as any
+      links: [ draft ? { dir: 'from', role: 'decides_on', ref: { type: 'artifact', id: draft.id } } : undefined, crit ? { dir: 'from', role: 'based_on', ref: { type: 'artifact', id: crit.id } } : undefined ].filter(Boolean) as any
     });
     if (approved && draft) {
       await ctx.stores.artifacts.upsert({
@@ -222,15 +225,12 @@ function createNoteDecideTask(_initial: number) {
     const note = await readNote(ctx, ver);
     const critList = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NoteCritique' && a.tags?.noteVersion === ver);
     const crit = critList.at(-1);
-    await ctx.createArtifact({
-      kind: 'NoteDecision', version: 1, title: `${approved ? 'Approve' : 'Rewrite'} Note v${ver}`,
+    await emitJsonArtifact(ctx, {
+      kind: 'NoteDecision',
+      title: `${approved ? 'Approve' : 'Rewrite'} Note v${ver}`,
       content: `${approved ? 'approve' : 'rewrite'} Note v${ver}`,
       tags: { noteVersion: ver, action: approved ? 'approve' : 'rewrite', score },
-      links: [
-        note ? { dir: 'from', role: 'decides_on', ref: { type: 'artifact', id: note.id } } : undefined,
-        crit ? { dir: 'from', role: 'based_on', ref: { type: 'artifact', id: crit.id } } : undefined
-      ].filter(Boolean) as any,
-      autoProduced: false
+      links: [ note ? { dir: 'from', role: 'decides_on', ref: { type: 'artifact', id: note.id } } : undefined, crit ? { dir: 'from', role: 'based_on', ref: { type: 'artifact', id: crit.id } } : undefined ].filter(Boolean) as any
     });
     if (approved && note) {
       await ctx.stores.artifacts.upsert({
@@ -364,15 +364,9 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
         if (title) sectionTitles.push(title);
       }
       const compositionPrompt = buildPrompt('fhir_composition_plan', { note_text, section_titles: sectionTitles });
-      const { result: planResult, meta: planMeta } = await (ctx as any).callLLMEx('fhir_composition_plan', compositionPrompt, { expect: 'json', tags: { phase: 'fhir' } });
+      const { result: planResult, meta: planMeta } = await runLLMTask<any>(ctx, 'fhir_composition_plan', 'fhir_composition_plan', { note_text, section_titles: sectionTitles }, { expect: 'json', tags: { phase: 'fhir' } });
       let compositionPlan = stitchSectionNarratives(planResult, note_text);
-      await (await import('./services/artifacts')).emitJsonArtifact(ctx, {
-        kind: 'FhirCompositionPlan',
-        title: 'FHIR Composition Plan',
-        content: compositionPlan,
-        tags: { phase: 'fhir', prompt: planMeta.prompt, raw: planMeta.raw },
-        links: [ { dir: 'from', role: 'produced', ref: { type: 'step', id: planMeta.stepKey } } ]
-      });
+      await emitJsonArtifact(ctx, { kind: 'FhirCompositionPlan', title: 'FHIR Composition Plan', content: compositionPlan, tags: { phase: 'fhir', prompt: planMeta.prompt, raw: planMeta.raw }, links: [ { dir: 'to', role: 'produced', ref: { type: 'step', id: planMeta.stepKey } } ] });
 
       // 3. Extract all placeholder references and generate resources in parallel
       const references: { reference: string, display: string }[] = [];
@@ -393,20 +387,53 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
       const subjectRef = (typeof compositionPlan?.subject === 'string')
         ? compositionPlan.subject
         : (compositionPlan?.subject?.reference as string | undefined);
+      const subjectDisplay = (typeof compositionPlan?.subject === 'object' && compositionPlan?.subject?.display) ? compositionPlan.subject.display : undefined;
       const encounterRef = (typeof compositionPlan?.encounter === 'string')
         ? compositionPlan.encounter
         : (compositionPlan?.encounter?.reference as string | undefined);
+      const encounterDisplay = (typeof compositionPlan?.encounter === 'object' && compositionPlan?.encounter?.display) ? compositionPlan.encounter.display : undefined;
+      // Capture author references from Composition (if present)
+      const authorRefs: Array<{ reference: string; display?: string }> = [];
+      const addAuthorRef = (v: any) => {
+        if (!v) return;
+        if (typeof v === 'string') {
+          authorRefs.push({ reference: v });
+          return;
+        }
+        if (typeof v === 'object' && v.reference) {
+          authorRefs.push({ reference: v.reference, display: v.display });
+        }
+      };
+      if (Array.isArray(compositionPlan?.author)) {
+        for (const a of compositionPlan.author) addAuthorRef(a);
+      } else if (compositionPlan?.author) {
+        addAuthorRef(compositionPlan.author);
+      }
 
       // Generate + validate-refine per resource via service (emits per-resource artifacts + traces)
+      // Ensure Patient and Encounter referenced in the Composition are included in generation list
+      const ensureRef = (arr: Array<{ reference: string; display?: string }>, reference?: string, displayMaybe?: string) => {
+        if (!reference) return;
+        if (arr.some(r => r.reference === reference)) return;
+        const entry: { reference: string; display?: string } = { reference };
+        if (displayMaybe && String(displayMaybe).trim()) entry.display = displayMaybe;
+        arr.push(entry);
+      };
+      ensureRef(references, subjectRef, subjectDisplay);
+      ensureRef(references, encounterRef, encounterDisplay);
+      // Ensure any Composition.author references are included so we generate Practitioner resources
+      for (const a of authorRefs) ensureRef(references, a.reference, a.display || 'Author');
+
       const generatedResources: any[] = await generateAndRefineResources(ctx, note_text, references, subjectRef, encounterRef);
 
       // Let LLM outputs stand; we only pass subject_ref/encounter_ref as guidance in the prompt.
 
       // 4. Analyze codings and produce pre-recoding report
-      const { report: preReport } = await ctx.step('analyze_codings', async () => {
+      const preHash = await sha256(JSON.stringify(generatedResources));
+      const { report: preReport } = await ctx.step(`analyze_codings:${preHash}`, async () => {
         return await analyzeCodings(generatedResources);
-      }, { title: 'Analyze Codings (pre)', tags: { phase: 'fhir' } });
-      await ctx.createArtifact({ kind: 'CodingValidationReport', version: 1, title: 'Coding Validation Report (pre-recoding)', content: JSON.stringify({ items: preReport }, null, 2), tags: { phase: 'fhir', stage: 'pre' } });
+      }, { title: 'Analyze Codings (pre)', tags: { phase: 'fhir', contentHash: preHash } });
+      await emitJsonArtifact(ctx, { kind: 'CodingValidationReport', title: 'Coding Validation Report (pre-recoding)', content: { items: preReport }, tags: { phase: 'fhir', stage: 'pre' } });
 
       // 5. Group unresolved by unique key and recode per group
       const unresolvedItems = preReport.filter((i: any) => i.status === 'recoding');
@@ -457,10 +484,11 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
       }
 
       // 6. Analyze again post-recoding and create reports
-      const { report: postReport } = await ctx.step('analyze_codings_post', async () => {
+      const postHash = await sha256(JSON.stringify(recodedResources));
+      const { report: postReport } = await ctx.step(`analyze_codings_post:${postHash}`, async () => {
         return await analyzeCodings(recodedResources);
-      }, { title: 'Analyze Codings (post)', tags: { phase: 'fhir' } });
-      await ctx.createArtifact({ kind: 'CodingValidationReport', version: 1, title: 'Coding Validation Report (post-recoding)', content: JSON.stringify({ items: postReport }, null, 2), tags: { phase: 'fhir', stage: 'post' } });
+      }, { title: 'Analyze Codings (post)', tags: { phase: 'fhir', contentHash: postHash } });
+      await emitJsonArtifact(ctx, { kind: 'CodingValidationReport', title: 'Coding Validation Report (post-recoding)', content: { items: postReport }, tags: { phase: 'fhir', stage: 'post' } });
 
       // Build a detailed recoding report
       if (groups.size > 0) {
@@ -481,7 +509,7 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
             items.push({ pointer: m.pointer, resourceRef: ref, original: m.original, outcome: postStatus === 'ok' ? 'recoded' : 'unresolved', final, attempts: attemptsArr.length, queries: attemptsArr.map(a => ({ query: a.query, hits: a.hitCount })), steps: attemptsArr.map(a => ({ query: a.query, systems: a.systems, hitCount: a.hitCount, sample: a.sample, decision: a.decision })) });
           }
         }
-        await ctx.createArtifact({ kind: 'CodingRecodingReport', version: 1, title: 'Coding Recoding Report (post-recoding)', content: JSON.stringify({ items }, null, 2), tags: { phase: 'fhir', stage: 'post' } });
+        await emitJsonArtifact(ctx, { kind: 'CodingRecodingReport', title: 'Coding Recoding Report (post-recoding)', content: { items }, tags: { phase: 'fhir', stage: 'post' } });
       }
 
       // 7. Finalize unresolved in-place with extensions
@@ -492,13 +520,7 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
       for (let i = 0; i < finalResources.length; i++) {
         const r: any = finalResources[i];
         const ref = references[i];
-        await ctx.createArtifact({
-          kind: 'FhirResource',
-          version: 1,
-          title: ref?.reference || `${r.resourceType}/${r.id || ''}`,
-          content: JSON.stringify(r, null, 2),
-          tags: { phase: 'fhir', resourceType: r.resourceType, coded: true, from: ref?.display }
-        });
+        await emitJsonArtifact(ctx, { kind: 'FhirResource', title: ref?.reference || `${r.resourceType}/${r.id || ''}` , content: r, tags: { phase: 'fhir', resourceType: r.resourceType, coded: true, from: ref?.display } });
       }
 
 
@@ -512,8 +534,7 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
         finalComposition.encounter = { reference: finalComposition.encounter };
       }
       if (!finalComposition.id) {
-        const h = await sha256(ctx.documentId + ':' + Date.now());
-        finalComposition.id = `composition-${h.slice(0, 8)}`;
+        finalComposition.id = `composition-${await shortHash(ctx.documentId + ':' + Date.now())}`;
       } else if (typeof finalComposition.id === 'string' && finalComposition.id.length > 64) {
         finalComposition.id = String(finalComposition.id).slice(0, 64);
       }
@@ -528,12 +549,38 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
         }
       }
 
-      const fhirBase = (typeof localStorage !== 'undefined' && (localStorage.getItem('FHIR_BASE_URL') || localStorage.getItem('FHIR_BASE') )) || 'https://fhir.example.org';
+      const fhirBase = (typeof localStorage !== 'undefined' && (localStorage.getItem('FHIR_BASE_URL') || localStorage.getItem('FHIR_BASE') )) || 'https://kiln.fhir.me';
       const base = String(fhirBase).replace(/\/$/, '');
+      // Ensure Composition.identifier has a system consistent with the configured base (singleton Identifier)
+      try {
+        if (finalComposition?.id) {
+          if (!finalComposition.identifier || typeof finalComposition.identifier !== 'object' || Array.isArray(finalComposition.identifier)) {
+            finalComposition.identifier = { value: finalComposition.id };
+          }
+          if (!finalComposition.identifier.value) {
+            finalComposition.identifier.value = finalComposition.id;
+          }
+          // Avoid placeholder example.org as a system; only set when a real base is configured
+          if (!/fhir\.example\.org$/i.test(base)) {
+            finalComposition.identifier.system = `${base}/Composition`;
+          } else {
+            delete finalComposition.identifier.system;
+          }
+        }
+      } catch {}
+      const bundleId = `bundle-${await shortHash(ctx.documentId)}`;
       const bundle = {
           resourceType: "Bundle",
           type: "document",
-          id: `bundle-${ctx.documentId}`,
+          id: bundleId,
+          timestamp: nowIso(),
+          identifier: (function(){
+            const value = (finalComposition?.identifier && typeof finalComposition.identifier === 'object' && !Array.isArray(finalComposition.identifier) && finalComposition.identifier.value)
+              ? finalComposition.identifier.value
+              : finalComposition.id;
+            const idObj: any = { value, system: `${base}/Bundle` };
+            return idObj;
+          })(),
           entry: [
             { fullUrl: `${base}/${finalComposition.resourceType || 'Composition'}/${finalComposition.id}`, resource: finalComposition },
             ...finalResources.map((r: any) => ({
@@ -543,42 +590,39 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
           ]
       };
 
-      // Prune empty arrays anywhere in the bundle (omit those properties)
-      (function pruneEmptyArrays(node: any) {
-        if (!node || typeof node !== 'object') return;
+      // Prune empty arrays (and objects that become empty) anywhere in the bundle
+      (function pruneDeep(node: any): boolean {
+        if (node == null) return true;
         if (Array.isArray(node)) {
-          for (const item of node) pruneEmptyArrays(item);
-          return;
-        }
-        for (const k of Object.keys(node)) {
-          const v: any = (node as any)[k];
-          if (Array.isArray(v)) {
-            if (v.length === 0) { delete (node as any)[k]; }
-            else { v.forEach(pruneEmptyArrays); }
-          } else if (v && typeof v === 'object') {
-            pruneEmptyArrays(v);
+          for (let i = node.length - 1; i >= 0; i--) {
+            if (pruneDeep(node[i])) node.splice(i, 1);
           }
+          return node.length === 0;
         }
+        if (typeof node === 'object') {
+          for (const k of Object.keys(node)) {
+            const v = (node as any)[k];
+            if (pruneDeep(v)) delete (node as any)[k];
+          }
+          return Object.keys(node).length === 0;
+        }
+        return false;
       })(bundle);
 
-      await ctx.createArtifact({
-          kind: 'FhirBundle',
-          version: 1,
-          title: 'FHIR Document Bundle',
-          content: JSON.stringify(bundle, null, 2),
-          tags: { phase: 'fhir' }
-      });
+      await emitJsonArtifact(ctx, { kind: 'FhirBundle', title: 'FHIR Document Bundle', content: bundle, tags: { phase: 'fhir' } });
 
-      // Validate and create report
-      const validationResult = await ctx.step('validate_bundle', async () => {
+      // Validate and create report (content-addressed step key; strict: includes timestamp)
+      const bundleHash = await sha256(JSON.stringify(bundle));
+      const validateStepKey = `validate_bundle:${bundleHash}`;
+      const validationResult = await (ctx as any).step?.(validateStepKey, async () => {
         return await validateResource(bundle);
-      }, { title: 'Validate FHIR Bundle', tags: { phase: 'fhir' } });
-      await ctx.createArtifact({
+      }, { title: 'Validate FHIR Bundle', tags: { phase: 'fhir', bundleHash } });
+      await emitJsonArtifact(ctx, {
         kind: 'ValidationReport',
-        version: 1,
         title: 'FHIR Bundle Validation Report',
-        content: JSON.stringify(validationResult, null, 2),
-        tags: { phase: 'fhir', valid: validationResult.valid }
+        content: validationResult,
+        tags: { phase: 'fhir', valid: validationResult?.valid, bundleHash },
+        links: [ { dir: 'to', role: 'produced', ref: { type: 'step', id: validateStepKey } } ]
       });
       if (!validationResult.valid) {
           console.warn('FHIR Bundle is not valid', validationResult.issues);
@@ -604,7 +648,8 @@ function stitchSectionNarratives(compositionPlan: any, noteText: string): any {
     if (Array.isArray(compositionPlan.section)) {
         for (const section of compositionPlan.section) {
             if (section.text?.div) {
-                const placeholderMatch = String(section.text.div).match(/\{\{##\s*(.*?)\s*\}\}/);
+                // Accept both {{## Section Title}} and {{Section Title}} forms
+                const placeholderMatch = String(section.text.div).match(/\{\{\s*(?:##\s*)?(.*?)\s*\}\}/);
                 if (placeholderMatch && placeholderMatch[1]) {
                     const titleToFind = placeholderMatch[1].trim();
                     const content = noteSections.get(canonicalizeHeader(titleToFind));
@@ -622,6 +667,17 @@ function stitchSectionNarratives(compositionPlan: any, noteText: string): any {
             }
         }
     }
+
+    // 3. Ensure Composition.identifier is present and consistent with id (singleton Identifier)
+    try {
+        const cid = typeof compositionPlan?.id === 'string' ? compositionPlan.id.trim() : '';
+        if (cid) {
+            const current = compositionPlan.identifier;
+            if (!current || typeof current !== 'object' || Array.isArray(current)) {
+                compositionPlan.identifier = { value: cid };
+            }
+        }
+    } catch {}
     return compositionPlan;
 }
 
@@ -660,6 +716,9 @@ export async function resumeDocument(stores: Stores, documentId: ID): Promise<vo
 
   // Find candidate workflow IDs from steps for this document
   const steps = await stores.steps.listByDocument(documentId);
+  // Do not mutate cached steps on resume.
+  // Step replay reuses only "done" steps; failed/pending steps will rerun.
+  // LLM steps are keyed by sha256(prompt), so prompt changes naturally bypass cache.
   const byWf = new Map<ID, { pending: number; running: number; failed: number }>();
   for (const s of steps) {
     const cur = byWf.get(s.workflowId as ID) || { pending: 0, running: 0, failed: 0 };
@@ -678,6 +737,9 @@ export async function resumeDocument(stores: Stores, documentId: ID): Promise<vo
     // Clear prior artifacts/links for a clean replay output (keep steps for cache/replay)
     await stores.artifacts.deleteByDocument(documentId);
     await stores.links.deleteByDocument(documentId);
+    // Proactively emit clear events to ensure UI refresh even if store backend doesn't
+    try { stores.events.emit({ type: 'artifacts_cleared', documentId } as any); } catch {}
+    try { stores.events.emit({ type: 'links_cleared', documentId } as any); } catch {}
     for (const wfId of wfIds) {
       await stores.workflows.setStatus(wfId, 'running');
       await runWorkflow(stores, wfId, documentId, pipeline);

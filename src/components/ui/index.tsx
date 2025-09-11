@@ -126,14 +126,17 @@ export const EmptyState = ({ message = "Select a job from the left to view progr
   </div>
 );
 
-export const ErrorBanner = ({ error, onResume }: { error: string; onResume?: () => void }) => (
+export const ErrorBanner = ({ error, onResume, onOpenFailed }: { error: string; onResume?: () => void; onOpenFailed?: () => void }) => (
   <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-800 p-4">
     <div className="text-sm font-medium mb-1">Error</div>
     <div className="text-sm">{error}</div>
-    {onResume && (
-      <div className="text-xs text-rose-700 mt-2">
-        Use Resume to retry. Open the most recent failed step or artifact to inspect full prompt/output.
-      </div>
-    )}
+    <div className="flex items-center gap-3 mt-2">
+      {onResume && (
+        <button className="px-2.5 py-1 text-xs bg-rose-600 text-white rounded hover:bg-rose-700" onClick={onResume}>Resume</button>
+      )}
+      {onOpenFailed && (
+        <button className="px-2.5 py-1 text-xs border border-rose-300 text-rose-800 rounded hover:bg-rose-100" onClick={onOpenFailed}>Open failed step</button>
+      )}
+    </div>
   </div>
 );

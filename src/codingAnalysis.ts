@@ -57,7 +57,7 @@ function normDisplay(s?: string): string {
 
 async function batchExists(items: Array<{ system?: string; code?: string }>): Promise<Array<{ system?: string; code?: string; exists: boolean; display?: string; normalizedSystem?: string }>> {
   const base = getTerminologyServerURL();
-  const res = await fetch(`${base}/codes/exists`, {
+  const res = await fetch(`${base}/tx/codes/exists`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ items })
   });
@@ -85,6 +85,12 @@ export async function analyzeCodings(resources: any[]): Promise<{ report: Coding
     const rt = resources[resIdx]?.resourceType;
     const rid = resources[resIdx]?.id;
     const resourceRef = rt ? `${rt}/${rid || ''}` : undefined;
+
+    // UCUM units: never treat as unresolved in this pipeline
+    if (String(entry.system || '') === 'http://unitsofmeasure.org') {
+      report.push({ pointer: entry.pointer, original, status: 'ok', resourceType: rt, id: rid, resourceRef });
+      continue;
+    }
 
     if (entry.system && entry.code && ex.exists) {
       const canonicalDisp = ex.display || '';
@@ -125,7 +131,7 @@ export function finalizeUnresolved(
     for (const s of segs) { if (!cur) return null; cur = Array.isArray(cur) ? cur[Number(s)] : cur[s]; }
     return cur && typeof cur === 'object' ? cur : null;
   };
-  const EXT_URL = 'http://example.org/fhir/StructureDefinition/coding-issue';
+  const EXT_URL = 'http://kraken.fhir.me/StructureDefinition/coding-issue';
   for (const p of uniquePointers) {
     for (const r of cloned) {
       const tgt = get(r, p);
@@ -199,4 +205,3 @@ function sweepLeftoverPlaceholders(resources: any[], EXT_URL: string) {
   };
   resources.forEach(walk);
 }
-

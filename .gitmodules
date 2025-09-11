@@ -1,0 +1,3 @@
+[submodule "server/large-vocabularies"]
+	path = server/large-vocabularies
+	url = https://github.com/jmandel/fhir-concept-publication-demo

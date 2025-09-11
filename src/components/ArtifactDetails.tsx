@@ -6,6 +6,7 @@ export default function ArtifactDetails({ stores, documentId, artifactId, onClos
   const [artifact, setArtifact] = React.useState<Artifact | null>(null);
   const [links, setLinks] = React.useState<Link[]>([]);
   const [steps, setSteps] = React.useState<Step[]>([]);
+  const [expandAll, setExpandAll] = React.useState(false);
 
   React.useEffect(() => {
     (async () => {
@@ -20,7 +21,25 @@ export default function ArtifactDetails({ stores, documentId, artifactId, onClos
 
   if (!artifact) return (<div className="p-4">Loading…</div>);
 
-  const prodSteps = steps.filter(s => links.some(l => l.role === 'produced' && l.toType === 'artifact' && l.toId === artifact.id && l.fromType === 'step' && l.fromId === s.key));
+  // Build a single, interleaved list of producing + contributing steps
+  const roleByStepId = new Map<string, 'produced' | 'contributed'>();
+  for (const l of links) {
+    if (l.toType === 'artifact' && l.toId === artifact.id && l.fromType === 'step') {
+      const role = (l.role === 'produced') ? 'produced' : (l.role === 'contributed' ? 'contributed' : undefined);
+      if (role) {
+        // If a step is both contributed and produced, prefer produced
+        const prev = roleByStepId.get(l.fromId);
+        if (!prev || role === 'produced') roleByStepId.set(l.fromId, role);
+      }
+    }
+  }
+  const stepList = steps
+    .filter(s => roleByStepId.has(s.key))
+    .slice()
+    .sort((a, b) => String(a.ts).localeCompare(String(b.ts)))
+    .map(s => ({ step: s, role: roleByStepId.get(s.key) as 'produced' | 'contributed' }));
+  // Flat chronological list only; no iteration headers (reduces confusion)
+  const hideMetaLLM = stepList.length > 0; // If steps are present, their prompts/raw supersede artifact-level copies
   const relatedArtifacts = (role: string) => {
     const ids = links.filter(l => l.role === role && l.fromType === 'artifact' && l.fromId === artifact.id && l.toType === 'artifact').map(l => l.toId);
     return ids;
@@ -50,7 +69,12 @@ export default function ArtifactDetails({ stores, documentId, artifactId, onClos
     <Container>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold">{artifact.title} <span className="text-gray-500 text-sm">({artifact.kind} v{artifact.version})</span></h2>
-          <button className="px-3 py-1 border rounded" onClick={handleClose}>Close</button>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1 text-sm border rounded" onClick={() => setExpandAll(v => !v)}>
+              {expandAll ? 'Collapse all' : 'Expand all'}
+            </button>
+            <button className="px-3 py-1 border rounded" onClick={handleClose}>Close</button>
+          </div>
         </div>
 
         <div className="border rounded p-2 mb-3 text-sm">
@@ -59,25 +83,65 @@ export default function ArtifactDetails({ stores, documentId, artifactId, onClos
         </div>
 
         <div className="border rounded p-2 mb-3">
-          <h3 className="font-medium mb-1">Producing Steps</h3>
-          {prodSteps.length === 0 ? (<div className="text-sm text-gray-500">No explicit producing step link.</div>) : prodSteps.map(s => {
-            const stags = s.tagsJson ? JSON.parse(s.tagsJson) : {};
-            return (
-              <div key={s.key} className="mb-2">
-                <div><strong>{s.title || s.key}</strong> — {s.status}</div>
-                {s.prompt && (<details open><summary>Prompt</summary><pre className="text-xs whitespace-pre-wrap">{s.prompt}</pre></details>)}
-                {s.resultJson && (<details><summary>Result JSON</summary><pre className="text-xs whitespace-pre-wrap">{JSON.stringify(JSON.parse(s.resultJson), null, 2)}</pre></details>)}
-                {stags.llmRaw && (<details><summary>Raw LLM</summary><pre className="text-xs whitespace-pre-wrap">{pretty(stags.llmRaw)}</pre></details>)}
-              </div>
-            );
-          })}
+          <h3 className="font-medium mb-1">Steps</h3>
+          {stepList.length === 0 ? (
+            <div className="text-sm text-gray-500">No step links for this artifact.</div>
+          ) : (
+            stepList.map(({ step: s, role }) => {
+              const stags = s.tagsJson ? JSON.parse(s.tagsJson) : {};
+              const title = s.title || s.key;
+              const hasResult = !!s.resultJson && s.resultJson.length > 0;
+              const isValidation = (title || '').toLowerCase().includes('validate');
+              let parsed: any = undefined;
+              try { parsed = s.resultJson ? JSON.parse(s.resultJson) : undefined; } catch {}
+              const hasInputOutput = isValidation && parsed && typeof parsed === 'object' && parsed.input && parsed.result;
+              return (
+                <div key={s.key} className="mb-2">
+                  <div className="flex items-center gap-2">
+                    <div><strong>{title}</strong> — {s.status} {role ? (<span className="text-xs text-gray-500">[{role}]</span>) : null}</div>
+                    {stags.refineDecision && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${stags.refineDecision === 'accepted' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                        {String(stags.refineDecision)}
+                      </span>
+                    )}
+                  </div>
+                  {s.prompt && (<details open={expandAll}><summary>Prompt</summary><pre className="text-xs whitespace-pre-wrap">{s.prompt}</pre></details>)}
+                  {hasInputOutput ? (
+                    <>
+                      <details open={expandAll}><summary>Input Resource</summary><pre className="text-xs whitespace-pre-wrap">{pretty(JSON.stringify(parsed.input))}</pre></details>
+                      <details open={expandAll}><summary>Validation Result</summary><pre className="text-xs whitespace-pre-wrap">{pretty(JSON.stringify(parsed.result))}</pre></details>
+                    </>
+                  ) : (
+                    s.resultJson && (<details open={expandAll}><summary>Result JSON</summary><pre className="text-xs whitespace-pre-wrap">{JSON.stringify(JSON.parse(s.resultJson), null, 2)}</pre></details>)
+                  )}
+                  {stags?.refineDetails?.invalid && Array.isArray(stags.refineDetails.invalid) && stags.refineDetails.invalid.length > 0 && (
+                    <details open={expandAll}><summary>Invalid Proposals</summary>
+                      <pre className="text-xs whitespace-pre-wrap">{pretty(JSON.stringify(stags.refineDetails.invalid))}</pre>
+                    </details>
+                  )}
+                  {stags?.refineDetails?.partials && Array.isArray(stags.refineDetails.partials) && stags.refineDetails.partials.length > 0 && (
+                    <details open={expandAll}><summary>Partial Update Issues</summary>
+                      <pre className="text-xs whitespace-pre-wrap">{pretty(JSON.stringify(stags.refineDetails.partials))}</pre>
+                    </details>
+                  )}
+                  {stags.llmRaw && !hasResult && (
+                    <details open={expandAll}><summary>LLM Response</summary><pre className="text-xs whitespace-pre-wrap">{pretty(stags.llmRaw)}</pre></details>
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
 
         <div className="border rounded p-2 mb-3">
           <h3 className="font-medium mb-1">Artifact Metadata</h3>
-          {tags.prompt && (<details open><summary>Prompt</summary><pre className="text-xs whitespace-pre-wrap">{String(tags.prompt)}</pre></details>)}
-          {tags.raw && (<details open><summary>Raw LLM Response</summary><pre className="text-xs whitespace-pre-wrap">{pretty(tags.raw)}</pre></details>)}
-          {tags.responseJson && (<details open><summary>Response JSON</summary><pre className="text-xs whitespace-pre-wrap">{pretty(tags.responseJson)}</pre></details>)}
+          {!hideMetaLLM && tags.prompt && (
+            <details open={expandAll}><summary>Prompt</summary><pre className="text-xs whitespace-pre-wrap">{String(tags.prompt)}</pre></details>
+          )}
+          {!hideMetaLLM && tags.raw && !tags.responseJson && (
+            <details open={expandAll}><summary>LLM Response</summary><pre className="text-xs whitespace-pre-wrap">{pretty(tags.raw)}</pre></details>
+          )}
+          {tags.responseJson && (<details open={expandAll}><summary>Response JSON</summary><pre className="text-xs whitespace-pre-wrap">{pretty(tags.responseJson)}</pre></details>)}
           {typeof tags.score === 'number' && (<div className="text-sm"><strong>Score:</strong> {tags.score}{tags.threshold ? ` / threshold ${tags.threshold}` : ''}</div>)}
         </div>
 

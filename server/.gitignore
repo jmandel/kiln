@@ -1,0 +1,26 @@
+# Dependencies (downloaded by setup script)
+validator.jar
+
+# Database files
+db/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Test reports
+tests/*-report.json
+
+# Logs
+*.log
+server.log
+
+# Temp files
+.DS_Store
+*.tmp
+temp/
+
+# Node modules (if any)
+node_modules/
+
+# Bun
+bun.lockb

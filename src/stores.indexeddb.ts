@@ -184,6 +184,8 @@ export async function createIndexedDbStores(): Promise<Stores> {
         const list: Artifact[] = await new Promise(res => { req.onsuccess = () => res(req.result as Artifact[]); });
         for (const a of list) s.delete(a.id);
         await new Promise(res => { t.oncomplete = () => res(null); });
+        // Notify UI so it refreshes artifact list immediately on resume
+        events.emit({ type: 'artifacts_cleared', documentId } as Event);
       }
     },
 
@@ -289,6 +291,8 @@ export async function createIndexedDbStores(): Promise<Stores> {
         const list: Link[] = await new Promise(res => { req.onsuccess = () => res(req.result as Link[]); });
         for (const l of list) s.delete(l.id);
         await new Promise(res => { t.oncomplete = () => res(null); });
+        // Notify UI so it refreshes link-derived views immediately on resume
+        events.emit({ type: 'links_cleared', documentId } as Event);
       }
     },
 

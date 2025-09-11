@@ -63,6 +63,7 @@ export class DashboardStore {
 
   constructor(private stores: Stores) {
     this.stores.events.subscribe((ev: Event) => {
+      try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'event.recv', evType: (ev as any)?.type, documentId: (ev as any)?.documentId })); } catch {}
       const docId: ID | undefined = (ev as any).documentId;
       if (!docId) return;
       if (this.selectedDoc && docId !== this.selectedDoc) return;
@@ -157,6 +158,7 @@ export class DashboardStore {
     };
 
     this.views.set(documentId, view);
+    try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'bootstrap.done', documentId, artifacts: artifacts.length })); } catch {}
     this.notify(documentId);
   }
 
@@ -178,6 +180,7 @@ export class DashboardStore {
       const phases = this.phaseCounts.get(docId)!;
 
       let latestTs = view.jobStartTime ? new Date(view.jobStartTime).getTime() + (view.metrics.elapsedMs || 0) : 0;
+      let shouldClearError = false;
 
       for (const ev of queue.splice(0)) {
         const m = toMsg(ev);
@@ -228,7 +231,7 @@ export class DashboardStore {
           } catch {}
         }
 
-        if (ev.type === 'artifacts_cleared') {
+        if (ev.type === 'artifacts_cleared' || ev.type === 'links_cleared') {
           try {
             const arts = await this.stores.artifacts.listByDocument(docId);
             view.artifacts = arts.map(a => ({
@@ -239,19 +242,49 @@ export class DashboardStore {
               createdAt: a.updatedAt,
               phase: a.tags?.phase
             }));
+            try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'artifacts.cleared.applied', documentId: docId, count: view.artifacts.length })); } catch {}
           } catch {}
         }
 
         if (ev.type === 'document_status') {
           view.status = ev.status === 'done' ? 'done' : ev.status === 'blocked' ? 'error' : 'running';
+          if (ev.status === 'running') shouldClearError = true;
+        }
+        if (ev.type === 'workflow_status' && ev.status === 'running') {
+          shouldClearError = true;
         }
 
         const nowTs = ev.ts ? new Date(ev.ts).getTime() : Date.now();
         if (view.jobStartTime) view.metrics.elapsedMs = Math.max(view.metrics.elapsedMs, nowTs - new Date(view.jobStartTime).getTime());
       }
 
+      // Update error banner: clear on resume signals, otherwise reflect latest failed step if any
+      if (shouldClearError) {
+        view.error = undefined;
+      } else {
+        const failedCount = Number(view.metrics.stepCounts.failed || 0);
+        if (failedCount === 0) {
+          view.error = undefined;
+        } else {
+          try {
+            const steps = await this.stores.steps.listByDocument(docId);
+            const failed = steps.filter(s => s.status === 'failed').sort((a, b) => b.ts.localeCompare(a.ts))[0];
+            if (failed) {
+              const details = failed.resultJson ? (() => { try { return JSON.parse(failed.resultJson); } catch { return null; } })() : null;
+              const rawSnippet = details?.raw ? String(details.raw).slice(0, 200).replace(/\s+/g, ' ') + (String(details.raw).length > 200 ? '…' : '') : '';
+              view.error = `${failed.title || failed.key} — ${failed.error || 'failed'}` + (rawSnippet ? ` — Raw: ${rawSnippet}` : '');
+            } else {
+              view.error = undefined;
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+
       view.phases = Array.from(phases.entries()).map(([id, v]) => ({ id, label: id, done: v.done, total: v.total, pct: v.total ? v.done / v.total : 0 }));
       this.views.set(docId, { ...view });
+      try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'flush.view.updated', documentId: docId, artifacts: view.artifacts.length })); } catch {}
       this.notify(docId);
     }
   }

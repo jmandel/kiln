@@ -3,6 +3,7 @@ import { createStores } from '../stores.adapter';
 import type { Stores, ID, Document, Step } from '../types';
 import DocGenDashboard from './DocGenDashboard';
 import ArtifactDetails from './ArtifactDetails';
+import StepDetails from './StepDetails';
 import { escapeHtml, pretty, tryJson } from './ui';
 import { runDocumentWorkflow, resume, resumeDocument } from '../workflows';
 import { sha256 } from '../helpers';
@@ -84,7 +85,7 @@ function ConfigModal({ config, onSave, onClose }: {
               className="w-full border border-gray-300 rounded px-3 py-2"
               value={cfg.fhirBaseURL}
               onChange={e => setCfg({...cfg, fhirBaseURL: e.target.value})}
-              placeholder="https://fhir.example.org"
+              placeholder="https://kiln.fhir.me"
             />
             <p className="text-xs text-gray-500 mt-1">Used for Bundle.entry.fullUrl. Relative references like "Observation/abc" will resolve to <code>FHIR Base URL</code>/Observation/abc.</p>
           </div>
@@ -94,9 +95,9 @@ function ConfigModal({ config, onSave, onClose }: {
               className="w-full border border-gray-300 rounded px-3 py-2"
               value={cfg.fhirValidatorURL}
               onChange={e => setCfg({...cfg, fhirValidatorURL: e.target.value})}
-              placeholder="http://localhost:3457 or https://hapi.fhir.org/baseR4"
+              placeholder="Leave blank for same-origin (e.g., http://localhost:3500)"
             />
-            <p className="text-xs text-gray-500 mt-1">Base used for validation. Current default points to HAPI until we switch to local server.</p>
+            <p className="text-xs text-gray-500 mt-1">Base used for validation. Leave blank to use the current server origin at <code>/validate</code>.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">FHIR Generation Concurrency</label>
@@ -141,14 +142,15 @@ export default function DocGenApp(): React.ReactElement {
   const [configOpen, setConfigOpen] = useState(false);
   const [showTester, setShowTester] = useState(false);
   const [viewArtifactId, setViewArtifactId] = useState<ID | null>(null);
+  const [failedStep, setFailedStep] = useState<Step | null>(null);
   const urlCache = React.useRef<Map<string,string>>(new Map());
   const [cfg, setCfg] = useState({
     baseURL: localStorage.getItem('TASK_DEFAULT_BASE_URL') || 'https://openrouter.ai/api/v1',
     apiKey: localStorage.getItem('TASK_DEFAULT_API_KEY') || '',
     model: localStorage.getItem('TASK_DEFAULT_MODEL') || 'openai/gpt-oss-120b:nitro',
     temperature: localStorage.getItem('TASK_DEFAULT_TEMPERATURE') || '0.2',
-    fhirBaseURL: localStorage.getItem('FHIR_BASE_URL') || 'https://fhir.example.org',
-    fhirValidatorURL: localStorage.getItem('FHIR_VALIDATOR_BASE_URL') || localStorage.getItem('VALIDATOR_URL') || 'https://hapi.fhir.org/baseR4',
+    fhirBaseURL: localStorage.getItem('FHIR_BASE_URL') || 'https://kiln.fhir.me',
+    fhirValidatorURL: localStorage.getItem('FHIR_VALIDATOR_BASE_URL') || localStorage.getItem('VALIDATOR_URL') || '',
     fhirGenConcurrency: localStorage.getItem('FHIR_GEN_CONCURRENCY') || '1'
   });
 
@@ -307,9 +309,46 @@ export default function DocGenApp(): React.ReactElement {
     setCfg(newCfg);
   };
 
-  const handleResume = async () => {
+  const handleRerun = async () => {
     if (!stores || !selected) return;
+    // Clear current artifacts/links so new outputs appear cleanly while resume starts
+    await stores.artifacts.deleteByDocument(selected);
+    await stores.links.deleteByDocument(selected);
     await resumeDocument(stores, selected);
+  };
+
+  // Generic: clear ALL step cache for this document, then resume (no workflow-specific knowledge)
+  const clearAllStepCache = async () => {
+    if (!stores || !selected) return alert('Select a job first');
+    const steps = await stores.steps.listByDocument(selected);
+    const targets = steps.filter(s => s.status !== 'pending');
+    if (targets.length === 0) {
+      alert('No cached steps found for this job.');
+      return;
+    }
+    for (const s of targets) {
+      await stores.steps.put({
+        ...s,
+        status: 'pending',
+        error: null,
+        resultJson: '',
+        progress: 0,
+        ts: new Date().toISOString()
+      });
+    }
+    const wfIds = Array.from(new Set(targets.map(s => s.workflowId)));
+    for (const wfId of wfIds) await stores.workflows.setStatus(wfId as any, 'pending');
+    await stores.artifacts.deleteByDocument(selected);
+    await stores.links.deleteByDocument(selected);
+    await resumeDocument(stores, selected);
+  };
+
+  const openLatestFailedStep = async () => {
+    if (!stores || !selected) return;
+    const list = await stores.steps.listByDocument(selected);
+    const failed = list.filter(s => s.status === 'failed').sort((a,b) => b.ts.localeCompare(a.ts))[0];
+    if (failed) setFailedStep(failed);
+    else alert('No failed step found for this job.');
   };
 
   const docList = useMemo(() => docs, [docs]);
@@ -414,34 +453,35 @@ export default function DocGenApp(): React.ReactElement {
               </div>
             </div>
             
-            {/* Quick Actions Bar */}
-            {selected && (
-              <div className="flex gap-2 mt-3">
-                <button
-                  className="text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50"
-                  onClick={clearTerminologyCache}
-                  title="Clear terminology cache for this job"
-                >
-                  Clear Terminology Cache
-                </button>
-                <button
-                  className="text-sm px-3 py-1 border border-gray-300 rounded hover:bg-gray-50"
-                  onClick={clearFhirAndTerminologyCache}
-                  title="Clear FHIR and terminology cache for this job"
-                >
-                  Clear FHIR + Terminology
-                </button>
-              </div>
-            )}
+            {/* Quick Actions removed — use metadata-driven cache controls near Rerun */}
           </div>
 
           {/* Dashboard */}
           <div className="flex-1 overflow-auto">
-            <DocGenDashboard 
-              state={dashboardState}
-              onOpenArtifact={openArtifact}
-              onResume={handleResume}
-            />
+          <DocGenDashboard 
+            state={dashboardState}
+            onOpenArtifact={openArtifact}
+            onRerun={handleRerun}
+            onClearCache={async (phaseId?: string) => {
+              if (!stores || !selected) return;
+              const steps = await stores.steps.listByDocument(selected);
+              const targets = steps.filter(s => {
+                if (s.status === 'pending') return false;
+                if (!phaseId) return true;
+                try { const t = s.tagsJson ? JSON.parse(s.tagsJson) : {}; return String(t.phase || '') === String(phaseId); } catch { return false; }
+              });
+              if (targets.length === 0) { alert('No cached steps found for this selection.'); return; }
+              for (const s of targets) {
+                await stores.steps.put({ ...s, status: 'pending', error: null, resultJson: '', progress: 0, ts: new Date().toISOString() });
+              }
+              const wfIds = Array.from(new Set(targets.map(s => s.workflowId)));
+              for (const wfId of wfIds) await stores.workflows.setStatus(wfId as any, 'pending');
+              await stores.artifacts.deleteByDocument(selected);
+              await stores.links.deleteByDocument(selected);
+              await resumeDocument(stores, selected);
+            }}
+            onOpenFailed={openLatestFailedStep}
+          />
           </div>
         </div>
       </div>
@@ -466,6 +506,10 @@ export default function DocGenApp(): React.ReactElement {
           onClose={() => setViewArtifactId(null)} 
           onOpenArtifact={openArtifact} 
         />
+      )}
+
+      {failedStep && (
+        <StepDetails step={failedStep} onClose={() => setFailedStep(null)} />
       )}
     </div>
   );

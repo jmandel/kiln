@@ -62,12 +62,16 @@ export default function DocGenDashboard({
   state: controlled,
   initial = defaultState, 
   onOpenArtifact, 
-  onResume 
+  onRerun,
+  onOpenFailed,
+  onClearCache
 }: { 
   state?: DocGenState;
   initial?: DocGenState; 
   onOpenArtifact?: (id: string) => void; 
-  onResume?: () => void 
+  onRerun?: () => void;
+  onOpenFailed?: () => void;
+  onClearCache?: (phaseId?: string) => void;
 }) {
   const [internalState, setInternalState] = useState<DocGenState>(initial);
   const state = controlled ?? internalState;
@@ -76,6 +80,7 @@ export default function DocGenDashboard({
   const [artifactView, setArtifactView] = useState<'table' | 'cards' | 'timeline'>('table');
   const [eventsPanelOpen, setEventsPanelOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  const [cacheMenuOpen, setCacheMenuOpen] = useState(false);
 
   // Auto-open events panel when new errors occur
   useEffect(() => {
@@ -170,13 +175,32 @@ export default function DocGenDashboard({
                 value={`${(state.metrics.totalTokens / 1000).toFixed(1)}k`}
                 icon="🔤" 
               />
-              {state.jobId && onResume && (
+              {state.jobId && (
                 <button 
                   className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  onClick={onResume}
+                  onClick={onRerun || onResume}
                 >
-                  Resume
+                  Rerun
                 </button>
+              )}
+              {state.jobId && onClearCache && (
+                <div className="relative">
+                  <button 
+                    className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50"
+                    onClick={() => setCacheMenuOpen(v => !v)}
+                  >
+                    Clear Cache
+                  </button>
+                  {cacheMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white border rounded-md shadow-lg z-10">
+                      <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache(undefined); }}>Clear all steps</button>
+                      <div className="px-3 py-1 text-xs text-gray-500">By phase</div>
+                      {(state.phases || []).map(p => (
+                        <button key={p.id} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache(p.id); }}>Clear “{p.label}”</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -193,7 +217,7 @@ export default function DocGenDashboard({
       {/* Error Banner (if present) */}
       {state.error && (
         <div className="max-w-7xl mx-auto px-4 mt-4">
-          <ErrorBanner error={state.error} onResume={onResume} />
+          <ErrorBanner error={state.error} onResume={onRerun || onResume} onOpenFailed={onOpenFailed} />
         </div>
       )}
 

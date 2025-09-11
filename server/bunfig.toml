@@ -1,0 +1,4 @@
+[test]
+# Default per-test timeout (ms)
+timeout = 180000
+

@@ -133,11 +133,9 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID): Con
       const raw = (e as any)?.rawContent;
       const status = (e as any)?.status;
       const stack = (e as any)?.stack || (new Error(String(rec.error))).stack;
-      if (raw != null) {
-        try {
-          rec.resultJson = JSON.stringify({ error: rec.error, raw, status, stack });
-        } catch {}
-      }
+      try {
+        rec.resultJson = JSON.stringify({ error: rec.error, ...(raw != null ? { raw } : {}), status, stack });
+      } catch {}
       await stores.steps.put(rec);
       stores.events.emit({ type: "step_saved", ...rec, tags: opts.tags || {}, documentId });
       dbg('step.end', { key: fullKey, ok: false, durationMs: rec.durationMs, error: rec.error });
@@ -263,19 +261,27 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
     for (let attempt = 1; attempt <= retries; attempt++) {
       const a0 = Date.now();
       dbg('llm.fetch.begin', { task, attempt, expect, temperature: temperature ?? cfg.temperature });
-      const response = await fetch(`${cfg.baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: cfg.model,
-          temperature: temperature ?? cfg.temperature ?? 0.2,
-          messages: [
-            { role: "system", content: expect === "json" ? "Return only JSON. No commentary." : "You write narrative text." },
-            { role: "user", content: prompt }
-          ],
-          response_format: expect === "json" ? { type: "json_object" } : undefined
-        })
-      });
+      let response: Response;
+      try {
+        response = await fetch(`${cfg.baseURL}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: cfg.model,
+            temperature: temperature ?? cfg.temperature ?? 0.2,
+            messages: [
+              { role: "system", content: expect === "json" ? "Return only JSON. No commentary." : "You write narrative text." },
+              { role: "user", content: prompt }
+            ],
+            response_format: expect === "json" ? { type: "json_object" } : undefined
+          })
+        });
+      } catch (netErr: any) {
+        lastRaw = String(netErr?.message || netErr || 'fetch failed');
+        dbg('llm.fetch.end', { task, attempt, ok: false, error: lastRaw, durationMs: Date.now() - a0 });
+        // Wrap with details to surface in step failure UI
+        throw new LLMCallError(`LLM fetch failed: ${lastRaw}`, { rawContent: JSON.stringify({ baseURL: cfg.baseURL, model: cfg.model, message: String(lastRaw) }), status: lastStatus });
+      }
       if (!response.ok) {
         const body = await response.text();
         lastRaw = body;
