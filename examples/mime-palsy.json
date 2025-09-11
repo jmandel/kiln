@@ -1,0 +1,1054 @@
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "id": "bundle-7f6a1feb",
+  "timestamp": "2025-09-11T16:44:48.795Z",
+  "identifier": {
+    "value": "composition-4ec73e2c",
+    "system": "https://kiln.fhir.me/Bundle"
+  },
+  "entry": [
+    {
+      "fullUrl": "https://kiln.fhir.me/Composition/composition-4ec73e2c",
+      "resource": {
+        "resourceType": "Composition",
+        "status": "final",
+        "type": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "11502-2",
+              "display": "Progress note"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1",
+          "display": "52-year-old male professional mime with history of hypertension"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1",
+          "display": "Outpatient clinic visit for acute left-sided facial weakness"
+        },
+        "date": "2023-10-01",
+        "title": "Clinical Note",
+        "section": [
+          {
+            "title": "Chief Complaint",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient is a 52-year-old male professional mime who presents to the clinic today accompanied by his wife, reporting acute onset of left-sided facial weakness and drooping that has progressively worsened over the past two days, significantly impairing his ability to perform expressive facial gestures central to his livelihood.</div>",
+              "status": "additional"
+            }
+          },
+          {
+            "title": "History of Present Illness",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient is a 52-year-old right-handed male who works professionally as a mime, presenting with acute left-sided facial weakness that began two days ago. He describes the onset as subtle during an outdoor street performance, initially noticing difficulty raising his left eyebrow and subtle asymmetry in his smile while attempting to convey emotions to passersby. Over the subsequent hours, this progressed to noticeable drooping of the left corner of his mouth, inability to fully close his left eye, and a sensation of heaviness on the left side of his face. He reports no preceding viral illness, ear pain, or trauma, though he mentions recent exposure to variable weather during performances in urban parks. The weakness is isolated to the face, with no associated limb weakness, sensory changes, or speech difficulties beyond the facial asymmetry. His wife notes that he has been attempting to communicate non-verbally at home, but the impaired expressions have led to frustration and mild sleep disruption due to eye irritation from incomplete closure. He denies headache, vision changes, or other neurological symptoms.</div>",
+              "status": "additional"
+            }
+          },
+          {
+            "title": "Past Medical History",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient is a 52-year-old male with a past medical history significant for hypertension, diagnosed five years ago during a routine physical examination prompted by mild headaches and elevated blood pressure readings. He has been managed with lifestyle modifications and lisinopril 20 mg daily, with good control until recently when readings have trended higher, possibly exacerbated by performance-related stress. He also reports a history of seasonal allergies, treated with over-the-counter antihistamines, and denies diabetes, hyperlipidemia, smoking history, or prior neurological events. No surgical history or current medications beyond lisinopril and occasional ibuprofen for minor strains from repetitive miming postures.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Condition/cond-htn-1"
+              },
+              {
+                "reference": "MedicationStatement/medstmt-lisinopril-1"
+              }
+            ]
+          },
+          {
+            "title": "Social History",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient is a 52-year-old male who has worked as a professional mime for over 25 years, specializing in street performances and theatrical productions across urban centers in the United States. His career involves prolonged outdoor exposures to elements like wind, sun, and crowds, as well as repetitive facial and postural strains to maintain silent, exaggerated expressions. He lives with his wife in a suburban home, denies alcohol or tobacco use, and exercises moderately through daily walks and performance rehearsals. This occupational history likely influences his symptom reporting, as the facial weakness directly hampers his non-verbal artistry, heightening his concern over potential long-term impacts on his income and identity.</div>",
+              "status": "additional"
+            }
+          },
+          {
+            "title": "Review of Systems",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient denies constitutional symptoms including fever, chills, night sweats, unintentional weight loss, or fatigue beyond that attributable to disrupted sleep from facial discomfort. He gestures emphatically to indicate no ear pain, hearing loss, or tinnitus on the affected side, and no neck stiffness or rash. Cardiovascular review is negative for chest pain or palpitations, though he acknowledges his known hypertension. Respiratory, gastrointestinal, genitourinary, musculoskeletal, and dermatologic systems are reviewed as negative, with the exception of mild left facial tingling that he mimes by tracing his cheek. Neurologically, beyond the chief complaint, he denies vertigo, dysphagia, or extremity symptoms, communicating these denials through exaggerated head shakes and hand signals to compensate for his facial limitations.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Observation/obs-facial-tingling-1"
+              }
+            ]
+          },
+          {
+            "title": "Physical Examination",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">**Vital signs:** Blood pressure 142/88 mmHg, heart rate 76 beats per minute and regular, respiratory rate 14 breaths per minute, temperature 98.6°F orally, oxygen saturation 98% on room air.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Observation/obs-bp-1"
+              },
+              {
+                "reference": "Observation/obs-hr-1"
+              },
+              {
+                "reference": "Observation/obs-rr-1"
+              },
+              {
+                "reference": "Observation/obs-temp-1"
+              },
+              {
+                "reference": "Observation/obs-spo2-1"
+              },
+              {
+                "reference": "Observation/obs-facial-weakness-1"
+              }
+            ]
+          },
+          {
+            "title": "Assessment",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">This 52-year-old right-handed male professional mime presents with acute, isolated left-sided facial nerve (cranial nerve VII) palsy of two days' duration, characterized by progressive drooping of the left eyelid and mouth, consistent with Bell's palsy. The diagnosis is supported by the lower motor neuron pattern on exam, absence of other neurological deficits, and lack of vesicles or trauma suggesting alternative etiologies like Ramsay Hunt syndrome or stroke. Differentials include Lyme disease given outdoor exposures in endemic areas, though no tick bite or systemic symptoms; sarcoidosis or malignancy are less likely in this age group without comorbidities. His hypertension is a minor risk factor for vascular events, but the isolated presentation favors idiopathic neuritis. Occupational repetitive strain may contribute to nerve vulnerability, underscoring the ironic impact on his mime career reliant on facial expressivity. Early intervention is key, as evidence supports improved recovery with steroids in adults over 40.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Condition/cond-bells-1"
+              }
+            ]
+          },
+          {
+            "title": "Plan",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">### Medical Management</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "MedicationRequest/medreq-prednisone-1"
+              }
+            ]
+          },
+          {
+            "title": "# Supportive Care",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">2. Prescribe artificial tears and lubricating ointment for left eye protection to prevent corneal abrasion from lagophthalmos; advise taping eyelid shut at night and wearing protective eyewear during performances. Recommend gentle facial exercises starting after 72 hours to maintain muscle tone without strain.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "MedicationRequest/medreq-artificial-tears-1"
+              },
+              {
+                "reference": "Procedure/proc-facial-exercises-1"
+              }
+            ]
+          },
+          {
+            "title": "# Diagnostics and Follow-Up",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">3. Serologic testing for Lyme disease (ELISA and Western blot) given occupational outdoor risks; consider viral serologies if no improvement. No imaging indicated acutely, but MRI of brainstem if atypical features emerge. Schedule neurology consult if incomplete recovery by 3 months. Optimize hypertension management with lisinopril dose review.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "ServiceRequest/sr-lyme-1"
+              },
+              {
+                "reference": "ServiceRequest/sr-htn-review-1"
+              }
+            ]
+          },
+          {
+            "title": "# Counseling",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">4. Educated patient and wife on Bell's palsy prognosis: 70-80% full recovery within 3-6 months, with prompt treatment favoring good outcome despite his age over 40. Discussed emotional impact on livelihood, encouraging adaptive non-facial mime techniques temporarily; provided resources for support groups. Return precautions include worsening weakness, new headaches, or fever.</div>",
+              "status": "additional"
+            }
+          }
+        ],
+        "id": "composition-4ec73e2c",
+        "identifier": {
+          "value": "composition-4ec73e2c",
+          "system": "https://kiln.fhir.me/Composition"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-htn-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-htn-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "38341003",
+              "display": "Hypertensive disorder, systemic arterial (disorder)"
+            }
+          ],
+          "text": "Hypertension diagnosed five years ago, managed with lifestyle and medication"
+        },
+        "onsetString": "five years ago"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationStatement/medstmt-lisinopril-1",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "medstmt-lisinopril-1",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "314077",
+              "display": "lisinopril 20 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "effectivePeriod": {
+          "start": "2019"
+        },
+        "dosage": [
+          {
+            "text": "20 mg daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 20,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ],
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "38341003",
+                "display": "Hypertensive disorder, systemic arterial (disorder)"
+              }
+            ]
+          }
+        ],
+        "context": {
+          "reference": "Encounter/enc-1"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-facial-tingling-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-facial-tingling-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "exam",
+                "display": "Exam"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "95665007",
+              "display": "Facial paresthesia (finding)"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-09-15T10:20:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "255604002",
+              "display": "Mild (qualifier value)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-bp-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-bp-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "85354-9",
+              "display": "Blood pressure panel with all children optional"
+            }
+          ],
+          "text": "Blood pressure"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 142,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 88,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-hr-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-hr-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8867-4",
+              "display": "Heart rate"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-09-15T10:00:00Z",
+        "valueQuantity": {
+          "value": 76,
+          "unit": "beats/minute",
+          "system": "http://unitsofmeasure.org",
+          "code": "/min"
+        },
+        "note": [
+          {
+            "text": "regular"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-rr-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-rr-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "9279-1",
+              "display": "Respiratory rate"
+            }
+          ],
+          "text": "Respiratory rate"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-09-15T10:20:00Z",
+        "valueQuantity": {
+          "value": 14,
+          "unit": "breaths/minute",
+          "system": "http://unitsofmeasure.org",
+          "code": "/min"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-temp-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-temp-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8310-5",
+              "display": "Body temperature"
+            }
+          ],
+          "text": "Temperature 98.6°F orally"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 98.6,
+          "unit": "°F",
+          "system": "http://unitsofmeasure.org",
+          "code": "[degF]"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-spo2-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-spo2-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2708-6",
+              "display": "Oxygen saturation in Arterial blood"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "59408-5",
+              "display": "Oxygen saturation in Arterial blood by Pulse oximetry"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 98,
+          "unit": "%",
+          "system": "http://unitsofmeasure.org",
+          "code": "%"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-facial-weakness-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-facial-weakness-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "exam",
+                "display": "Exam"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "80304-9",
+              "display": "Facial nerve (CN VII) exam"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-09-15T10:20:00Z",
+        "valueBoolean": true,
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "A",
+                "display": "Abnormal"
+              }
+            ]
+          }
+        ],
+        "note": [
+          {
+            "text": "Left-sided facial nerve palsy, lower motor neuron pattern of cranial nerve VII with eyelid droop, incomplete closure, flattened nasolabial fold, and asymmetric smile"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-bells-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-bells-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "193093009",
+              "display": "Bell's palsy (disorder)"
+            }
+          ],
+          "text": "Bell's palsy, acute isolated left-sided facial nerve palsy"
+        },
+        "bodySite": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "83272003",
+                "display": "Structure of left side of face (body structure)"
+              }
+            ]
+          }
+        ],
+        "onsetDateTime": "2023-10-01"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/medreq-prednisone-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-prednisone-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "8640",
+              "display": "prednisone"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "dosageInstruction": [
+          {
+            "text": "Oral prednisone 60 mg daily for 5 days, then taper to 40 mg for 5 days, 20 mg for 5 days, 10 mg for 5 days",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 60,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ],
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/medreq-artificial-tears-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-artificial-tears-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "1089812",
+              "display": "Thera Tears"
+            }
+          ],
+          "text": "Artificial tears and lubricating ointment"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "Instill artificial tears in left eye as needed during the day and apply lubricating ointment to left eye at night to protect from corneal abrasion due to lagophthalmos",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "372472002",
+                  "display": "Ocular route (qualifier value)"
+                }
+              ],
+              "text": "Ocular (topical)"
+            },
+            "method": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "738991002",
+                  "display": "Apply (administration method)"
+                }
+              ],
+              "text": "Apply to eye"
+            },
+            "site": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "8966001",
+                  "display": "Left eye structure (body structure)"
+                }
+              ],
+              "text": "Left eye"
+            },
+            "timing": {
+              "code": {
+                "text": "As needed"
+              }
+            },
+            "maxDosePerPeriod": {
+              "numerator": {
+                "value": 4,
+                "system": "http://unitsofmeasure.org",
+                "code": "{drop}"
+              },
+              "denominator": {
+                "value": 1,
+                "system": "http://unitsofmeasure.org",
+                "code": "h"
+              }
+            }
+          },
+          {
+            "sequence": 2,
+            "text": "Apply lubricating ointment to left eyelid at bedtime",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "372472002",
+                  "display": "Ocular route (qualifier value)"
+                }
+              ],
+              "text": "Ocular (topical)"
+            },
+            "method": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "738991002",
+                  "display": "Apply (administration method)"
+                }
+              ],
+              "text": "Apply to eyelid"
+            },
+            "site": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "8966001",
+                  "display": "Left eye structure (body structure)"
+                }
+              ],
+              "text": "Left eye"
+            },
+            "timing": {
+              "repeat": {
+                "boundsPeriod": {
+                  "start": "2023-10-01"
+                }
+              },
+              "code": {
+                "coding": [
+                  {
+                    "system": "http://snomed.info/sct",
+                    "code": "2546009",
+                    "display": "Night time (qualifier value)"
+                  }
+                ],
+                "text": "At bedtime"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Procedure/proc-facial-exercises-1",
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "proc-facial-exercises-1",
+        "status": "preparation",
+        "category": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "91251008",
+              "display": "Physical therapy procedure (regime/therapy)"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "229123001",
+              "display": "Facial exercises (regime/therapy)"
+            }
+          ],
+          "text": "Gentle facial exercises starting after 72 hours to maintain muscle tone"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/ServiceRequest/sr-lyme-1",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sr-lyme-1",
+        "meta": {
+          "profile": [
+            "http://hl7.org/fhir/StructureDefinition/ServiceRequest"
+          ]
+        },
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">Serologic testing for Lyme disease (ELISA and Western blot) due to occupational outdoor exposure risks</div>"
+        },
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/service-category",
+                "code": "26",
+                "display": "Specialist Clinical Pathology"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "62341-3",
+              "display": "Borrelia burgdorferi IgG+IgM with reflex to immune blot panel - Serum"
+            }
+          ],
+          "text": "Serologic testing for Lyme disease (ELISA and Western blot)"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "authoredOn": "2023-10-01"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/ServiceRequest/sr-htn-review-1",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sr-htn-review-1",
+        "status": "active",
+        "intent": "plan",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "473225006",
+              "display": "Hypertension medication review (procedure)"
+            }
+          ],
+          "text": "Review and optimize lisinopril dose for hypertension management"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Patient/pat-1",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "active": true,
+        "name": [
+          {
+            "family": "Doe",
+            "given": [
+              "John"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1971-01-01"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Encounter/enc-1",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "enc-1",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "95666008",
+                "display": "Weakness of face muscles (finding)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "95666008",
+                "display": "Weakness of face muscles (finding)"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,2115 @@
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "id": "bundle-da0cf9e5",
+  "timestamp": "2025-09-11T15:44:38.161Z",
+  "identifier": {
+    "value": "comp-pirate-angina-1",
+    "system": "https://kiln.fhir.me/Bundle"
+  },
+  "entry": [
+    {
+      "fullUrl": "https://kiln.fhir.me/Composition/comp-pirate-angina-1",
+      "resource": {
+        "resourceType": "Composition",
+        "id": "comp-pirate-angina-1",
+        "status": "final",
+        "type": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "11502-2",
+              "display": "Progress note"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1",
+          "display": "72-year-old female retired pirate captain with hypertension and remote smoking history"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1",
+          "display": "Outpatient cardiology evaluation for new-onset exertional substernal chest pain"
+        },
+        "date": "2023-10-01",
+        "author": [
+          {
+            "reference": "Practitioner/prac-1",
+            "display": "Primary Care Provider"
+          }
+        ],
+        "title": "Pirate Captain Angina Evaluation Note",
+        "section": [
+          {
+            "title": "Chief Complaint",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient is a 72-year-old female, self-identified as a retired pirate captain, who presents today with a chief complaint of new-onset substernal chest pain, which she vividly describes in her characteristic pirate vernacular as \"a fierce pressure in me chest, like the grip o' Davy Jones' locker, surgin' up when I hoist the sails or climb the rigging o' me daily chores.\" This symptom has prompted her to seek evaluation, marking a departure from her usual robust seafaring vigor.</div>",
+              "status": "additional"
+            }
+          },
+          {
+            "title": "History of Present Illness",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient, a spirited 72-year-old retired pirate captain with a colorful seafaring history spanning decades of high-seas adventures, elaborates on her new-onset substernal chest pain in her characteristic pirate lingo, noting it began approximately two weeks ago during moderate exertion, such as walking briskly along the docks or carrying provisions akin to \"plunder from a merchant ship.\" She describes the pain as a tight, squeezing sensation radiating to her left arm and jaw, lasting 5-10 minutes and resolving with rest, without associated shortness of breath, nausea, or diaphoresis at onset. Building on this, she denies similar episodes in the past but acknowledges a gradual decline in her stamina over the last year, which she attributes to \"the toll o' too many storms weathered.\" This exertional pattern is consistent with angina, prompting a deeper exploration of her cardiovascular risk factors.</div>",
+              "status": "additional"
+            }
+          },
+          {
+            "title": "Past Medical History",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient's past medical history is notable for essential hypertension diagnosed approximately 15 years ago during a routine check-up following an episode of elevated blood pressure noted during a seafaring medical exam, managed with lifestyle modifications and low-dose lisinopril 10 mg daily, though she admits to occasional non-adherence due to \"forgettin' amid the salt spray and rum.\" She also reports a 40-pack-year smoking history, having quit five years ago after a close call with \"a mutiny o' me lungs,\" and denies diabetes, hyperlipidemia, or prior cardiac events. Additionally, she has a history of osteoarthritis in her knees from years of \"deck-swabbin' and cannon-haulin',\" treated with over-the-counter analgesics such as acetaminophen as needed. These comorbidities ground her current symptoms in a realistic geriatric cardiology profile, where hypertension and prior smoking synergistically elevate her risk for coronary artery disease, as evidenced by Framingham risk scoring estimating a 10-year cardiovascular event risk exceeding 20% given her age, sex, hypertension, and smoking history.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Condition/cond-htn-1"
+              },
+              {
+                "reference": "Condition/cond-oa-1"
+              },
+              {
+                "reference": "MedicationStatement/medstmt-lisinopril-1"
+              }
+            ]
+          },
+          {
+            "title": "Social History",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient, a 72-year-old retired pirate captain residing in a vibrant coastal community, brings a rich tapestry of seafaring history to her clinical narrative. Now widowed with two adult children living independently, she maintains an active lifestyle that echoes her adventurous past, including daily walks along the harbor and participation in local sailing clubs, though she notes scaling back \"treasure hunts\" due to fatigue. Her diet, heavy on salted fish and hearty stews reminiscent of shipboard fare, likely contributes to her sodium intake and hypertension, while her remote smoking cessation underscores a commitment to health amid a history of tobacco exposure from \"pipe-weedin' with the crew.\" She denies alcohol use beyond occasional \"grog\" and lives independently without home support, fostering a holistic view of how her seafaring background influences cardiac health through both protective physical activity and risk-laden habits like irregular meals and past nicotine dependence. Transitioning from these lifestyle elements, a review of other systems helps contextualize her primary complaint within her overall well-being.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Observation/obs-smoking-1"
+              }
+            ]
+          },
+          {
+            "title": "Review of Systems",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient endorses a constellation of symptoms that align with her reported exertional substernal chest pain, now assessed in the broader context of her cardiovascular risk profile. Framingham Risk Score calculations, incorporating her age, hypertension, and smoking history, place her in a high-risk category for atherosclerotic events, reinforcing the likelihood of ischemic etiology. She reports mild dyspnea on exertion but denies orthopnea, palpitations, or edema; gastrointestinal review is negative for reflux or dyspepsia that might mimic cardiac symptoms; and she notes occasional arthritic joint pains without swelling. Neurologically, she denies dizziness or syncope, and her general review is otherwise unremarkable, with no fevers, weight loss, or constitutional symptoms. This synthesis ties her angina-like presentation to modifiable and non-modifiable risks, highlighting the need for comprehensive cardiac evaluation.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Observation/obs-dyspnea-1"
+              },
+              {
+                "reference": "Observation/obs-ros-cardiac-1"
+              },
+              {
+                "reference": "Observation/obs-ros-gi-1"
+              },
+              {
+                "reference": "Observation/obs-ros-joints-1"
+              },
+              {
+                "reference": "Observation/obs-ros-neuro-1"
+              },
+              {
+                "reference": "Observation/obs-ros-general-1"
+              },
+              {
+                "reference": "Observation/obs-framingham-1"
+              }
+            ]
+          },
+          {
+            "title": "Physical Examination",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient is a 72-year-old female who appears alert and oriented, with a distinctive theatrical pirate accent that colors her interactions, engaging the examiner with spirited tales of her seafaring exploits while cooperating fully. She is well-nourished, sitting comfortably at 5'4\" and 160 lbs (BMI 27.5), with vital signs revealing blood pressure 148/82 mmHg in the right arm, heart rate 78 bpm and regular, respiratory rate 16 breaths per minute, temperature 98.6°F, and oxygen saturation 97% on room air. Head and neck exam shows no jugular venous distension, with clear lungs bilaterally and a regular rhythm on cardiac auscultation without murmurs, rubs, or gallops; abdomen is soft and nontender; extremities reveal no edema or cyanosis, with 2+ radial pulses bilaterally. Her affect is jovial yet appropriately concerned, and no acute distress is noted. These findings, unremarkable yet supportive of stable presentation, segue into an assessment that integrates her history and risks for targeted management.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Observation/obs-bp-1"
+              },
+              {
+                "reference": "Observation/obs-hr-1"
+              },
+              {
+                "reference": "Observation/obs-rr-1"
+              },
+              {
+                "reference": "Observation/obs-temp-1"
+              },
+              {
+                "reference": "Observation/obs-spo2-1"
+              },
+              {
+                "reference": "Observation/obs-bmi-1"
+              },
+              {
+                "reference": "Observation/obs-jvd-1"
+              },
+              {
+                "reference": "Observation/obs-lungs-1"
+              },
+              {
+                "reference": "Observation/obs-heart-1"
+              },
+              {
+                "reference": "Observation/obs-abdomen-1"
+              },
+              {
+                "reference": "Observation/obs-extremities-1"
+              }
+            ]
+          },
+          {
+            "title": "Assessment",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">The patient's presentation is highly suggestive of stable angina pectoris secondary to underlying coronary artery disease (CAD), a common manifestation in geriatric patients with her constellation of risk factors including advanced age, hypertension, and remote heavy smoking, as quantified by a Framingham Risk Score indicating elevated 10-year event probability. Her exertional, substernal pain with radiation and relief on rest aligns with classic ischemic symptoms, without evidence of unstable features such as rest pain or hemodynamic instability. Comorbid osteoarthritis may contribute to deconditioning, exacerbating symptoms, while her seafaring lifestyle promotes resilience but underscores the impact of historical exposures like tobacco on endothelial health. Differential includes gastroesophageal reflux or musculoskeletal strain, though less likely given the exertional trigger; no acute coronary syndrome is suspected at this juncture, warranting prompt outpatient workup to mitigate progression in this high-risk profile.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Condition/cond-angina-1"
+              }
+            ]
+          },
+          {
+            "title": "Plan",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">1. **Diagnostic Workup**: Obtain urgent electrocardiogram (ECG) to evaluate for ischemic changes, including ST-segment abnormalities or T-wave inversions, given the exertional nature of her symptoms; if normal, proceed to stress testing (exercise or pharmacologic) within the week to assess for inducible ischemia, considering her mobility for treadmill tolerance.</div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "ServiceRequest/sr-ecg-1"
+              },
+              {
+                "reference": "ServiceRequest/sr-stress-1"
+              },
+              {
+                "reference": "MedicationRequest/mr-lisinopril-1"
+              },
+              {
+                "reference": "MedicationRequest/mr-aspirin-1"
+              },
+              {
+                "reference": "MedicationRequest/mr-atorvastatin-1"
+              },
+              {
+                "reference": "ServiceRequest/sr-lipid-1"
+              },
+              {
+                "reference": "ServiceRequest/sr-hba1c-1"
+              },
+              {
+                "reference": "ServiceRequest/sr-cardio-1"
+              }
+            ]
+          }
+        ],
+        "identifier": {
+          "value": "comp-pirate-angina-1",
+          "system": "https://kiln.fhir.me/Composition"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-htn-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-htn-1",
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "155296003",
+              "display": "Essential hypertension (disorder)"
+            }
+          ],
+          "text": "Essential hypertension"
+        },
+        "onsetDateTime": "2009"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-oa-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-oa-1",
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "239873007",
+              "display": "Osteoarthritis of knee (disorder)"
+            }
+          ],
+          "text": "Osteoarthritis in knees"
+        },
+        "bodySite": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "719442003",
+                "display": "Structure of left knee joint (body structure)"
+              },
+              {
+                "system": "http://snomed.info/sct",
+                "code": "719443008",
+                "display": "Structure of right knee joint (body structure)"
+              }
+            ]
+          }
+        ],
+        "note": [
+          {
+            "text": "Treated with acetaminophen PRN"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationStatement/medstmt-lisinopril-1",
+      "resource": {
+        "resourceType": "MedicationStatement",
+        "id": "medstmt-lisinopril-1",
+        "status": "active",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "314076",
+              "display": "lisinopril 10 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "effectivePeriod": {
+          "start": "2009"
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "59621000",
+                "display": "Essential hypertension (disorder)"
+              }
+            ]
+          }
+        ],
+        "dosage": [
+          {
+            "text": "10 mg daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 10,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ],
+        "note": [
+          {
+            "text": "Occasional non-adherence due to forgetting amid the salt spray and rum."
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-smoking-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-smoking-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "social-history",
+                "display": "Social History"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "72166-2",
+              "display": "Tobacco smoking status"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "8517006",
+              "display": "Ex-smoker (finding)"
+            }
+          ]
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "67741-9",
+                  "display": "Smoking tobacco use duration"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 40,
+              "unit": "pack-years",
+              "system": "http://unitsofmeasure.org",
+              "code": "{pack_y}"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "74010-0",
+                  "display": "Date quit tobacco smoking"
+                }
+              ]
+            },
+            "valueDateTime": "2018-10-01"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-dyspnea-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-dyspnea-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "LA17611-7",
+              "display": "Dyspnea"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "255604002",
+              "display": "Mild (qualifier value)"
+            }
+          ]
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "POS",
+                "display": "Positive"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-ros-cardiac-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-ros-cardiac-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "267037003",
+              "display": "Cardiovascular symptoms (finding)"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "161966006",
+              "display": "No palpitations (situation)"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "161980004",
+              "display": "No edema present (situation)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-ros-gi-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-ros-gi-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "LA16354-5",
+              "display": "Gastrointestinal symptoms"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "2667000",
+              "display": "Absent (qualifier value)"
+            }
+          ]
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "N",
+                "display": "Normal"
+              }
+            ]
+          }
+        ],
+        "note": [
+          {
+            "text": "Negative for reflux or dyspepsia"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-ros-joints-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-ros-joints-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "LP74999-1",
+              "display": "Joint pain"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "1137438000",
+              "display": "Pain due to arthritis (finding)"
+            }
+          ]
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "POS",
+                "display": "Positive"
+              }
+            ]
+          }
+        ],
+        "note": [
+          {
+            "text": "without swelling: present"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-ros-neuro-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-ros-neuro-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "71416-2",
+              "display": "CMS - neurological panel"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "160245001",
+              "display": "No current problems or disability (situation)"
+            }
+          ]
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "104032-8",
+                  "display": "Dizziness, vertigo"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "1141711004",
+                  "display": "No dizziness (situation)"
+                }
+              ]
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "45706-9",
+                  "display": "Syncope [Minimum Data Set]"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "1141711004",
+                  "display": "No dizziness (situation)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-ros-general-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-ros-general-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "10187-3",
+              "display": "Review of systems Narrative - Reported"
+            }
+          ],
+          "text": "General: no fevers, weight loss, or constitutional symptoms"
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "164287009",
+              "display": "On examination - fever examination - no abnormality detected (finding)"
+            }
+          ],
+          "text": "No fevers, weight loss, or constitutional symptoms"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "N",
+                "display": "Normal"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-framingham-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-framingham-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "survey",
+                "display": "Survey"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "65853-4",
+              "display": "General cardiovascular disease 10Y risk [#] Framingham.D'Agostino"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 25,
+          "unit": "%",
+          "system": "http://unitsofmeasure.org",
+          "code": "%"
+        },
+        "note": [
+          {
+            "text": "High risk (>20% 10-year cardiovascular event risk) based on age, hypertension, smoking history"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-bp-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-bp-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "85354-9",
+              "display": "Blood pressure panel with all children optional"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 148,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 82,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-hr-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-hr-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8867-4",
+              "display": "Heart rate"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 78,
+          "unit": "/min",
+          "system": "http://unitsofmeasure.org",
+          "code": "/min"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "162999005",
+                  "display": "On examination - pulse rhythm regular (finding)"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "162999005",
+                  "display": "On examination - pulse rhythm regular (finding)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-rr-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-rr-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "9279-1",
+              "display": "Respiratory rate"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 16,
+          "unit": "breaths/minute",
+          "system": "http://unitsofmeasure.org",
+          "code": "/min"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-temp-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-temp-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8310-5",
+              "display": "Body temperature"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 37,
+          "unit": "°F",
+          "system": "http://unitsofmeasure.org",
+          "code": "[degF]"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-spo2-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-spo2-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2708-6",
+              "display": "Oxygen saturation in Arterial blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 97,
+          "unit": "%",
+          "system": "http://unitsofmeasure.org",
+          "code": "%"
+        },
+        "note": [
+          {
+            "text": "on room air"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-bmi-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-bmi-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "39156-5",
+              "display": "Body mass index (BMI) [Ratio]"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 27.5,
+          "unit": "kg/m2",
+          "system": "http://unitsofmeasure.org",
+          "code": "kg/m2"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "29463-7",
+                  "display": "Body weight"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 72.575,
+              "unit": "kg",
+              "system": "http://unitsofmeasure.org",
+              "code": "kg"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8302-2",
+                  "display": "Body height"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 162.56,
+              "unit": "cm",
+              "system": "http://unitsofmeasure.org",
+              "code": "cm"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-jvd-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-jvd-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "exam",
+                "display": "Exam"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "LP73822-6",
+              "display": "Jugular vein distention"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "2667000",
+              "display": "Absent (qualifier value)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-lungs-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-lungs-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "exam",
+                "display": "Exam"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "48348007",
+              "display": "Normal breath sounds (finding)"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "301708006",
+              "display": "Chest clear (finding)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-heart-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-heart-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "exam",
+                "display": "Exam"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "301132007",
+              "display": "Heart sounds normal (finding)"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T14:00:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "64730000",
+              "display": "Normal sinus rhythm (finding)"
+            }
+          ]
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "301131000",
+                  "display": "Heart murmur absent (situation)"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "280413001",
+                  "display": "Normal result (qualifier value)"
+                }
+              ]
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "301125003",
+                  "display": "Pericardial friction rub absent (situation)"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "280413001",
+                  "display": "Normal result (qualifier value)"
+                }
+              ]
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "846726003",
+                  "display": "No gallop rhythm (situation)"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "280413001",
+                  "display": "Normal result (qualifier value)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-abdomen-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-abdomen-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "exam",
+                "display": "Exam"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "80271-0",
+              "display": "Physical findings of Abdomen by Palpation"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-09-15T10:20:00Z",
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "249543005",
+              "display": "Abdomen soft (finding)"
+            },
+            {
+              "system": "http://snomed.info/sct",
+              "code": "300821004",
+              "display": "Non-tender (qualifier value)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-extremities-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-extremities-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "exam",
+                "display": "Exam"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "10196-4",
+              "display": "Physical findings of Extremities Narrative"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueString": "no edema or cyanosis, 2+ radial pulses bilaterally"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-angina-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-angina-1",
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "233819005",
+              "display": "Stable angina (disorder)"
+            }
+          ],
+          "text": "Stable angina pectoris secondary to coronary artery disease"
+        },
+        "onsetDateTime": "2024-10-01"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/ServiceRequest/sr-ecg-1",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sr-ecg-1",
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "108252007",
+                "display": "Laboratory procedure (procedure)"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "LP6244-0",
+              "display": "Electrocardiogram (EKG)"
+            }
+          ],
+          "text": "Urgent electrocardiogram (ECG) for ischemic changes"
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "authoredOn": "2023-10-01",
+        "requester": {
+          "reference": "Practitioner/practitioner-1"
+        },
+        "priority": "routine"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/ServiceRequest/sr-stress-1",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sr-stress-1",
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "procedure",
+                "display": "Procedure"
+              }
+            ],
+            "text": "Cardiology Procedure"
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "76746007",
+              "display": "Cardiovascular stress testing (procedure)"
+            }
+          ],
+          "text": "Stress testing (exercise or pharmacologic) for inducible ischemia"
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "authoredOn": "2023-10-01",
+        "requester": {
+          "reference": "Practitioner/practitioner-1"
+        },
+        "occurrenceTiming": {
+          "event": [
+            "2023-10-08"
+          ]
+        },
+        "performerType": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+              "code": "PRF",
+              "display": "Performer"
+            }
+          ]
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "300995000",
+                "display": "Exercise-induced angina (disorder)"
+              }
+            ],
+            "text": "New-onset exertional substernal chest pain suggestive of stable angina"
+          }
+        ],
+        "priority": "routine",
+        "note": [
+          {
+            "text": "Proceed to stress testing (exercise or pharmacologic) within the week to assess for inducible ischemia, considering her mobility for treadmill tolerance."
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mr-lisinopril-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mr-lisinopril-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "314076",
+              "display": "lisinopril 10 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "authoredOn": "2023-10-01",
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "text": "10 mg daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 10,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ],
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mr-aspirin-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mr-aspirin-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "243670",
+              "display": "aspirin 81 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "authoredOn": "2023-10-01",
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "text": "81 mg daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 81,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mr-atorvastatin-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mr-atorvastatin-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "617310",
+              "display": "atorvastatin calcium 20 MG Oral Tablet"
+            }
+          ],
+          "text": "atorvastatin 20-40 mg"
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "authoredOn": "2023-10-01",
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "text": "20-40 mg daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 20,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ],
+        "note": [
+          {
+            "text": "for plaque stabilization pending lipid results"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/ServiceRequest/sr-lipid-1",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sr-lipid-1",
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "100898-6",
+              "display": "Lipid panel - Serum or Plasma"
+            }
+          ],
+          "text": "Fasting lipid panel"
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "authoredOn": "2023-10-01",
+        "requester": {
+          "reference": "Practitioner/practitioner-1"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/ServiceRequest/sr-hba1c-1",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sr-hba1c-1",
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "41995-2",
+              "display": "Hemoglobin A1c [Mass/volume] in Blood"
+            }
+          ],
+          "text": "HbA1c for diabetes screening"
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "authoredOn": "2023-10-01"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/ServiceRequest/sr-cardio-1",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sr-cardio-1",
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "11429006",
+                "display": "Consultation (procedure)"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "183519002",
+              "display": "Referral to cardiology service (procedure)"
+            }
+          ],
+          "text": "Cardiology consultation"
+        },
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-pirate-1"
+        },
+        "authoredOn": "2023-10-01",
+        "requester": {
+          "reference": "Practitioner/practitioner-1"
+        },
+        "performerType": {
+          "text": "Cardiologist"
+        },
+        "occurrenceTiming": {
+          "repeat": {
+            "boundsDuration": {
+              "value": 14,
+              "unit": "days",
+              "system": "http://unitsofmeasure.org",
+              "code": "d"
+            }
+          }
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "367416001",
+                "display": "Angina pectoris (disorder)"
+              }
+            ]
+          }
+        ],
+        "note": [
+          {
+            "text": "For potential coronary CT angiography if stress test equivocal"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Patient/pat-pirate-1",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-pirate-1",
+        "active": true,
+        "name": [
+          {
+            "family": "Blackbeard",
+            "given": [
+              "Anne"
+            ],
+            "prefix": [
+              "Captain"
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1952-06-15",
+        "address": [
+          {
+            "line": [
+              "Harbor View Lane 42"
+            ],
+            "city": "Portside",
+            "state": "CA",
+            "postalCode": "94901",
+            "country": "US"
+          }
+        ],
+        "maritalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+              "code": "W",
+              "display": "Widowed"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Encounter/enc-pirate-1",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "enc-pirate-1",
+        "status": "finished",
+        "class": {
+          "system": "http://snomed.info/sct",
+          "code": "35971002",
+          "display": "Ambulatory care site (environment)"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "185504000",
+                "display": "Attending cardiology clinic (procedure)"
+              }
+            ],
+            "text": "Outpatient cardiology evaluation for new-onset exertional substernal chest pain"
+          }
+        ],
+        "subject": {
+          "reference": "Patient/pat-pirate-1"
+        },
+        "period": {
+          "start": "2023-10-01T10:00:00-07:00",
+          "end": "2023-10-01T10:45:00-07:00"
+        },
+        "serviceProvider": {
+          "reference": "Organization/org-pirate-clinic"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Practitioner/prac-1",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "prac-1",
+        "identifier": [
+          {
+            "system": "http://www.acme.org/practitioners",
+            "value": "12345",
+            "use": "official"
+          }
+        ],
+        "name": [
+          {
+            "family": "Smith",
+            "given": [
+              "John"
+            ],
+            "prefix": [
+              "Dr."
+            ]
+          }
+        ],
+        "gender": "male",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "555-1234",
+            "use": "work"
+          },
+          {
+            "system": "email",
+            "value": "john.smith@example.com",
+            "use": "work"
+          }
+        ]
+      }
+    }
+  ]
+}

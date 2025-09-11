@@ -1,4 +1,5 @@
 import type { Stores, ID, Artifact, Context } from './types';
+import { extractSections, canonicalizeHeader, renderSectionNarrative } from './sections';
 import { sha256, nowIso } from './helpers';
 import { getTargets, PROMPTS } from './prompts';
 import { runLLMTask, buildPrompt as buildLLMPrompt } from './llmTask';
@@ -356,13 +357,23 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
       const note_text = releaseCandidate.content;
 
       // 2. Create the Composition plan, aligning sections with the drafted note (## headings)
-      const sectionRegex = /^##\s*(.*?)\s*\n([\s\S]*?)(?=\n##\s|$)/gm;
+      // Match H2 sections across the whole note; support CRLF and LF
+      const noteSections = extractSections(note_text);
       const sectionTitles: string[] = [];
-      let m;
-      while ((m = sectionRegex.exec(note_text)) !== null) {
-        const title = (m[1] || '').trim();
-        if (title) sectionTitles.push(title);
+      for (const [canonTitle, _content] of noteSections) {
+        // We need the original titles in-order; extractSections preserved order but canonicalizes keys.
+        // So re-parse titles from the note in-order using the same regex to get original case/spacing.
       }
+      // Simpler: re-walk the note to preserve original titles using the same regex logic
+      {
+        const rx = /(?:^|\r?\n)##\s*(.*?)\s*\r?\n/g;
+        let m: RegExpExecArray | null;
+        while ((m = rx.exec(note_text)) !== null) {
+          const title = (m[1] || '').trim();
+          if (title) sectionTitles.push(title);
+        }
+      }
+      try { console.log('[FHIR][plan] Section titles detected:', sectionTitles.join(' | ')); } catch {}
       const compositionPrompt = buildPrompt('fhir_composition_plan', { note_text, section_titles: sectionTitles });
       const { result: planResult, meta: planMeta } = await runLLMTask<any>(ctx, 'fhir_composition_plan', 'fhir_composition_plan', { note_text, section_titles: sectionTitles }, { expect: 'json', tags: { phase: 'fhir' } });
       let compositionPlan = stitchSectionNarratives(planResult, note_text);
@@ -634,15 +645,18 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
 }
 
 function stitchSectionNarratives(compositionPlan: any, noteText: string): any {
-    // 1. Parse the original note into sections based on Markdown H2s
-    const noteSections = new Map<string, string>();
-    const sectionRegex = /^##\s*(.*?)\s*\n([\s\S]*?)(?=\n##\s|$)/gm;
-    let match;
-    while ((match = sectionRegex.exec(noteText)) !== null) {
-        const title = match[1].trim();
-        const content = match[2].trim();
-        noteSections.set(canonicalizeHeader(title), content);
-    }
+    // 1. Parse the original note into sections based on Markdown H2s (shared helper)
+    const noteSections = extractSections(noteText);
+    // Debug: list parsed H2 titles in order
+    try {
+      const titles: string[] = [];
+      const rx = /(?:^|\r?\n)##\s*(.*?)\s*\r?\n/g;
+      let m: RegExpExecArray | null;
+      while ((m = rx.exec(noteText)) !== null) {
+        const t = (m[1] || '').trim(); if (t) titles.push(t);
+      }
+      console.log('[FHIR][stitch] Parsed H2 sections:', titles.join(' | '));
+    } catch {}
 
     // 2. Iterate through the composition and stitch in the narratives
     if (Array.isArray(compositionPlan.section)) {
@@ -652,19 +666,40 @@ function stitchSectionNarratives(compositionPlan: any, noteText: string): any {
                 const placeholderMatch = String(section.text.div).match(/\{\{\s*(?:##\s*)?(.*?)\s*\}\}/);
                 if (placeholderMatch && placeholderMatch[1]) {
                     const titleToFind = placeholderMatch[1].trim();
-                    const content = noteSections.get(canonicalizeHeader(titleToFind));
-                    if (content) {
-                        // Replace placeholder with actual content, ensuring it's escaped for XHTML
-                        const escapedContent = content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>');
-                        section.text.div = `<div xmlns="http://www.w3.org/1999/xhtml">${escapedContent}</div>`;
+                    const originalDiv = String(section.text.div);
+                    const raw = noteSections.get(titleToFind.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim());
+                    const rendered = renderSectionNarrative(noteText, titleToFind);
+                    try {
+                      const lineCount = raw ? raw.split(/\r?\n/).length : 0;
+                      const charCount = raw ? raw.length : 0;
+                      const firstLines = raw ? raw.split(/\r?\n/).slice(0, 3).join('\n') : '';
+                      const lastLines = raw ? raw.split(/\r?\n/).slice(-3).join('\n') : '';
+                      console.log('[FHIR][stitch] Placeholder found', {
+                        title: titleToFind,
+                        lines: lineCount,
+                        chars: charCount,
+                        placeholder: originalDiv,
+                        firstLines,
+                        lastLines,
+                        hasRendered: !!rendered
+                      });
+                    } catch {}
+                    if (rendered != null) {
+                        section.text.div = rendered;
                         section.text.status = 'additional';
+                        try {
+                          const brCount = (rendered.match(/<br\/>/g) || []).length;
+                          console.log('[FHIR][stitch] Inserted narrative:', { title: titleToFind, brCount, renderedLen: rendered.length });
+                        } catch {}
                     } else {
                         // If no matching section is found, leave a note in the div
                         section.text.div = `<div xmlns="http://www.w3.org/1999/xhtml">Narrative for section '${titleToFind}' not found in source note.</div>`;
                         section.text.status = 'additional';
+                        try { console.warn('[FHIR][stitch] No matching section found for placeholder', { title: titleToFind }); } catch {}
                     }
                 }
             }
+            // leave section fields unchanged besides narrative stitching
         }
     }
 
@@ -681,9 +716,7 @@ function stitchSectionNarratives(compositionPlan: any, noteText: string): any {
     return compositionPlan;
 }
 
-function canonicalizeHeader(header: string): string {
-    return header.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
-}
+// canonicalizeHeader is provided by ./sections
 
 export async function runDocumentWorkflow(stores: Stores, input: { title: string; sketch: string }): Promise<void> {
   const documentId = `doc:${await sha256(input.title + ':' + input.sketch)}`;

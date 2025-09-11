@@ -19,29 +19,34 @@ export const IPS_NOTES: IPSNotes = {
       "date: document timestamp",
       "author[0]: Reference(Practitioner|Organization)",
       "title: short document title",
-      "section[]: use exact section headings; entries reference resources only (no inline content)",
+      "section[]: use exact section titles from the note; set section.text.div to '{{Section Title}}' (placeholder for stitching)",
+      "section.entry[]: References to resources only (no inline narrative in entries)",
     ],
     example: `{
   "resourceType": "Composition",
-  "id": "comp-1",
   "status": "final",
   "type": {
     "coding": [
       { "system": "http://loinc.org", "code": "60591-5", "display": "Patient summary Document" }
     ]
   },
-  "subject": { "reference": "Patient/pat-1" },
-  "encounter": { "reference": "Encounter/enc-1" },
+  "subject": { "reference": "Patient/pat-1", "display": "Concise patient summary (age/sex/context)" },
+  "encounter": { "reference": "Encounter/enc-1", "display": "Visit context (setting/reason)" },
   "date": "2023-09-15T10:30:00Z",
-  "author": [ { "reference": "Practitioner/pract-1" } ],
+  "author": [ { "reference": "Practitioner/pract-1", "display": "Author name, role" } ],
   "title": "Patient Summary",
   "section": [
     {
-      "title": "Active Problems",
-      "code": { "coding": [ { "system": "http://loinc.org", "code": "11450-4", "display": "Problem list - Reported" } ] },
-      "entry": [ { "reference": "Condition/cond-1" } ]
+      "title": "Past Medical History",
+      "text": { "div": "<div>{{Past Medical History}}</div>" },
+      "entry": [
+        { "reference": "Condition/cond-htn-1", "display": "Hypertension — brief instruction to generate Condition" }
+      ]
     },
-    {// etc more esctions here}
+    {
+      "title": "Physical Examination",
+      "text": { "div": "<div>{{Physical Examination}}</div>" }
+    }
   ]
 }`
   },

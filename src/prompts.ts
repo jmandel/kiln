@@ -131,8 +131,9 @@ High-level goals:
      • \`{"reference":"Encounter/<some-id>"}\`
      Include an informative \`display\` for each Reference to guide downstream synthesis:
       • For Patient, summarize salient demographics and context from the note (e.g., age, sex, any key identifiers or risk factors mentioned).
-      • For Encounter, summarize the clinical setting and reason/context (e.g., inpatient vs outpatient, date/time if present, chief complaint/reason, service type).
+     • For Encounter, summarize the clinical setting and reason/context (e.g., inpatient vs outpatient, date/time if present, chief complaint/reason, service type).
      Use these same references consistently throughout related resources (e.g., Observation.subject, ServiceRequest.subject), so the document refers to a single patient and encounter.
+   - Set \`Composition.author\` (array) with a Practitioner Reference, e.g., \`{"reference":"Practitioner/<some-id>"}\`. Include a concise \`display\` (name and role/title) derived from the note if available.
 2) For each entity mentioned in the note, add a placeholder \`Reference\` in the appropriate section's \`entry\` array.
    - Diagnoses/conditions → \`Condition\`.
    - Medications (orders) → \`MedicationRequest\`; currently taking → \`MedicationStatement\` (or Administration if explicitly given during encounter).
@@ -156,6 +157,9 @@ High-level goals:
      • \`display\`: A concise instruction describing what to generate, including grouping relationships and key facets.
        For example, for a lipid panel: the DiagnosticReport display should list the intended analyte Observation IDs and names (LDL, HDL, TG, Total Cholesterol). Each analyte Observation display should name its analyte, intended units if present, and refer back to the panel/report ID.
 7) Section narratives: For each section, set \`section.text.div\` to the template variable \`{{Section Title}}\` matching the source note header.
+8) Top-level sections only (strict): Use ONLY the provided Required Section Titles (top-level H2 headers) for \`section[]\`. Do NOT create additional sections for subsections (e.g., headings like \`### Supportive Care\` under Plan). Keep all subsection content under the top-level section (e.g., "Plan").
+9) Title and placeholder hygiene (strict): For each section with title S, set exactly \`"text": { "div": "<div>{{S}}</div>" }\`. Do not include Markdown markers (e.g., \`#\`) in titles or placeholders.
+10) Conformance check before returning JSON: Ensure \`section.length\` equals the number of Required Section Titles, titles are in the same order and match exactly, and every \`text.div\` equals \`"<div>{{<title>}}</div>"\`.
 
 Clinical Note:
 <note>

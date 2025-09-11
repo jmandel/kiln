@@ -4,7 +4,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --hot src/server.ts"
+    "dev": "bun --hot src/server.ts",
+    "setup": "bun run server/scripts/setup.ts",
+    "build:static": "bun run scripts/build-static.ts",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest"

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Kiln is a sophisticated, browser-based framework for orchestrating multi-step AI-driven workflows. It excels at complex generative tasks, such as transforming a simple patient sketch (e.g., "52F with chest pain") into a detailed clinical narrative and then converting that narrative into a standards-compliant FHIR document bundle. The engine decomposes workflows into granular, observable steps, ensuring transparency, debuggability, and resilience.
+Kiln is a browser-based framework for orchestrating multi-step AI-driven workflows. It transforms patient sketches (e.g., "52F with chest pain") into clinical narratives and FHIR document bundles. The engine decomposes workflows into observable steps for debugging and resumption.
 
 Key features include:
 - **Step-by-Step Execution**: Workflows are broken into atomic steps (e.g., planning, drafting, validation) that can be cached, replayed, or resumed.
@@ -12,13 +12,13 @@ Key features include:
 - **Persistence**: All state (steps, artifacts, links) is stored in the browser's IndexedDB (with LocalStorage fallback) for durability across sessions.
 - **Extensibility**: Easily define new workflows by composing phases and tasks in TypeScript.
 
-This project demonstrates a full pipeline for clinical documentation: from narrative synthesis to structured FHIR export, making it ideal for healthcare AI applications.
+The project implements a pipeline for clinical documentation: from narrative synthesis to structured FHIR export.
 
 ## How Generation Works
 
-Kiln's workflow for generating clinical narratives and FHIR documents follows a structured, iterative pipeline. The approach emphasizes **granular decomposition** (breaking tasks into small, cacheable steps), **iterative refinement** (draft → critique → approve/rewrite loops), and **standards compliance** (FHIR validation with terminology resolution). This ensures high-quality outputs while allowing precise debugging and resumption.
+The workflow for generating clinical narratives and FHIR documents follows a structured pipeline with **granular decomposition** (breaking tasks into small, cacheable steps), **iterative refinement** (draft → critique → approve/rewrite loops), and **standards compliance** (FHIR validation with terminology resolution).
 
-The current workflow (`buildDocumentWorkflow` in `src/workflows.ts`) consists of six main phases, executed sequentially. Each phase uses the LLM (via `ctx.callLLM()`) for creative and analytical tasks, with built-in caching to avoid re-execution of unchanged steps. The pipeline is designed to be realistic and evidence-based, drawing from clinical documentation best practices.
+The current workflow (`buildDocumentWorkflow` in `src/workflows.ts`) consists of six main phases, executed sequentially. Each phase uses the LLM (via `ctx.callLLM()`) for tasks, with built-in caching to avoid re-execution of unchanged steps.
 
 ### 1. Planning Phase
    - **Goal**: Create a high-level structure for the narrative.
@@ -83,11 +83,9 @@ The current workflow (`buildDocumentWorkflow` in `src/workflows.ts`) consists of
 - **LLM-Driven**: All creative and analytical tasks use LLM calls, with prompts optimized for the task (e.g., structured JSON for plans, free-text for narratives).
 - **Caching & Resumption**: Steps are cached by input hash (e.g., prompt SHA-256). Re-runs skip completed steps, resuming from failures.
 - **Quality Gates**: Thresholds (e.g., score ≥0.75) trigger pauses for human review, balancing automation with safety.
-- **Traceability**: Every step produces artifacts and links, enabling full data lineage (e.g., which LLM call generated a FHIR resource).
+- **Traceability**: Every step produces artifacts and links, enabling data lineage (e.g., which LLM call generated a FHIR resource).
 - **Standards Integration**: FHIR generation includes UCUM units, canonical coding (SNOMED/LOINC/RxNorm), and validation against R4 profiles.
 - **Error Resilience**: Failures are isolated; the pipeline continues where possible, with detailed traces.
-
-This phased, iterative approach produces high-fidelity outputs while maintaining clinical accuracy and allowing human oversight.
 
 ## Architecture
 
