@@ -116,7 +116,7 @@ Formatting rules (important):
 Output ONLY the final text.`,
 
   // New, parallelized FHIR Generation Prompts
-  fhir_composition_plan: ({ note_text, section_titles, subject_ref, encounter_ref }: { note_text: string, section_titles?: string[], subject_ref?: string, encounter_ref?: string }) => `You are an expert FHIR document architect. Given a clinical note, create a FHIR Composition resource that outlines the necessary sections and resources.
+  fhir_composition_plan: ({ note_text, section_titles, subject_ref, encounter_ref, ips_notes, ips_example }: { note_text: string, section_titles?: string[], subject_ref?: string, encounter_ref?: string, ips_notes?: string[], ips_example?: string }) => `You are an expert FHIR document architect. Given a clinical note, create a FHIR Composition resource that outlines the necessary sections and resources.
 
 High-level goals:
 - Represent results, orders, and performed actions with the correct resource types.
@@ -170,6 +170,10 @@ ${section_titles && section_titles.length ? `
 Required Section Titles (use EXACTLY these, in this order):
 ${section_titles.map(t => `- ${t}`).join('\n')}
 ` : ''}
+
+${(ips_notes && ips_notes.length) ? `\nIPS Composition Guidance (shape & constraints):\n${ips_notes.map((n: string) => `- ${n}`).join('\n')}\n` : ''}
+
+${ips_example ? `Example Composition shell (2-space pretty JSON):\n${ips_example}\n` : ''}
 
 Return ONLY the FHIR Composition resource as a single JSON object. Do not include any other text or explanations.`,
 

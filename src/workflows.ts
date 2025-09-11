@@ -8,6 +8,7 @@ import { validateResource } from './validator';
 import { analyzeCodings, finalizeUnresolved } from './codingAnalysis';
 import { generateAndRefineResources } from './services/fhirGeneration';
 import { emitJsonArtifact } from './services/artifacts';
+import { IPS_NOTES } from './ips-notes';
 
 // Helpers
 
@@ -374,8 +375,11 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
         }
       }
       try { console.log('[FHIR][plan] Section titles detected:', sectionTitles.join(' | ')); } catch {}
-      const compositionPrompt = buildPrompt('fhir_composition_plan', { note_text, section_titles: sectionTitles });
-      const { result: planResult, meta: planMeta } = await runLLMTask<any>(ctx, 'fhir_composition_plan', 'fhir_composition_plan', { note_text, section_titles: sectionTitles }, { expect: 'json', tags: { phase: 'fhir' } });
+      const ipsComp = IPS_NOTES?.Composition;
+      const ips_notes = Array.isArray(ipsComp?.requirements) ? ipsComp?.requirements : undefined;
+      const ips_example = typeof ipsComp?.example === 'string' ? ipsComp.example : undefined;
+      const compositionPrompt = buildPrompt('fhir_composition_plan', { note_text, section_titles: sectionTitles, ips_notes, ips_example });
+      const { result: planResult, meta: planMeta } = await runLLMTask<any>(ctx, 'fhir_composition_plan', 'fhir_composition_plan', { note_text, section_titles: sectionTitles, ips_notes, ips_example }, { expect: 'json', tags: { phase: 'fhir' } });
       let compositionPlan = stitchSectionNarratives(planResult, note_text);
       await emitJsonArtifact(ctx, { kind: 'FhirCompositionPlan', title: 'FHIR Composition Plan', content: compositionPlan, tags: { phase: 'fhir', prompt: planMeta.prompt, raw: planMeta.raw }, links: [ { dir: 'to', role: 'produced', ref: { type: 'step', id: planMeta.stepKey } } ] });
 
