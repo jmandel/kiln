@@ -340,6 +340,8 @@
           } catch(ex){ alert('Unable to open JSON: ' + ex.message); }
         };
 
+        // moved onExampleChange into the mount effect so it can access state via refs
+
         fileEl.addEventListener("change", onFile);
         pasteBtn.addEventListener("click", onPaste);
         exampleSel.addEventListener("change", onExampleChange);
@@ -379,12 +381,26 @@
               const data = await ix.json();
               const arr = Array.isArray(data.examples) ? data.examples : [];
               setExamples(arr);
+              examplesRef.current = arr;
               if (sel) {
                 if (arr.length) {
                   sel.innerHTML = '<option value="">Examples…</option>' + arr.map((it, i)=>`<option value="${i}">${it.name}</option>`).join('');
                   sel.style.display = 'inline-block';
-                  // Auto-load first example
-                  setBundle(arr[0]?.content || null);
+                  // Auto-load first example and select it in the dropdown
+                  const first = arr[0];
+                  if (first?.content) {
+                    setBundle(first.content);
+                    try { sel.value = '0'; } catch {}
+                  } else if (first?.file || first?.url) {
+                    try {
+                      const u = first.file || first.url;
+                      const res2 = await fetch(u, {cache:'no-store'});
+                      if (res2.ok) { const j2 = await res2.json(); setBundle(j2); }
+                      try { sel.value = '0'; } catch {}
+                    } catch {}
+                  } else {
+                    setBundle(null);
+                  }
                   setErr("");
                   return;
                 } else {
@@ -1129,13 +1145,22 @@
       );
     }
 
-        const onExampleChange = (e)=>{
+        const onExampleChange = async (e)=>{
           const val = e.target.value;
           if (val === "" || val == null) return;
           const idx = Number(val);
           if (isNaN(idx) || idx < 0) return;
           const item = examplesRef.current[idx];
-          if (item?.content) { setBundle(item.content); setErr(""); }
+          try{
+            if (item?.content) { setBundle(item.content); setErr(""); return; }
+            const url = item?.file || item?.url;
+            if (url){
+              const res = await fetch(url, {cache:'no-store'});
+              if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+              const json = await res.json();
+              setBundle(json); setErr(""); return;
+            }
+          } catch(ex){ setErr('Failed to load example: ' + ex.message); }
         };
     // ---------- helpers ----------
     function groupBy(items, keyFn){
