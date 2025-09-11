@@ -9,7 +9,6 @@ import { runDocumentWorkflow, resume, resumeDocument } from '../workflows';
 import { sha256 } from '../helpers';
 import { useDashboardState } from '../hooks/useDashboardState';
 import { JobsList } from './ui/JobsList';
-import CodingResolverTester from './CodingResolverTester';
 
 function mapDocStatus(s: Document['status']): 'queued' | 'running' | 'done' | 'error' {
   if (s === 'running') return 'running';
@@ -140,7 +139,6 @@ export default function DocGenApp(): React.ReactElement {
   const [selected, setSelected] = useState<ID | null>(null);
   const [input, setInput] = useState({ title: '', sketch: '' });
   const [configOpen, setConfigOpen] = useState(false);
-  const [showTester, setShowTester] = useState(false);
   const [viewArtifactId, setViewArtifactId] = useState<ID | null>(null);
   const [failedStep, setFailedStep] = useState<Step | null>(null);
   const urlCache = React.useRef<Map<string,string>>(new Map());
@@ -443,13 +441,7 @@ export default function DocGenApp(): React.ReactElement {
                     <path d="M12 1v6m0 6v6m10.392-6.5l-5.196 3m-10.392 0l-5.196-3m15.588 0l-5.196-3m-10.392 0l5.196-3"/>
                   </svg>
                 </button>
-                <button
-                  className="ml-2 px-3 py-2 text-sm border rounded hover:bg-gray-50"
-                  onClick={() => setShowTester(true)}
-                  title="Open Coding Resolver Tester"
-                >
-                  🧪 Coding Tester
-                </button>
+                
               </div>
             </div>
             
@@ -493,9 +485,6 @@ export default function DocGenApp(): React.ReactElement {
           onSave={saveConfig}
           onClose={() => setConfigOpen(false)}
         />
-      )}
-      {showTester && (
-        <CodingResolverTester onClose={() => setShowTester(false)} />
       )}
       
       {viewArtifactId && stores && selected && (

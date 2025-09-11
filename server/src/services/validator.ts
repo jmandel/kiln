@@ -43,19 +43,17 @@ export class ValidatorService {
 
   private async _doStart() {
     console.log(`Starting FHIR validator server on port ${this.serverPort}...`);
-    
-    // Start validator in server mode
-    this.validatorProcess = spawn("java", [
+    // Target the documented CLI for this validator build: `-server <port> -version 4.0 -tx n/a`
+    const args = [
       `-Xmx${this.javaHeap}`,
-      "-jar",
+      '-jar',
       this.validatorJar,
-      "-server",
-      String(this.serverPort),
-      "-version", "4.0",
-      "-tx", "n/a" // No terminology server for now
-    ], {
-      stdio: ["pipe", "pipe", "pipe"]
-    });
+      '-server', String(this.serverPort),
+      '-version', '4.0',
+      '-tx', 'n/a'
+    ];
+    try { console.log('[Validator]', 'spawn', 'java', args.join(' ')); } catch {}
+    this.validatorProcess = spawn('java', args, { stdio: ['pipe','pipe','pipe'] });
 
     // Wait for validator to be ready
     return new Promise<void>((resolve, reject) => {
@@ -69,66 +67,24 @@ export class ValidatorService {
           resolve();
         }
       };
-
-      const timeoutMs = 120_000; // allow up to 2 minutes
-      const timeout = setTimeout(() => {
-        if (!this.isReady) {
-          reject(new Error("Validator failed to start within 120 seconds"));
-        }
-      }, timeoutMs);
-
-      // Observe stdout/stderr for typical ready messages
-      this.validatorProcess!.stdout?.on("data", (data: Buffer) => {
-        const text = data.toString();
-        console.log("[Validator]", text.trim());
-        if (
-          text.includes(`Listening on port ${this.serverPort}`) ||
-          text.toLowerCase().includes("server started") ||
-          text.toLowerCase().includes("validator server ready")
-        ) {
-          markReady();
-        }
+      const timeoutMs = 120_000;
+      const timeout = setTimeout(() => { if (!this.isReady) reject(new Error('Validator failed to start within 120 seconds')); }, timeoutMs);
+      this.validatorProcess!.stdout?.on('data', (b: Buffer) => {
+        const t = b.toString();
+        console.log('[Validator]', t.trim());
+        if (t.includes(`Listening on port ${this.serverPort}`) || t.toLowerCase().includes('server started') || t.toLowerCase().includes('validator server ready')) markReady();
       });
-
-      this.validatorProcess!.stderr?.on("data", (data: Buffer) => {
-        const text = data.toString();
-        console.error("[Validator Error]", text.trim());
-        if (text.includes(`Listening on port ${this.serverPort}`)) {
-          markReady();
-        }
+      this.validatorProcess!.stderr?.on('data', (b: Buffer) => {
+        const t = b.toString();
+        console.error('[Validator Error]', t.trim());
+        if (t.includes(`Listening on port ${this.serverPort}`)) markReady();
       });
-
-      // Fallback: actively poll the HTTP endpoint until any response is received
       const poller = setInterval(async () => {
         if (this.isReady) return;
-        try {
-          const res = await fetch(`http://localhost:${this.serverPort}/validateResource`, { method: "GET" });
-          if (res.ok || res.status >= 400) {
-            // Any HTTP response implies the server is listening
-            markReady();
-          }
-        } catch {
-          // ignore until the port opens
-        }
+        try { const res = await fetch(`http://localhost:${this.serverPort}/validateResource`, { method: 'GET' }); if (res.ok || res.status >= 400) markReady(); } catch {}
       }, 500);
-
-      this.validatorProcess!.on("error", (err: Error) => {
-        clearTimeout(timeout);
-        clearInterval(poller);
-        console.error("Failed to start validator:", err);
-        reject(err);
-      });
-
-      this.validatorProcess!.on("exit", (code: number) => {
-        clearTimeout(timeout);
-        clearInterval(poller);
-        console.log(`Validator process exited with code ${code}`);
-        this.isReady = false;
-        this.validatorProcess = null;
-        if (!resolved) {
-          reject(new Error(`Validator exited with code ${code}`));
-        }
-      });
+      this.validatorProcess!.on('error', (err: Error) => { clearTimeout(timeout); clearInterval(poller); console.error('Failed to start validator:', err); reject(err); });
+      this.validatorProcess!.on('exit', (code: number) => { clearTimeout(timeout); clearInterval(poller); console.log(`Validator process exited with code ${code}`); this.isReady = false; this.validatorProcess = null; if (!resolved) reject(new Error(`Validator exited with code ${code}`)); });
     });
   }
 
