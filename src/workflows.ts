@@ -772,6 +772,18 @@ export async function resumeDocument(stores: Stores, documentId: ID): Promise<vo
 
   if (wfIds.length) {
     // Clear prior artifacts/links for a clean replay output (keep steps for cache/replay)
+    try {
+      const clear = (function(){
+        try {
+          const v = localStorage.getItem('CLEAR_STEPS_ON_RESUME');
+          return v != null && !/^0|false|off$/i.test(v);
+        } catch { return false; }
+      })();
+      if (clear) {
+        await stores.steps.deleteByDocument(documentId);
+        console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'resume.clear_steps', documentId }));
+      }
+    } catch {}
     await stores.artifacts.deleteByDocument(documentId);
     await stores.links.deleteByDocument(documentId);
     // Proactively emit clear events to ensure UI refresh even if store backend doesn't

@@ -292,8 +292,40 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
         }
         continue;
       }
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content ?? "";
+      let data: any;
+      try {
+        data = await response.json();
+      } catch (e: any) {
+        lastRaw = String(e?.message || 'invalid JSON response');
+        lastStatus = response.status;
+        dbg('llm.fetch.end', { task, attempt, ok: false, httpStatus: lastStatus, parseError: lastRaw, durationMs: Date.now() - a0 });
+        if (attempt >= retries) {
+          throw new LLMCallError(`LLM response JSON parse failed (after ${retries} attempts)`, { rawContent: await response.text().catch(()=>''), status: lastStatus });
+        }
+        continue;
+      }
+      // Treat explicit API error payloads as retryable failures even if HTTP 200
+      if (data && typeof data === 'object' && data.error) {
+        lastRaw = (function(){ try { return JSON.stringify(data); } catch { return String(data); }})();
+        lastStatus = response.status;
+        dbg('llm.fetch.end', { task, attempt, ok: false, httpStatus: lastStatus, apiError: true, durationMs: Date.now() - a0 });
+        if (attempt >= retries) {
+          throw new LLMCallError(`LLM API error in response (after ${retries} attempts)`, { rawContent: lastRaw, status: lastStatus });
+        }
+        continue;
+      }
+      // Safely extract content; if missing, treat as a retryable failure
+      const contentNode = Array.isArray(data?.choices) && data.choices.length > 0 ? data.choices[0]?.message?.content : undefined;
+      if (typeof contentNode !== 'string') {
+        lastRaw = (function(){ try { return JSON.stringify(data); } catch { return String(data); }})();
+        lastStatus = response.status;
+        dbg('llm.fetch.end', { task, attempt, ok: false, httpStatus: lastStatus, badShape: true, durationMs: Date.now() - a0 });
+        if (attempt >= retries) {
+          throw new LLMCallError(`LLM returned unexpected response shape (after ${retries} attempts)`, { rawContent: lastRaw, status: lastStatus });
+        }
+        continue;
+      }
+      const content = contentNode ?? "";
       lastRaw = content;
       const tokensUsed = data.usage?.total_tokens ?? 0;
       dbg('llm.fetch.end', { task, attempt, ok: true, httpStatus: lastStatus, durationMs: Date.now() - a0, tokensUsed });

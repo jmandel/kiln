@@ -89,14 +89,14 @@ function ConfigModal({ config, onSave, onClose }: {
             <p className="text-xs text-gray-500 mt-1">Used for Bundle.entry.fullUrl. Relative references like "Observation/abc" will resolve to <code>FHIR Base URL</code>/Observation/abc.</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">FHIR Validator URL</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Validation Services URL</label>
             <input 
               className="w-full border border-gray-300 rounded px-3 py-2"
-              value={cfg.fhirValidatorURL}
-              onChange={e => setCfg({...cfg, fhirValidatorURL: e.target.value})}
+              value={cfg.validationServicesURL}
+              onChange={e => setCfg({...cfg, validationServicesURL: e.target.value})}
               placeholder="Leave blank for same-origin (e.g., http://localhost:3500)"
             />
-            <p className="text-xs text-gray-500 mt-1">Base used for validation. Leave blank to use the current server origin at <code>/validate</code>.</p>
+            <p className="text-xs text-gray-500 mt-1">Base used for both <code>/validate</code> and <code>/tx</code> endpoints.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">FHIR Generation Concurrency</label>
@@ -148,7 +148,7 @@ export default function DocGenApp(): React.ReactElement {
     model: localStorage.getItem('TASK_DEFAULT_MODEL') || 'openai/gpt-oss-120b:nitro',
     temperature: localStorage.getItem('TASK_DEFAULT_TEMPERATURE') || '0.2',
     fhirBaseURL: localStorage.getItem('FHIR_BASE_URL') || 'https://kiln.fhir.me',
-    fhirValidatorURL: localStorage.getItem('FHIR_VALIDATOR_BASE_URL') || localStorage.getItem('VALIDATOR_URL') || '',
+    validationServicesURL: localStorage.getItem('VALIDATION_SERVICES_URL') || '',
     fhirGenConcurrency: localStorage.getItem('FHIR_GEN_CONCURRENCY') || '1'
   });
 
@@ -302,7 +302,12 @@ export default function DocGenApp(): React.ReactElement {
     localStorage.setItem('TASK_DEFAULT_MODEL', newCfg.model);
     localStorage.setItem('TASK_DEFAULT_TEMPERATURE', newCfg.temperature);
     localStorage.setItem('FHIR_BASE_URL', newCfg.fhirBaseURL);
-    localStorage.setItem('FHIR_VALIDATOR_BASE_URL', newCfg.fhirValidatorURL);
+    // Single canonical key used by both /validate and /tx
+    if (newCfg.validationServicesURL) {
+      localStorage.setItem('VALIDATION_SERVICES_URL', newCfg.validationServicesURL);
+    } else {
+      localStorage.removeItem('VALIDATION_SERVICES_URL');
+    }
     localStorage.setItem('FHIR_GEN_CONCURRENCY', String(newCfg.fhirGenConcurrency || '1'));
     setCfg(newCfg);
   };

@@ -86,6 +86,19 @@
     .error{color:#ffd0d0}
     .search{display:flex;gap:.5rem;align-items:center;margin:.5rem 0 1rem}
     .stickyTop{position:sticky;top:var(--header-h);z-index:30;background:var(--bg);padding:.25rem 0}
+    /* Vitals */
+    .vitalsCard h3{margin:.1rem 0 .4rem}
+    .vtable{width:100%;border-collapse:collapse}
+    .vtable th{font-weight:600;color:var(--muted);text-align:left;font-size:.9em;padding:.25rem .25rem}
+    .vtable td{padding:.25rem .25rem;vertical-align:middle;border-top:1px solid var(--border)}
+    .vtable tr:first-child td{border-top:0}
+    .bpCell{display:flex;align-items:baseline;gap:.35rem}
+    .bpStack{display:flex;flex-direction:column;line-height:1.05}
+    .bpStack .top{font-weight:600}
+    .bpStack .bottom{opacity:.9}
+    .unit{color:var(--muted);font-size:.85em}
+    .interp{display:inline-flex;align-items:center;gap:.25rem;margin-left:.25rem}
+    .interp .chip{padding:.05rem .35rem}
     .reflist{margin-top:.25rem}
     .reftable{display:grid;grid-template-columns:140px 1fr;column-gap:1rem;row-gap:.2rem;align-items:baseline}
     .refkey{color:var(--muted)}
@@ -124,7 +137,7 @@
       <input id="urlInput" type="url" placeholder="Load from URL (https://…/bundle.json)" />
       <button id="loadUrlBtn" class="button">Load URL</button>
       <input id="search" type="text" placeholder="Search resources…" />
-      <button id="printModeBtn" class="button" title="Toggle print‑friendly mode">Print Mode</button>
+      <button id="openBundleJsonBtn" class="button" title="Open current Bundle JSON in a new tab">Open Bundle JSON</button>
     </div>
     <div class="grow"></div>
     <div class="hint">Tip: default loads <code>examples/pirate-angina.json</code></div>
@@ -157,6 +170,12 @@
       if (cc.text) return cc.text;
       const c = (cc.coding && cc.coding[0]) || {};
       return c.display || [c.system, c.code].filter(Boolean).join(" | ");
+    };
+    const fmtRange = (start, end) => {
+      const s = fmtDate(start);
+      const e = fmtDate(end);
+      if (s && e) return `${s} → ${e}`;
+      return s || e || "";
     };
     const qtyDisplay = (q) => {
       if (!q) return "";
@@ -255,10 +274,12 @@
     // ---------- App ----------
     function App(){
       const [bundle, setBundle] = useState(null);
+      const bundleRef = useRef(null);
       const [err, setErr] = useState("");
       const [filter, setFilter] = useState("");
-      const [printMode, setPrintMode] = useState(false);
+      // Print mode toggle removed; printing still controlled via @media print CSS
       const [examples, setExamples] = useState([]);
+      const examplesRef = useRef([]);
       const [showPaste, setShowPaste] = useState(false);
       const [pasteText, setPasteText] = useState("");
 
@@ -281,7 +302,7 @@
         const urlInput = document.getElementById("urlInput");
         const loadUrlBtn = document.getElementById("loadUrlBtn");
         const searchEl = document.getElementById("search");
-        const printBtn = document.getElementById("printModeBtn");
+        const jsonBtn = document.getElementById("openBundleJsonBtn");
 
         const onFile = (e)=>{
           const f = e.target.files?.[0];
@@ -307,14 +328,24 @@
           }
         };
         const onSearch = (e)=> setFilter(e.target.value.toLowerCase());
-        const onPrintMode = ()=> setPrintMode(p=>!p);
+        const onOpenBundleJson = ()=>{
+          const b = bundleRef.current;
+          if (!b){ alert('Load a Bundle first.'); return; }
+          try{
+            const txt = JSON.stringify(b, null, 2);
+            const blob = new Blob([txt], {type:'application/json'});
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank', 'noopener');
+            setTimeout(()=>URL.revokeObjectURL(url), 60000);
+          } catch(ex){ alert('Unable to open JSON: ' + ex.message); }
+        };
 
         fileEl.addEventListener("change", onFile);
         pasteBtn.addEventListener("click", onPaste);
         exampleSel.addEventListener("change", onExampleChange);
         loadUrlBtn.addEventListener("click", onLoadUrl);
         searchEl.addEventListener("input", onSearch);
-        printBtn.addEventListener("click", onPrintMode);
+        jsonBtn.addEventListener("click", onOpenBundleJson);
 
         return ()=> {
           fileEl.removeEventListener("change", onFile);
@@ -322,9 +353,21 @@
           exampleSel.removeEventListener("change", onExampleChange);
           loadUrlBtn.removeEventListener("click", onLoadUrl);
           searchEl.removeEventListener("input", onSearch);
-          printBtn.removeEventListener("click", onPrintMode);
+          jsonBtn.removeEventListener("click", onOpenBundleJson);
         };
       },[]);
+
+      // Keep bundle ref up-to-date for handlers outside React tree
+      useEffect(()=>{ bundleRef.current = bundle; }, [bundle]);
+
+      // Enable/disable JSON button based on bundle presence
+      useEffect(()=>{
+        const btn = document.getElementById('openBundleJsonBtn');
+        if (btn) btn.disabled = !bundle;
+      }, [bundle]);
+
+      // Keep ref in sync so change handler always sees latest examples
+      useEffect(()=>{ examplesRef.current = examples; }, [examples]);
 
       // Load examples index (if present) and auto-load first example; else fallback demo
       useEffect(()=>{
@@ -448,6 +491,9 @@
                   />
                 )}
 
+                {/* Vitals Panel */}
+                <VitalsPanel resources={index?.all || []} />
+
                 <div className="stickyTop">
                   <div className="search">
                     <span className="muted">Showing {filtered.length} of {index.all.length} resources</span>
@@ -460,7 +506,6 @@
                     key={resourceKey(r)}
                     resource={r}
                     index={index}
-                    printMode={printMode}
                   />
                 ))}
               </>
@@ -588,7 +633,7 @@
       return <div className="reftable">{rows}</div>;
     }
 
-    function ResourceCard({resource, index, printMode}){
+    function ResourceCard({resource, index}){
       const [showJSON, setShowJSON] = useState(false);
       const refs = useMemo(()=> collectReferences(resource), [resource]);
 
@@ -621,7 +666,7 @@
             ) : null}
           </div>
 
-          <div className="jsonview" style={{display: showJSON ? "block" : (printMode ? "block" : "none")}}>
+          <div className="jsonview" style={{display: showJSON ? "block" : "none"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".5rem"}}>
               <span className="muted">Pretty‑printed JSON</span>
               <button className="btnlink" onClick={()=>{
@@ -716,16 +761,20 @@
 
     function EncounterSummary({r}){
       const title = ccDisplay(r.type?.[0]) || ccDisplay(r.class) || 'Encounter';
-      const when = [fmtDate(r.period?.start), fmtDate(r.period?.end)].filter(Boolean).join(' → ');
+      const when = fmtRange(r.period?.start, r.period?.end);
+      const titleUsedType = !!ccDisplay(r.type?.[0]);
+      const classDisp = ccDisplay(r.class);
+      const typeDisp = ccDisplay(r.type?.[0]);
+      const metaParts = [r.status, titleUsedType ? classDisp : typeDisp].filter(Boolean);
+      const meta = metaParts.join(' • ');
       return (
         <>
           <div className="bigRow">
             <div className="bigLabel">{title}</div>
             {when && <div className="bigValue">{when}</div>}
           </div>
+          {meta && <div className="muted" style={{marginBottom:'.25rem'}}>{meta}</div>}
           <div className="kvlist">
-            <KV k="status" v={r.status} />
-            <KV k="class" v={ccDisplay(r.class)} />
             {r.serviceProvider?.reference && <KV k="provider" v={r.serviceProvider.reference} />}
           </div>
         </>
@@ -764,7 +813,7 @@
           </div>
           <div className="kvlist">
             <KV k="status" v={r.status} />
-            <KV k="effective" v={fmtDate(r.effectiveDateTime)} />
+            <KV k="effective" v={fmtDate(r.effectiveDateTime || r.effectiveInstant || r.effectivePeriod?.start)} />
             {r.interpretation?.[0] && <KV k="interpretation" v={r.interpretation[0].coding?.[0]?.display || r.interpretation[0].coding?.[0]?.code} />}
             {r.category?.[0] && <KV k="category" v={r.category[0].coding?.[0]?.display} />}
           </div>
@@ -788,20 +837,202 @@
       );
     }
 
+    // ---------- Vitals Panel ----------
+    function VitalsPanel({resources}){
+      const rows = useMemo(()=>collectVitals(resources), [resources]);
+      if (!rows.length) return null;
+      return (
+        <div className="card vitalsCard">
+          <h3>Vitals</h3>
+          <table className="vtable">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>BP</th>
+                <th>HR</th>
+                <th>Temp</th>
+                <th>RR</th>
+                <th>SpO₂</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i)=> (
+                <tr key={i}>
+                  <td>{fmtDate(row.when)}</td>
+                  <td>
+                    {row.bp ? (
+                      <div className="bpCell">
+                        <div className="bpStack">
+                          <div className="top">{row.bp.sys ?? '—'}</div>
+                          <div className="bottom">{row.bp.dia ?? '—'}</div>
+                        </div>
+                        <div className="unit">{row.bp.unit || ''}</div>
+                        {row.bp.interp && <span className="interp">{interpretationBadge(row.bp.interp)}</span>}
+                      </div>
+                    ) : <span className="muted">—</span>}
+                  </td>
+                  <td>
+                    {row.hr ? (
+                      <>
+                        {row.hr.val}{row.hr.unit ? ` ${row.hr.unit}` : ''}
+                        {row.hr.interp && <span className="interp">{interpretationBadge(row.hr.interp)}</span>}
+                      </>
+                    ) : <span className="muted">—</span>}
+                  </td>
+                  <td>
+                    {row.temp ? (
+                      <>
+                        {row.temp.val}{row.temp.unit ? ` ${row.temp.unit}` : ''}
+                        {row.temp.interp && <span className="interp">{interpretationBadge(row.temp.interp)}</span>}
+                      </>
+                    ) : <span className="muted">—</span>}
+                  </td>
+                  <td>
+                    {row.rr ? (
+                      <>
+                        {row.rr.val}{row.rr.unit ? ` ${row.rr.unit}` : ''}
+                        {row.rr.interp && <span className="interp">{interpretationBadge(row.rr.interp)}</span>}
+                      </>
+                    ) : <span className="muted">—</span>}
+                  </td>
+                  <td>
+                    {row.spo2 ? (
+                      <>
+                        {row.spo2.val}{row.spo2.unit ? ` ${row.spo2.unit}` : ''}
+                        {row.spo2.interp && <span className="interp">{interpretationBadge(row.spo2.interp)}</span>}
+                      </>
+                    ) : <span className="muted">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
+    function interpretationBadge(interp){
+      const cod = interp?.coding?.[0] || {};
+      const code = (cod.code || '').toUpperCase();
+      const disp = (cod.display || code || '').toString();
+      const t = disp || code || '';
+      const s = t.toLowerCase();
+      const isNormal = code === 'N' || s.includes('normal');
+      const isHigh = code === 'H' || code === 'HH' || s.includes('high');
+      const isLow = code === 'L' || code === 'LL' || s.includes('low');
+      const isAbn = s.includes('abn') || s.includes('abnormal');
+      const color = isNormal ? 'var(--accent)' : ((isHigh || isLow || isAbn) ? 'var(--warn)' : 'var(--muted)');
+      return <span className="chip" style={{color}}>{disp}</span>;
+    }
+
+    function collectVitals(resources){
+      if (!Array.isArray(resources)) return [];
+      const VITAL_CODES = new Set([
+        // Heart rate, Temp, Respiratory rate, SpO2
+        '8867-4','8310-5','9279-1','59408-5','2708-6',
+        // Blood pressure panel and components
+        '85354-9','55284-4','8480-6','8462-4'
+      ]);
+      const isVitalCategory = (o)=>{
+        const cats = (o.category || []).flatMap(c=> (c.coding || []).map(cd => (cd.code || cd.display || '').toLowerCase()));
+        return cats.includes('vital-signs') || cats.includes('vital signs');
+      };
+      const obs = resources.filter(r => r.resourceType === 'Observation' && (
+        isVitalCategory(r) || (r.code?.coding || []).some(c => VITAL_CODES.has(c.code))
+      ));
+
+      const getWhen = (o)=> o.effectiveDateTime || o.effectiveInstant || o.effectivePeriod?.start || o.issued || o.meta?.lastUpdated || '';
+      const rowsByWhen = new Map();
+      const ensureRow = (k, when)=>{
+        if (!rowsByWhen.has(k)) rowsByWhen.set(k, { when, bp:null, hr:null, temp:null, rr:null, spo2:null });
+        return rowsByWhen.get(k);
+      };
+      const getCodes = (o)=> (o.code?.coding || []).map(c=>c.code);
+      const findComp = (o, code)=> (o.component || []).find(c => (c.code?.coding || []).some(cd => cd.code === code));
+
+      for (const o of obs){
+        const when = getWhen(o);
+        const key = when || (o.id ? `id:${o.id}` : Math.random().toString(36).slice(2));
+        const row = ensureRow(key, when);
+        const codes = new Set(getCodes(o));
+        const interp = o.interpretation?.[0] || null;
+
+        // Blood pressure panel
+        if (codes.has('85354-9') || codes.has('55284-4')){
+          const sys = findComp(o, '8480-6')?.valueQuantity;
+          const dia = findComp(o, '8462-4')?.valueQuantity;
+          if (sys || dia){
+            row.bp = {
+              sys: sys?.value,
+              dia: dia?.value,
+              unit: (sys?.unit || sys?.code || dia?.unit || dia?.code || 'mmHg'),
+              interp
+            };
+          }
+          continue;
+        }
+        // Individual BP components
+        if (codes.has('8480-6') || codes.has('8462-4')){
+          const q = o.valueQuantity;
+          row.bp = row.bp || { sys:null, dia:null, unit:(q?.unit || q?.code || 'mmHg'), interp };
+          if (codes.has('8480-6')) row.bp.sys = q?.value;
+          if (codes.has('8462-4')) row.bp.dia = q?.value;
+          continue;
+        }
+        // Heart rate
+        if (codes.has('8867-4')){
+          const q = o.valueQuantity;
+          if (q) row.hr = { val:q.value, unit:(q.unit || q.code || ''), interp };
+          continue;
+        }
+        // Temperature
+        if (codes.has('8310-5')){
+          const q = o.valueQuantity;
+          if (q) row.temp = { val:q.value, unit:(q.unit || q.code || ''), interp };
+          continue;
+        }
+        // Respiratory rate
+        if (codes.has('9279-1')){
+          const q = o.valueQuantity;
+          if (q) row.rr = { val:q.value, unit:(q.unit || q.code || ''), interp };
+          continue;
+        }
+        // SpO2
+        if (codes.has('59408-5') || codes.has('2708-6')){
+          const q = o.valueQuantity;
+          if (q) row.spo2 = { val:q.value, unit:(q.unit || q.code || '%'), interp };
+          continue;
+        }
+      }
+
+      // Create array, sort by when desc, and limit to recent ones
+      const arr = [...rowsByWhen.values()].filter(r => r.bp || r.hr || r.temp || r.rr || r.spo2);
+      arr.sort((a,b)=>{
+        const ta = a.when ? Date.parse(a.when) : 0;
+        const tb = b.when ? Date.parse(b.when) : 0;
+        return tb - ta;
+      });
+      return arr.slice(0, 6);
+    }
+
     function ServiceRequestSummary({r}){
       const when =
+        r.occurrencePeriod ? fmtRange(r.occurrencePeriod.start, r.occurrencePeriod.end) :
         r.occurrenceDateTime ? fmtDate(r.occurrenceDateTime) :
-        r.occurrenceTiming?.event?.length ? r.occurrenceTiming.event.map(fmtDate).join(" • ") : null;
+        (r.occurrenceTiming?.event?.length ? (()=>{
+          const ev = r.occurrenceTiming.event;
+          const sorted = [...ev].sort();
+          return fmtRange(sorted[0], sorted[sorted.length-1]);
+        })() : null);
+      const meta = [r.status, [r.intent, r.priority].filter(Boolean).join('/')].filter(Boolean).join(' • ');
       return (
         <>
           <div className="bigRow">
             <div className="bigLabel">{ccDisplay(r.code)}</div>
             {when && <div className="bigValue">{when}</div>}
           </div>
+          {meta && <div className="muted" style={{marginBottom:'.25rem'}}>{meta}</div>}
           <div className="kvlist">
-            <KV k="status" v={r.status} />
-            <KV k="intent" v={r.intent} />
-            <KV k="priority" v={r.priority} />
             {r.reasonCode?.[0] && <KV k="reason" v={ccDisplay(r.reasonCode?.[0])} />}
           </div>
         </>
@@ -899,9 +1130,11 @@
     }
 
         const onExampleChange = (e)=>{
-          const idx = Number(e.target.value);
+          const val = e.target.value;
+          if (val === "" || val == null) return;
+          const idx = Number(val);
           if (isNaN(idx) || idx < 0) return;
-          const item = examples[idx];
+          const item = examplesRef.current[idx];
           if (item?.content) { setBundle(item.content); setErr(""); }
         };
     // ---------- helpers ----------

@@ -63,64 +63,24 @@ export const STORAGE_KEYS = {
 } as const;
 
 // Resolve the Terminology Server base URL consistently across environments
+
 export function getTerminologyServerURL(): string {
-  // Browser: prefer same-origin; allow override via localStorage
+  // Single greenfield setting: VALIDATION_SERVICES_URL
+  // Browser: use configured value or same-origin
   try {
     if (typeof window !== 'undefined') {
-      const v = localStorage.getItem('TERMINOLOGY_SERVER_URL');
+      const v = localStorage.getItem('VALIDATION_SERVICES_URL');
       if (v && v.trim()) return v;
-      // Same-origin relative base
       return '';
     }
   } catch {}
-  // Global override (e.g., set on window/globalThis)
-  try {
-    const g: any = globalThis as any;
-    if (g && g.TERMINOLOGY_SERVER_URL) return String(g.TERMINOLOGY_SERVER_URL);
-  } catch {}
-  // Node/Process env
-  try {
-    const p: any = (globalThis as any).process;
-    const v = p?.env?.TERMINOLOGY_SERVER_URL;
-    if (v && String(v).trim()) return String(v);
-  } catch {}
-  // Bun env (when available)
-  try {
-    const b: any = (globalThis as any).Bun;
-    const v = b?.env?.TERMINOLOGY_SERVER_URL;
-    if (v && String(v).trim()) return String(v);
-  } catch {}
-  // Default to unified server base for non-browser callers
+  // Non-browser default for local dev/tests
   return 'http://localhost:3500';
 }
 
+
 // Base URL for FHIR validation (type-level endpoints are appended)
 export function getFhirValidatorBaseURL(): string {
-  // Browser: prefer same-origin; allow override via localStorage
-  try {
-    if (typeof window !== 'undefined') {
-      const v = localStorage.getItem('FHIR_VALIDATOR_BASE_URL') || localStorage.getItem('VALIDATOR_URL');
-      if (v && v.trim()) return v;
-      return '';
-    }
-  } catch {}
-  // Global override
-  try {
-    const g: any = globalThis as any;
-    if (g && g.FHIR_VALIDATOR_BASE_URL) return String(g.FHIR_VALIDATOR_BASE_URL);
-    if (g && g.VALIDATOR_URL) return String(g.VALIDATOR_URL);
-  } catch {}
-  // Node/Process env / Bun env
-  try {
-    const p: any = (globalThis as any).process;
-    const pv = p?.env?.FHIR_VALIDATOR_BASE_URL || p?.env?.VALIDATOR_URL;
-    if (pv && String(pv).trim()) return String(pv);
-  } catch {}
-  try {
-    const b: any = (globalThis as any).Bun;
-    const bv = b?.env?.FHIR_VALIDATOR_BASE_URL || b?.env?.VALIDATOR_URL;
-    if (bv && String(bv).trim()) return String(bv);
-  } catch {}
-  // Default to unified server (non-browser)
-  return 'http://localhost:3500';
+  // Reuse the same Validation Services base for both /validate and /tx
+  return getTerminologyServerURL();
 }
