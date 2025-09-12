@@ -351,7 +351,7 @@ class TerminologyLoader {
     const zipPath = `${tempDir}/utg.zip`;
     
     // Create temp directory
-    await Bun.write(`${tempDir}/.keep`, '');
+    await Bun.spawn(['mkdir', '-p', tempDir]);
 
     // Download
     const response = await fetch(UTG_IG);

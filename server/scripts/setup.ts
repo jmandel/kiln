@@ -128,10 +128,10 @@ async function main() {
 
 Next steps:
 1. Load terminology database:
-   bun run load-terminology.ts
+   bun run load-terminology
 
 2. Start the server:
-   bun run server.ts
+   bun run server
 
 3. Run tests:
    bun test
@@ -140,5 +140,5 @@ Next steps:
 
 // Run if executed directly
 if (import.meta.main) {
-  main();
+  await main();
 }

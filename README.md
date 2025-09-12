@@ -115,7 +115,7 @@ The engine ensures workflows are **resumable**: Failed or pending steps can be r
 
 - **Bun**: Install from [bun.sh](https://bun.sh) (Node.js alternative for faster builds).
 - **Git**: Required for cloning and submodules.
-- **Java 11+**: Needed for the FHIR validator in the server.
+- **Java 11+**: Needed for the FHIR validator in the server. (OpenJDK 17+)
 - **Browser**: Modern browser with IndexedDB support (e.g., Chrome, Firefox).
 
 ### Clone and Install
