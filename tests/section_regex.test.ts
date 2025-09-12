@@ -99,18 +99,19 @@ describe('Placeholder stitching', () => {
   test('replaces <div>{{Title}}</div> with full XHTML narrative', () => {
     const stitched = stitchPlaceholder('Physical Examination', NOTE);
     expect(stitched.startsWith('<div xmlns="http://www.w3.org/1999/xhtml">')).toBe(true);
-    expect(stitched).toContain('<br/>'); // newline conversion
-    // Vital signs at start and Neurologic near end ensure full span
-    expect(stitched).toContain('**Vital signs:** Blood pressure 142/88');
-    expect(stitched).toContain('**Neurologic:** Cranial nerves: I intact');
-    // Ensure no stray HTML in content besides <br/>
+    // Vital signs at start and Neurologic near end ensure full span (HTML, not markdown)
+    expect(stitched).toMatch(/Vital signs/i);
+    expect(stitched).toMatch(/Cranial nerves/i);
+    // Ensure no disallowed tags appear
     const inner = stitched.replace(/^<div[^>]*>/, '').replace(/<\/div>$/, '');
-    expect(/<(?!br\/?)/i.test(inner)).toBe(false);
+    expect(/<(script|iframe|img)\b/i.test(inner)).toBe(false);
   });
 
   test('replaces {{Title}} (no surrounding div) with full XHTML narrative', () => {
     const stitched = stitchPlaceholder('Past Medical History', NOTE);
     expect(stitched.startsWith('<div xmlns="http://www.w3.org/1999/xhtml">')).toBe(true);
-    expect(stitched).toContain('past medical history significant for hypertension');
+    const inner2 = stitched.replace(/^<div[^>]*>/, '').replace(/<\/div>$/, '');
+    expect(inner2).toMatch(/<p>/i);
+    expect(inner2.toLowerCase()).toContain('past medical history significant for hypertension');
   });
 });

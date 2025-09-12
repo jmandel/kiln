@@ -146,19 +146,7 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID): Con
     }
   }
 
-  async function group(title: string, tags: Record<string, any>, fn: () => Promise<void>): Promise<void> {
-    const parent = currentStepStack.at(-1) || '';
-    const hashed = await sha256(`${title}:${parent}`);
-    const groupKey = `group:${hashed}`;
-    await step(groupKey, fn, { title, parentKey: currentStepStack.at(-1), tags });
-  }
-
-  async function span(title: string, tags: Record<string, any>, fn: () => Promise<void>): Promise<void> {
-    const parent = currentStepStack.at(-1) || '';
-    const unique = `${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
-    const spanKey = `span:${await sha256(`${title}:${parent}:${unique}`)}`;
-    await step(spanKey, fn, { title, parentKey: currentStepStack.at(-1), tags, forceRecompute: true });
-  }
+  // group/span removed (unused)
 
   async function getStepResult(stepKey: string): Promise<any> {
     const rec = await stores.steps.get(workflowId, stepKey);
@@ -227,11 +215,6 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID): Con
     return { result, meta };
   }
 
-  async function callLLM(modelTask: string, prompt: string, opts?: { expect?: "text" | "json"; temperature?: number; tags?: Record<string, any>; }): Promise<any> {
-    const { result } = await callLLMCore(modelTask, prompt, opts);
-    return result;
-  }
-
   async function callLLMEx(
     modelTask: string,
     prompt: string,
@@ -242,9 +225,8 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID): Con
 
   return {
     workflowId, documentId, stores,
-    step, group, span, getStepResult, isPhaseComplete,
+    step, getStepResult, isPhaseComplete,
     createArtifact, link,
-    callLLM,
     callLLMEx
   };
 }
@@ -255,6 +237,11 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
   const retries = Number(localStorage.getItem('TASK_DEFAULT_RETRIES') ?? 3);
   let lastRaw = '';
   let lastStatus: number | undefined = undefined;
+  const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+  const backoffMs = (attempt: number) => {
+    const base = 250 * Math.pow(2, Math.max(0, attempt - 1));
+    return Math.min(2000, base) + Math.floor(Math.random() * 100);
+  };
 
   await llmPool.acquire();
   try {
@@ -279,8 +266,13 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
       } catch (netErr: any) {
         lastRaw = String(netErr?.message || netErr || 'fetch failed');
         dbg('llm.fetch.end', { task, attempt, ok: false, error: lastRaw, durationMs: Date.now() - a0 });
-        // Wrap with details to surface in step failure UI
-        throw new LLMCallError(`LLM fetch failed: ${lastRaw}`, { rawContent: JSON.stringify({ baseURL: cfg.baseURL, model: cfg.model, message: String(lastRaw) }), status: lastStatus });
+        if (attempt >= retries) {
+          // Wrap with details to surface in step failure UI
+          throw new LLMCallError(`LLM fetch failed: ${lastRaw}`, { rawContent: JSON.stringify({ baseURL: cfg.baseURL, model: cfg.model, message: String(lastRaw) }), status: lastStatus });
+        }
+        await sleep(backoffMs(attempt));
+        await sleep(backoffMs(attempt));
+        continue;
       }
       if (!response.ok) {
         const body = await response.text();
@@ -302,6 +294,7 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
         if (attempt >= retries) {
           throw new LLMCallError(`LLM response JSON parse failed (after ${retries} attempts)`, { rawContent: await response.text().catch(()=>''), status: lastStatus });
         }
+        await sleep(backoffMs(attempt));
         continue;
       }
       // Treat explicit API error payloads as retryable failures even if HTTP 200
@@ -312,9 +305,10 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
         if (attempt >= retries) {
           throw new LLMCallError(`LLM API error in response (after ${retries} attempts)`, { rawContent: lastRaw, status: lastStatus });
         }
+        await sleep(backoffMs(attempt));
         continue;
       }
-      // Safely extract content; if missing, treat as a retryable failure
+      // Safely extract content; do not use reasoning fallbacks
       const contentNode = Array.isArray(data?.choices) && data.choices.length > 0 ? data.choices[0]?.message?.content : undefined;
       if (typeof contentNode !== 'string') {
         lastRaw = (function(){ try { return JSON.stringify(data); } catch { return String(data); }})();
@@ -323,6 +317,7 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
         if (attempt >= retries) {
           throw new LLMCallError(`LLM returned unexpected response shape (after ${retries} attempts)`, { rawContent: lastRaw, status: lastStatus });
         }
+        await sleep(backoffMs(attempt));
         continue;
       }
       const content = contentNode ?? "";
@@ -335,6 +330,7 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
           if (attempt >= retries) {
             throw new LLMCallError(`LLM returned non-JSON content (after ${retries} attempts)`, { rawContent: content, status: lastStatus });
           }
+          await sleep(backoffMs(attempt));
           continue;
         }
         return { result: obj, tokensUsed, raw: content, attempts: attempt, status: lastStatus };

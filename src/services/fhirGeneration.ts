@@ -372,115 +372,11 @@ export async function generateAndRefineResources(
             return invalid;
           };
 
-          // Attempt to obtain a valid update decision up to 3 times without consuming budget
+          // Skip retry path; rely on the first decision as-is
           let localDecision = decision;
           let localMeta = meta;
-          let attempts = 0;
-          while (false) {
-            const bad = introducedInvalid();
-            const partials = detectPartialCodeUpdates(Array.isArray(localDecision?.patch) ? localDecision.patch : []);
-            if (bad.length === 0 && partials.length === 0) break; // valid patch wrt notebook and patch-shape policies
-            if (bad.length) {
-              trace.push({ iter: INITIAL_BUDGET - budget + 1, action: 'update', result: 'rejected_invalid_codes', invalid: bad, llmStepKey: localMeta?.stepKey, decision: localDecision });
-              try { refineWarnings.push({ pointer: String(bad[0]?.pointer || ''), invalid: bad }); } catch {}
-              // annotate LLM step with rejection reason
-              try {
-                if (localMeta?.stepKey) {
-                  const rec = await ctx.stores.steps.get(ctx.workflowId, localMeta.stepKey);
-                  if (rec) {
-                    const t = rec.tagsJson ? JSON.parse(rec.tagsJson) : {};
-                    t.refineDecision = 'rejected_invalid_codes'; t.refineDetails = { count: bad.length, invalid: bad };
-                    await ctx.stores.steps.put({ ...rec, tagsJson: JSON.stringify(t) });
-                  }
-                }
-              } catch {}
-              // Emit a context step showing the base resource and invalid picks
-              try {
-                const rejHash = await sha256(JSON.stringify({ bad, res: resource, action: 'rejected_invalid_codes' }));
-                await (ctx as any).step?.(`refine:reject:${rejHash}`, async () => ({ input: resource, invalid: bad, decision: localDecision }), { title: 'Refine Rejection', tags: { phase: 'fhir', stage: 'validate-refine', refineIter: INITIAL_BUDGET - budget + 1 } });
-                contributedStepKeys.add(`refine:reject:${rejHash}`);
-              } catch {}
-            }
-            if (partials.length) {
-              trace.push({ iter: INITIAL_BUDGET - budget + 1, action: 'update', result: 'rejected_partial_coding_update', partials, policy: 'code change must also set system and display', llmStepKey: localMeta?.stepKey, decision: localDecision });
-              try { refineWarnings.push({ pointer: String(partials[0]?.pointer || ''), partials: partials.map(p => ({ path: p.pointer })) }); } catch {}
-              try {
-                if (localMeta?.stepKey) {
-                  const rec = await ctx.stores.steps.get(ctx.workflowId, localMeta.stepKey);
-                  if (rec) {
-                    const t = rec.tagsJson ? JSON.parse(rec.tagsJson) : {};
-                    t.refineDecision = 'rejected_partial_coding_update'; t.refineDetails = { count: partials.length, partials };
-                    await ctx.stores.steps.put({ ...rec, tagsJson: JSON.stringify(t) });
-                  }
-                }
-              } catch {}
-              // Emit rejection context for partial updates
-              try {
-                const rejHash2 = await sha256(JSON.stringify({ partials, res: resource, action: 'rejected_partial_coding_update' }));
-                await (ctx as any).step?.(`refine:reject:${rejHash2}`, async () => ({ input: resource, partials, decision: localDecision }), { title: 'Refine Rejection', tags: { phase: 'fhir', stage: 'validate-refine', refineIter: INITIAL_BUDGET - budget + 1 } });
-                contributedStepKeys.add(`refine:reject:${rejHash2}`);
-              } catch {}
-            }
-            attempts += 1;
-            // Re-ask the LLM as though nothing happened
-            const retry = await (ctx as any).callLLMEx('fhir_resource_validate_refine', prompt, { expect: 'json', tags: { phase: 'fhir', stage: 'validate-refine', retry: attempts } });
-            llmCalls += 1; lastLLMMeta = { prompt: retry?.meta?.prompt, raw: retry?.meta?.raw, stepKey: retry?.meta?.stepKey };
-            localDecision = retry.result;
-            localMeta = retry.meta;
-            if (localMeta?.stepKey) contributedStepKeys.add(localMeta.stepKey);
-            const newAction = String(localDecision?.action || '').toLowerCase();
-            if (newAction === 'search_for_coding') {
-              // Inline handle a search request to enrich the notebook; do not change budget
-              const ptr = localDecision?.pointer as string | undefined;
-              const terms = localDecision?.terms;
-              const systems = Array.isArray(localDecision?.systems) ? localDecision.systems : undefined;
-              const provided: string[] = Array.isArray(terms)
-                ? terms.map((t: any) => String(t || '').trim()).filter(Boolean)
-                : (typeof terms === 'string' && String(terms).trim() ? [String(terms).trim()] : []);
-              if (!ptr || provided.length === 0) {
-              trace.push({ iter: INITIAL_BUDGET - budget + 1, action: 'search_for_coding', error: 'missing pointer/terms (retry)', llmStepKey: localMeta?.stepKey, decision: localDecision });
-                continue;
-              }
-              const tried = attemptedQueriesByPtr.get(ptr) || new Set<string>();
-              const lowerProvided = provided.map(q => q.toLowerCase());
-              const newQueries = provided.filter((q, idx) => !tried.has(lowerProvided[idx]));
-              if (newQueries.length === 0) {
-                trace.push({ iter: INITIAL_BUDGET - budget + 1, action: 'search_for_coding', pointer: ptr, queriesProvided: provided, queriesExecuted: [], systems, rejected: 'repeat_query (retry)', llmStepKey: localMeta?.stepKey, decision: localDecision });
-                continue;
-              }
-              for (const q of newQueries) tried.add(q.toLowerCase());
-              attemptedQueriesByPtr.set(ptr, tried);
-              const rqHash = await sha256(JSON.stringify({ q: newQueries, systems: systems || [] }));
-              const res: TerminologySearchResult = await (ctx as any).step?.(`tx:search:${rqHash}`, async () => {
-                return await searchTerminology(newQueries, systems, 200);
-              }, { title: 'Terminology Search', tags: { phase: 'terminology', pointer: ptr } }) ?? await searchTerminology(newQueries, systems, 200);
-              const resultsByQuery = Array.isArray(res.perQueryHits)
-                ? res.perQueryHits.map(q => ({ query: q.query, hits: (q.hits || []).map(h => ({ system: h.system, code: h.code, display: h.display })) }))
-                : newQueries.map(q => ({ query: q, hits: [] as Array<{ system: string; code: string; display: string }> }));
-              const entry = {
-                queries: newQueries,
-                systems: systems || [],
-                meta: { count: res.count, fullSystem: !!res.fullSystem, guidance: res.guidance, perQuery: res.perQuery },
-                resultsByQuery
-              };
-              const arr = searchNotebook.get(ptr) || [];
-              arr.push(entry); searchNotebook.set(ptr, arr);
-              trace.push({ iter: INITIAL_BUDGET - budget + 1, action: 'search_for_coding', pointer: ptr, queriesProvided: provided, queriesExecuted: newQueries, systems, meta: entry.meta, resultsByQuery, llmStepKey: localMeta?.stepKey, decision: localDecision, retry: attempts });
-              // Then immediately requery for an update suggestion on the same prompt in next loop iteration
-              continue;
-            }
-            if (newAction !== 'update') {
-              // Not an update; try again up to 3 times
-              trace.push({ iter: INITIAL_BUDGET - budget + 1, action: newAction || 'unknown', note: 'expected update; retrying', llmStepKey: localMeta?.stepKey, decision: localDecision });
-              continue;
-            }
-            // Update local introduced map from the new decision
-            introducedByPtr.clear();
-            const reIntro = collectIntroduced(Array.isArray(localDecision?.patch) ? localDecision.patch : []);
-            for (const [k, v] of reIntro.entries()) introducedByPtr.set(k, v);
-          }
 
-          // After retries, if still invalid codes proposed, redact those and continue
+// After retries, if still invalid codes proposed, redact those and continue
           const stillBad = introducedInvalid();
           const stillPartial: any[] = [];
           if (stillBad.length > 0) {

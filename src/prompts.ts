@@ -84,21 +84,7 @@ Specific Task: Score 0-1 on overall coherence, expansion, and consistency. Feedb
 
 Output JSON: {"critique": "...", "score": 0.XX}`,
 
-  rewrite_note: ({ noteDraft, critique, sketch, guidance }: { noteDraft: string; critique: string; sketch: string; guidance: string }) => `You are a clinical reviser. Rewrite the note based on critique.
-
-Background:
-<sketch>${sketch}</sketch>
-<guidance>${guidance}</guidance>
-<priorDraft>${noteDraft}</priorDraft>
-<critique>${critique}</critique> (address issues like expansion gaps).
-
-Specific Task: Revise for better synthesis/realism. Expand plausibly where needed (e.g., add inferred details). Keep structure but improve flow.
-
-Formatting rules (important):
-- Use Markdown headings for section titles with exactly two hash marks: "## Title".
-- Do NOT use bold (**) or other styles for section titles; use only the "## " marker.
-
-Output ONLY the revised note text.`,
+    // rewrite_note removed (unused)
 
   finalize_note: ({ noteDraft, sketch, guidance }: { noteDraft: string; sketch: string; guidance: string }) => `You are a final clinical polisher. Finalize the note for release.
 
@@ -155,7 +141,7 @@ High-level goals:
    - Each \`entry\` \`Reference\` MUST have:
      • \`reference\`: "<ResourceType>/<temp-id>" (e.g., "Observation/obs-ldl-1", "DiagnosticReport/report-lipid-1").
      • \`display\`: A concise instruction describing what to generate, including grouping relationships and key facets.
-       For example, for a lipid panel: the DiagnosticReport display should list the intended analyte Observation IDs and names (LDL, HDL, TG, Total Cholesterol). Each analyte Observation display should name its analyte, intended units if present, and refer back to the panel/report ID.
+       For example, for a lipid panel: the DiagnosticReport display MUST explicitly list both the analyte Observation IDs AND their plain-language names, e.g., "Include Observation/obs-ldl-1 (LDL-C), Observation/obs-hdl-1 (HDL-C), Observation/obs-tg-1 (Triglycerides), Observation/obs-totalchol-1 (Total Cholesterol)". Each analyte Observation display should name its analyte (with units if present) and refer back to the panel/report ID.
 7) Section narratives: For each section, set \`section.text.div\` to the template variable \`{{Section Title}}\` matching the source note header.
 8) Top-level sections only (strict): Use ONLY the provided Required Section Titles (top-level H2 headers) for \`section[]\`. Do NOT create additional sections for subsections (e.g., headings like \`### Supportive Care\` under Plan). Keep all subsection content under the top-level section (e.g., "Plan").
 9) Title and placeholder hygiene (strict): For each section with title S, set exactly \`"text": { "div": "<div>{{S}}</div>" }\`. Do not include Markdown markers (e.g., \`#\`) in titles or placeholders.

@@ -21,42 +21,7 @@ export const Badge = ({ variant = "default", children }: { variant?: string; chi
   );
 };
 
-export const Tabs = ({ defaultValue, children }: { defaultValue: string; children: ReactNode }) => {
-  const [active, setActive] = useState(defaultValue);
-  return (
-    <div data-active={active}>
-      {Children.map(children, child => 
-        cloneElement(child as React.ReactElement, { active, setActive })
-      )}
-    </div>
-  );
-};
-
-export const TabsList = ({ children, active, setActive }: { children: ReactNode; active?: string; setActive?: (v: string) => void }) => (
-  <div className="flex items-center gap-2 border-b border-gray-200">
-    {Children.map(children, child => 
-      cloneElement(child as React.ReactElement, { active, setActive })
-    )}
-  </div>
-);
-
-export const TabsTrigger = ({ value, children, active, setActive }: { value: string; children: ReactNode; active?: string; setActive?: (v: string) => void }) => (
-  <button
-    className={`px-3 py-2 -mb-px text-sm transition-colors ${
-      active === value 
-        ? 'border-b-2 border-blue-600 text-blue-700 font-medium' 
-        : 'text-gray-600 hover:text-gray-800'
-    }`}
-    onClick={() => setActive?.(value)}
-  >
-    {children}
-  </button>
-);
-
-export const TabsContent = ({ value, children, active }: { value: string; children: ReactNode; active?: string }) => {
-  if (active !== value) return null;
-  return <div>{children}</div>;
-};
+// Unused Tabs components removed
 
 export const MetricPill = ({ 
   label, 

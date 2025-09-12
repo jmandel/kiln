@@ -66,21 +66,7 @@ export interface Event {
   [key: string]: any;
 }
 
-export interface DocumentSummary {
-  documentId: ID;
-  title: string;
-  lane: "in_progress" | "blocked" | "done";
-  phase: string;
-  counts: {
-    running: number;
-    failed: number;
-    done: number;
-    pending: number;
-  };
-  lastUpdated: string | null;
-  badges: Array<{ label: string; value: string }>;
-  reason?: string | null;
-}
+// DocumentSummary removed (unused)
 
 export interface Config {
   baseURL: string;
@@ -162,16 +148,13 @@ export interface Context {
   documentId: ID;
   stores: Stores;
   step: (key: string, fn: () => Promise<any>, opts?: ContextOpts) => Promise<any>;
-  group: (title: string, tags: Record<string, any>, fn: () => Promise<void>) => Promise<void>;
   getStepResult: (stepKey: string) => Promise<any>;
   isPhaseComplete: (phaseName: string) => Promise<boolean>;
   createArtifact: (spec: { id?: ID; kind: string; version: number; title?: string; content?: string; tags?: Record<string, any>; links?: Array<{ dir: "from"; role: string; ref: { type: EntityType; id: ID }; tags?: Record<string, any>; }>; autoProduced?: boolean; }) => Promise<Artifact>;
   link: (from: { type: EntityType; id: ID }, role: string, to: { type: EntityType; id: ID }, tags?: Record<string, any>) => Promise<Link>;
-  callLLM: (modelTask: string, prompt: string, opts?: { expect?: "text" | "json"; temperature?: number; tags?: Record<string, any>; }) => Promise<any>;
   // Extended API returns result + metadata for artifact creation without step lookups
   callLLMEx?: (modelTask: string, prompt: string, opts?: { expect?: "text" | "json"; temperature?: number; tags?: Record<string, any>; }) => Promise<{ result: any; meta: { stepKey: string; tokensUsed: number; raw: string; attempts: number; status?: number; prompt: string } }>;
   // Non-caching labeled container
-  span?: (title: string, tags: Record<string, any>, fn: () => Promise<void>) => Promise<void>;
 }
 
 export interface PromptParams {

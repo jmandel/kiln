@@ -4,7 +4,7 @@ import type { Stores, ID, Document, Step } from '../types';
 import DocGenDashboard from './DocGenDashboard';
 import ArtifactDetails from './ArtifactDetails';
 import StepDetails from './StepDetails';
-import { escapeHtml, pretty, tryJson } from './ui';
+import { pretty, tryJson } from './ui';
 import { runDocumentWorkflow, resume, resumeDocument } from '../workflows';
 import { sha256 } from '../helpers';
 import { useDashboardState } from '../hooks/useDashboardState';
@@ -215,87 +215,6 @@ export default function DocGenApp(): React.ReactElement {
     }
   };
 
-  const clearTerminologyCache = async () => {
-    if (!stores || !selected) return alert('Select a job first');
-    const steps = await stores.steps.listByDocument(selected);
-    const isTerminologyStep = (s: Step): boolean => {
-      try {
-        const tags = s.tagsJson ? JSON.parse(s.tagsJson) : {};
-        const phase = tags.phase || '';
-        const modelTask = tags.modelTask || '';
-        return (
-          phase === 'terminology' ||
-          modelTask === 'terminology_picker' ||
-          modelTask === 'terminology_approximator' ||
-          s.key.startsWith('resolve_code_')
-        );
-      } catch {
-        return s.key.startsWith('resolve_code_');
-      }
-    };
-    const targets = steps.filter(s => isTerminologyStep(s) && s.status !== 'pending');
-    if (targets.length === 0) {
-      alert('No cached terminology steps found for this job.');
-      return;
-    }
-    for (const s of targets) {
-      await stores.steps.put({
-        ...s,
-        status: 'pending',
-        error: null,
-        resultJson: '',
-        progress: 0,
-        ts: new Date().toISOString()
-      });
-    }
-    // Mark owning workflows as resumable
-    const wfIds = Array.from(new Set(targets.map(s => s.workflowId)));
-    for (const wfId of wfIds) await stores.workflows.setStatus(wfId as any, 'pending');
-    // Auto-resume
-    await resumeDocument(stores, selected);
-  };
-
-  const clearFhirAndTerminologyCache = async () => {
-    if (!stores || !selected) return alert('Select a job first');
-    const steps = await stores.steps.listByDocument(selected);
-    const isTarget = (s: Step): boolean => {
-      try {
-        const tags = s.tagsJson ? JSON.parse(s.tagsJson) : {};
-        const phase = tags.phase || '';
-        const task = (tags.modelTask || '') as string;
-        return (
-          phase === 'terminology' ||
-          phase === 'fhir' ||
-          s.key.startsWith('resolve_code_') ||
-          task === 'terminology_picker' ||
-          task === 'terminology_approximator' ||
-          task === 'fhir_composition_plan' ||
-          task === 'fhir_generate_resource'
-        );
-      } catch {
-        return s.key.startsWith('resolve_code_');
-      }
-    };
-    const targets = steps.filter(s => isTarget(s) && s.status !== 'pending');
-    if (targets.length === 0) {
-      alert('No cached FHIR/terminology steps found for this job.');
-      return;
-    }
-    for (const s of targets) {
-      await stores.steps.put({
-        ...s,
-        status: 'pending',
-        error: null,
-        resultJson: '',
-        progress: 0,
-        ts: new Date().toISOString()
-      });
-    }
-    const wfIds = Array.from(new Set(targets.map(s => s.workflowId)));
-    for (const wfId of wfIds) await stores.workflows.setStatus(wfId as any, 'pending');
-    await resumeDocument(stores, selected);
-  };
-
   const saveConfig = (newCfg: typeof cfg) => {
     localStorage.setItem('TASK_DEFAULT_BASE_URL', newCfg.baseURL);
     localStorage.setItem('TASK_DEFAULT_API_KEY', newCfg.apiKey);
@@ -314,10 +233,22 @@ export default function DocGenApp(): React.ReactElement {
 
   const handleRerun = async () => {
     if (!stores || !selected) return;
-    // Clear current artifacts/links so new outputs appear cleanly while resume starts
+    // Reset all steps to pending so the error banner clears and steps genuinely replay
+    const steps = await stores.steps.listByDocument(selected);
+    for (const s of steps) {
+      if (s.status !== 'pending') {
+        await stores.steps.put({ ...s, status: 'pending', error: null, resultJson: '', progress: 0, ts: new Date().toISOString() });
+      }
+    }
+    const wfIds = Array.from(new Set(steps.map(s => s.workflowId)));
+    for (const wfId of wfIds) await stores.workflows.setStatus(wfId as any, 'pending');
     await stores.artifacts.deleteByDocument(selected);
     await stores.links.deleteByDocument(selected);
-    await resumeDocument(stores, selected);
+    try {
+      await resumeDocument(stores, selected);
+    } catch (e) {
+      console.error('Resume failed', e);
+    }
   };
 
   // Generic: clear ALL step cache for this document, then resume (no workflow-specific knowledge)
@@ -473,7 +404,11 @@ export default function DocGenApp(): React.ReactElement {
               for (const wfId of wfIds) await stores.workflows.setStatus(wfId as any, 'pending');
               await stores.artifacts.deleteByDocument(selected);
               await stores.links.deleteByDocument(selected);
-              await resumeDocument(stores, selected);
+              try {
+                await resumeDocument(stores, selected);
+              } catch (e) {
+                console.error('Resume failed', e);
+              }
             }}
             onOpenFailed={openLatestFailedStep}
           />

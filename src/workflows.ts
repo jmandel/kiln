@@ -243,15 +243,7 @@ function createNoteDecideTask(_initial: number) {
   };
 }
 
-function createNoteRewriteTask(version: number) {
-  return async (ctx: Context, { outline, sketch }: any) => {
-    const note = await readNote(ctx, version);
-    const critList = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NoteCritique' && a.tags?.noteVersion === version);
-    const crit = critList.at(-1);
-    const guidance = outline.guidance;
-    await runLLMTask<string>(ctx, 'rewrite_note', 'rewrite_note', { noteDraft: note?.content || '', critique: crit?.content || '', sketch, guidance }, { expect: 'text', tags: { phase: 'note_review', version }, artifact: { kind: 'NoteDraft', version: version + 1, title: `Rewritten Note v${version + 1}`, tags: { verb: 'rewrite', basedOn: version }, contentType: 'text' } });
-  };
-}
+// createNoteRewriteTask removed (unused)
 
 async function getSectionSummaries(ctx: Context, outline: any): Promise<string> {
   if (!outline || !Array.isArray(outline.sections)) return '<sectionSummaries />';
@@ -450,84 +442,18 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
       }, { title: 'Analyze Codings (pre)', tags: { phase: 'fhir', contentHash: preHash } });
       await emitJsonArtifact(ctx, { kind: 'CodingValidationReport', title: 'Coding Validation Report (pre-recoding)', content: { items: preReport }, tags: { phase: 'fhir', stage: 'pre' } });
 
-      // 5. Group unresolved by unique key and recode per group
-      const unresolvedItems = preReport.filter((i: any) => i.status === 'recoding');
-      type Group = { key: string; displaySet: string[]; systemSet: string[]; members: Array<{ resourceRef?: string; pointer: string; resourceType?: string; id?: string; original: any }> };
-      const groups = new Map<string, Group>();
-      const norm = (s?: string) => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
-      for (const it of unresolvedItems) {
-        const hasCode = it.original?.system && it.original?.code;
-        const key = hasCode ? `code:${it.original.system}|${it.original.code}` : `display:${norm(it.original?.display)}|${it.original?.system || 'any'}`;
-        const g = groups.get(key) || { key, displaySet: [], systemSet: [], members: [] };
-        if (it.original?.display) { const d = norm(it.original.display); if (!g.displaySet.includes(d)) g.displaySet.push(d); }
-        if (it.original?.system) { const s = String(it.original.system); if (!g.systemSet.includes(s)) g.systemSet.push(s); }
-        g.members.push({ resourceRef: it.resourceRef, pointer: it.pointer, resourceType: it.resourceType, id: it.id, original: it.original });
-        groups.set(key, g);
-      }
+      // 5. Legacy group recoder removed — rely solely on validate/refine loop
+      const recodedResources: any[] = JSON.parse(JSON.stringify(generatedResources));
 
-      // Recoder per group
-      let recodedResources: any[] = JSON.parse(JSON.stringify(generatedResources));
-      const attemptLogs: Record<string, { attempts: any[]; failureReason?: string } | undefined> = {};
-      for (const g of groups.values()) {
-        const first = g.members[0];
-        const resourceType = first.resourceType || 'Unknown';
-        const placeholder = { path: 'code', jsonPointer: first.pointer, potentialDisplays: g.displaySet, potentialSystems: g.systemSet } as any;
-        const out = await (await import('./terminologyResolverV2')).resolveOneCode?.(ctx as any, placeholder, resourceType, { supportedSystems: [], bigSystems: [], builtinFhirCodeSystems: [] } as any, true);
-        if (out?.code) {
-          for (const m of g.members) {
-            const ref = m.resourceRef; if (!ref) continue;
-            const [rt, rid] = ref.split('/');
-            const targetRes = recodedResources.find(r => r.resourceType === rt && (r.id || '') === (rid || ''));
-            if (!targetRes) continue;
-            const tgt = (function getByPtr(root: any, pointer: string) {
-              try { const segs = pointer.split('/').filter(Boolean).map(s => decodeURIComponent(s)); let cur = root; for (const s of segs) { if (cur == null) return null; cur = Array.isArray(cur) ? cur[Number(s)] : cur[s]; } return cur && typeof cur === 'object' ? cur : null; } catch { return null; }
-            })(targetRes, m.pointer);
-            if (tgt && typeof tgt === 'object') {
-              tgt.system = out.code.system; tgt.code = out.code.code; tgt.display = out.code.display;
-              delete tgt._proposed_coding; delete tgt._potential_displays; delete tgt._potential_systems; delete (tgt as any)._potential_codes;
-            }
-            const compositeKey = `${ref}:${m.pointer}`;
-            attemptLogs[compositeKey] = { attempts: out.attempts || [], failureReason: out.failureReason };
-          }
-        } else {
-          for (const m of g.members) {
-            const ref = m.resourceRef; if (!ref) continue;
-            const compositeKey = `${ref}:${m.pointer}`;
-            attemptLogs[compositeKey] = { attempts: out?.attempts || [], failureReason: out?.failureReason };
-          }
-        }
-      }
-
-      // 6. Analyze again post-recoding and create reports
+      // 6. Analyze again (post-refine placeholder; no pre-recoding stage now) and create reports
       const postHash = await sha256(JSON.stringify(recodedResources));
       const { report: postReport } = await ctx.step(`analyze_codings_post:${postHash}`, async () => {
         return await analyzeCodings(recodedResources);
       }, { title: 'Analyze Codings (post)', tags: { phase: 'fhir', contentHash: postHash } });
       await emitJsonArtifact(ctx, { kind: 'CodingValidationReport', title: 'Coding Validation Report (post-recoding)', content: { items: postReport }, tags: { phase: 'fhir', stage: 'post' } });
 
-      // Build a detailed recoding report
-      if (groups.size > 0) {
-        const resByRef = new Map<string, any>();
-        for (const r of recodedResources as any[]) { const ref = r?.resourceType ? `${r.resourceType}/${r.id || ''}` : undefined; if (ref) resByRef.set(ref, r); }
-        const getByPointer = (root: any, pointer: string): any | null => { try { const segs = pointer.split('/').filter(Boolean).map(s => decodeURIComponent(s)); let cur = root; for (const s of segs) { if (cur == null) return null; cur = Array.isArray(cur) ? cur[Number(s)] : cur[s]; } return cur && typeof cur === 'object' ? cur : null; } catch { return null; } };
-        const items: any[] = [];
-        for (const g of groups.values()) {
-          for (const m of g.members) {
-            const ref = m.resourceRef; if (!ref) continue;
-            const compositeKey = `${ref}:${m.pointer}`;
-            const log = attemptLogs[compositeKey];
-            const postStatus = postReport.find(it => it.resourceRef === ref && it.pointer === m.pointer)?.status;
-            let final: { system?: string; code?: string; display?: string } | undefined;
-            const resObj = resByRef.get(ref);
-            if (resObj) { const tgt = getByPointer(resObj, m.pointer); if (tgt && typeof tgt === 'object' && typeof tgt.system === 'string' && typeof tgt.code === 'string') { final = { system: tgt.system, code: tgt.code, display: tgt.display }; } }
-            const attemptsArr = Array.isArray(log?.attempts) ? log.attempts : [];
-            items.push({ pointer: m.pointer, resourceRef: ref, original: m.original, outcome: postStatus === 'ok' ? 'recoded' : 'unresolved', final, attempts: attemptsArr.length, queries: attemptsArr.map(a => ({ query: a.query, hits: a.hitCount })), steps: attemptsArr.map(a => ({ query: a.query, systems: a.systems, hitCount: a.hitCount, sample: a.sample, decision: a.decision })) });
-          }
-        }
-        await emitJsonArtifact(ctx, { kind: 'CodingRecodingReport', title: 'Coding Recoding Report (post-recoding)', content: { items }, tags: { phase: 'fhir', stage: 'post' } });
-      }
-
-      // 7. Finalize unresolved in-place with extensions
+      // Detailed recoding report removed with legacy recoder
+// 7. Finalize unresolved in-place with extensions
       const unresolvedPointers = postReport.filter((i: any) => i.status !== 'ok').map((i: any) => i.pointer);
       const finalResources = unresolvedPointers.length ? finalizeUnresolved(recodedResources, unresolvedPointers, attemptLogs) : recodedResources;
 
@@ -731,17 +657,7 @@ export async function runDocumentWorkflow(stores: Stores, input: { title: string
   await runWorkflow(stores, workflowId, documentId, pipeline);
 }
 
-export async function resume(stores: Stores): Promise<void> {
-  const resumables = await stores.workflows.listResumable();
-  for (const r of resumables) {
-    const doc = await stores.documents.get(r.documentId);
-    if (doc && doc.sketch) {
-      const input = { title: doc.title, sketch: doc.sketch };
-      const pipeline = buildDocumentWorkflow(input);
-      await runWorkflow(stores, r.id, r.documentId, pipeline);
-    }
-  }
-}
+// resume(stores) removed (unused; UI uses resumeDocument)
 
 // Resume workflows for a specific document, even if the workflow status is 'done',
 // as long as there are pending/running/failed steps for that document.
@@ -791,7 +707,11 @@ export async function resumeDocument(stores: Stores, documentId: ID): Promise<vo
     try { stores.events.emit({ type: 'links_cleared', documentId } as any); } catch {}
     for (const wfId of wfIds) {
       await stores.workflows.setStatus(wfId, 'running');
-      await runWorkflow(stores, wfId, documentId, pipeline);
+      try {
+        await runWorkflow(stores, wfId, documentId, pipeline);
+      } catch (e) {
+        try { console.error('[WF] resumeDocument error', e); } catch {}
+      }
     }
     try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'resume.end', documentId, mode: 'resume', workflows: wfIds })); } catch {}
     return;
@@ -804,7 +724,11 @@ export async function resumeDocument(stores: Stores, documentId: ID): Promise<vo
     await stores.artifacts.deleteByDocument(documentId);
     await stores.links.deleteByDocument(documentId);
     await stores.workflows.setStatus(replayWfId, 'running');
-    await runWorkflow(stores, replayWfId, documentId, pipeline);
+    try {
+      await runWorkflow(stores, replayWfId, documentId, pipeline);
+    } catch (e) {
+      try { console.error('[WF] resumeDocument replay error', e); } catch {}
+    }
   }
   try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'resume.end', documentId, mode: 'replay', workflowId: replayWfId })); } catch {}
   return;

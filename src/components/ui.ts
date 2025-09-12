@@ -11,8 +11,3 @@ export function pretty(s: any): string {
     return String(s ?? '');
   }
 }
-
-export function escapeHtml(s: string): string {
-  return s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]!));
-}
-

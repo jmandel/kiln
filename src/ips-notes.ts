@@ -389,7 +389,4 @@ export const IPS_NOTES: IPSNotes = {
   }
 };
 
-export function getIPSNotesFor(resourceType: string): string[] | undefined {
-  const e = IPS_NOTES[resourceType];
-  return e?.requirements;
-}
+// getIPSNotesFor removed (unused)
