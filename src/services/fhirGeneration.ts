@@ -2,7 +2,7 @@ import { IPS_NOTES } from '../ips-notes';
 import { searchTerminology, type TerminologySearchResult } from '../tools';
 import { analyzeCodings } from '../codingAnalysis';
 import { validateResource } from '../validator';
-import { PROMPTS } from '../prompts';
+import { FHIR_PROMPTS } from '../workflows/fhir/prompts';
 import { runLLMTask } from '../llmTask';
 import { emitJsonArtifact } from './artifacts';
 import { sha256, getTerminologyServerURL } from '../helpers';
@@ -57,14 +57,14 @@ export async function generateAndRefineResources(
       } catch {}
 
       // Validate-refine loop per resource
-      // Initial dynamic budget: max(default, validator_error_count + 2 * unresolved_codings)
+      // Initial dynamic budget: max(default, validator_error_count + 2 * unresolved_codings + 5)
       const DEFAULT_ITERS = Number(localStorage.getItem('FHIR_VALIDATION_MAX_ITERS') || 12);
       try {
         const initReportRes = await analyzeCodings([resource]);
         const initUnresolved = (initReportRes?.report || []).filter((it: any) => it.status !== 'ok').length;
         const initValRes = await validateResource(resource);
         const initErrors = (initValRes?.issues || []).filter((x: any) => String(x?.severity || '').toLowerCase() === 'error').length;
-        const MAX_ITERS = Math.max(DEFAULT_ITERS, initErrors + (2 * initUnresolved));
+        const MAX_ITERS = Math.max(DEFAULT_ITERS, initErrors + (2 * initUnresolved) + 5);
         var budget = MAX_ITERS;
         var INITIAL_BUDGET = MAX_ITERS;
       } catch {
@@ -180,7 +180,7 @@ export async function generateAndRefineResources(
           }
         });
 
-        const tpl = PROMPTS['fhir_resource_validate_refine'];
+        const tpl = FHIR_PROMPTS['fhir_resource_validate_refine'];
         return tpl({
           resource: resourceForPrompt,
           unresolvedCodings: unresolvedForPrompt,

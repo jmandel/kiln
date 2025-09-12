@@ -64,7 +64,9 @@ export default function DocGenDashboard({
   onOpenArtifact, 
   onRerun,
   onOpenFailed,
-  onClearCache
+  onClearCache,
+  canConvertToFhir,
+  onConvertToFhir
 }: { 
   state?: DocGenState;
   initial?: DocGenState; 
@@ -72,6 +74,8 @@ export default function DocGenDashboard({
   onRerun?: () => void;
   onOpenFailed?: () => void;
   onClearCache?: (phaseId?: string) => void;
+  canConvertToFhir?: boolean;
+  onConvertToFhir?: () => void;
 }) {
   const [internalState, setInternalState] = useState<DocGenState>(initial);
   const state = controlled ?? internalState;
@@ -135,14 +139,14 @@ export default function DocGenDashboard({
     : state.metrics.elapsedMs;
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-full bg-gray-50">
       {/* Sticky Header */}
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 backdrop-blur-sm bg-white/95">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-semibold">{state.title || 'No job selected'}</h1>
-              <div className="flex items-center gap-4 mt-1">
+              <h1 className="text-2xl font-bold text-text-charcoal">{state.title || 'No job selected'}</h1>
+              <div className="flex items-center gap-4 mt-2">
                 <StatusBadge status={state.status} />
                 {state.currentPhase && (
                   <span className="text-sm text-gray-600">
@@ -173,24 +177,17 @@ export default function DocGenDashboard({
               <MetricPill 
                 label="Tokens" 
                 value={`${(state.metrics.totalTokens / 1000).toFixed(1)}k`}
-                icon="🔤" 
+                icon="💬" 
               />
               {state.jobId && (
-                <button 
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  onClick={onRerun || onResume}
-                >
-                  Rerun
-                </button>
+                <button className="btn-kiln-secondary whitespace-nowrap" onClick={onRerun || onResume}>Rerun</button>
+              )}
+              {state.jobId && canConvertToFhir && state.status === 'done' && (
+                <button className="btn-kiln whitespace-nowrap" onClick={onConvertToFhir}>Convert to FHIR</button>
               )}
               {state.jobId && onClearCache && (
                 <div className="relative">
-                  <button 
-                    className="px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50"
-                    onClick={() => setCacheMenuOpen(v => !v)}
-                  >
-                    Clear Cache
-                  </button>
+                  <button className="btn-kiln-outline whitespace-nowrap" onClick={() => setCacheMenuOpen(v => !v)}>Clear Cache</button>
                   {cacheMenuOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white border rounded-md shadow-lg z-10">
                       <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache(undefined); }}>Clear all steps</button>

@@ -5,6 +5,8 @@ interface Job {
   title: string;
   status?: string;
   createdAt?: string;
+  type?: 'narrative' | 'fhir' | string;
+  tags?: { blockedOn?: string[] };
 }
 
 interface JobsListProps {
@@ -17,8 +19,8 @@ interface JobsListProps {
 export function JobsList({ jobs, selected, onSelect, onDelete }: JobsListProps) {
   const getStatusColor = (status?: string) => {
     switch (status) {
-      case 'done': return 'bg-emerald-50 border-emerald-200';
-      case 'running': return 'bg-blue-50 border-blue-200';
+      case 'done': return 'bg-green-50 border-green-200';
+      case 'running': return 'bg-craft-blue/10 border-craft-blue/30';
       case 'blocked': return 'bg-rose-50 border-rose-200';
       case 'error': return 'bg-rose-50 border-rose-200';
       default: return 'bg-gray-50 border-gray-200';
@@ -27,15 +29,15 @@ export function JobsList({ jobs, selected, onSelect, onDelete }: JobsListProps) 
 
   const getStatusBadge = (status?: string) => {
     const colors = {
-      done: 'text-emerald-700 bg-emerald-100',
-      running: 'text-blue-700 bg-blue-100',
-      blocked: 'text-rose-700 bg-rose-100',
-      error: 'text-rose-700 bg-rose-100'
+      done: 'badge-success',
+      running: 'badge-blue',
+      blocked: 'badge-error',
+      error: 'badge-error'
     };
-    const color = colors[status as keyof typeof colors] || 'text-gray-700 bg-gray-100';
+    const color = colors[status as keyof typeof colors] || 'badge-kiln bg-gray-100 text-gray-700';
     
     return (
-      <span className={`text-xs px-1.5 py-0.5 rounded ${color}`}>
+      <span className={color}>
         {status || 'queued'}
       </span>
     );
@@ -55,10 +57,10 @@ export function JobsList({ jobs, selected, onSelect, onDelete }: JobsListProps) 
         <div
           key={job.id}
           className={`
-            p-3 rounded-lg border cursor-pointer transition-all
+            p-3 rounded-soft border cursor-pointer transition-all
             ${selected === job.id 
-              ? 'bg-blue-50 border-blue-300 shadow-sm' 
-              : `${getStatusColor(job.status)} hover:shadow-sm`
+              ? 'bg-craft-blue/20 border-craft-blue/50 shadow-sm ring-2 ring-craft-blue/30' 
+              : `${getStatusColor(job.status)} hover:shadow-md`
             }
           `}
           onClick={() => onSelect(job.id)}
@@ -66,11 +68,30 @@ export function JobsList({ jobs, selected, onSelect, onDelete }: JobsListProps) 
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="font-medium text-sm truncate">
-                {job.title || 'Untitled'}
+                <span className="truncate">{job.title || 'Untitled'}</span>
               </div>
+              {job.type && (
+                <div className="mt-1">
+                  <span
+                    className={`uppercase text-[10px] px-2 py-0.5 rounded-full border ${
+                      job.type === 'fhir'
+                        ? 'bg-blue-50 border-blue-200 text-blue-700'
+                        : 'bg-gray-100 border-gray-300 text-gray-700'
+                    }`}
+                    title={`Type: ${job.type}`}
+                  >
+                    {job.type === 'fhir' ? 'FHIR' : 'Narrative'}
+                  </span>
+                </div>
+              )}
               <div className="text-xs text-gray-500 mt-1">
                 {job.id.slice(0, 12)}...
               </div>
+              {job.tags?.blockedOn && job.tags.blockedOn.length > 0 && (
+                <div className="text-[11px] text-amber-700 mt-1">
+                  Blocked on: {job.tags.blockedOn.map(id => id.slice(0, 8)).join(', ')}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge(job.status)}

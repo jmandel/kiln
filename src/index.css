@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --kiln-ember: #F97316;
+  --craft-blue: #609ACF;
+  --warm-paper: #F9F1E4;
+  --text-charcoal: #1F2937;
+  --shadow: #E5E3DC;
+  --border-radius-soft: 12px;
+}
+
+body {
+  background-color: var(--warm-paper);
+  color: var(--text-charcoal);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.btn-kiln {
+  background-color: var(--kiln-ember);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius-soft);
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.btn-kiln:hover {
+  opacity: 0.9;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-kiln-secondary {
+  background-color: var(--craft-blue);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius-soft);
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.btn-kiln-secondary:hover {
+  opacity: 0.9;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-kiln-outline {
+  border: 2px solid var(--kiln-ember);
+  color: var(--kiln-ember);
+  padding: 0.5rem 1rem;
+  border-radius: var(--border-radius-soft);
+  font-weight: 500;
+  transition: all 0.2s;
+  background-color: transparent;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.btn-kiln-outline:hover {
+  background-color: var(--kiln-ember);
+  color: white;
+}
+
+.card-kiln {
+  background-color: white;
+  border-radius: var(--border-radius-soft);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  padding: 1rem;
+  transition: box-shadow 0.2s;
+}
+.card-kiln:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.input-kiln {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: var(--border-radius-soft);
+}
+.input-kiln-inline {
+  width: auto;
+  min-width: 8rem;
+}
+.input-kiln:focus {
+  outline: none;
+  ring: 2px solid var(--kiln-ember);
+  border-color: var(--kiln-ember);
+}
+
+.loading-kiln {
+  animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% { filter: drop-shadow(0 0 5px var(--kiln-ember)); }
+  50% { filter: drop-shadow(0 0 10px var(--kiln-ember)); }
+}
+
+.badge-kiln {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: var(--border-radius-soft);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-ember {
+  background-color: var(--kiln-ember);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: var(--border-radius-soft);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-blue {
+  background-color: var(--craft-blue);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: var(--border-radius-soft);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-warning {
+  background-color: #f59e0b;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: var(--border-radius-soft);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-error {
+  background-color: #ef4444;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: var(--border-radius-soft);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-success {
+  background-color: #10b981;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: var(--border-radius-soft);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.progress-kiln {
+  height: 0.5rem;
+  background-color: #e5e7eb;
+  border-radius: var(--border-radius-soft);
+  overflow: hidden;
+}
+
+.progress-bar-kiln {
+  height: 100%;
+  background: linear-gradient(to right, var(--kiln-ember), var(--craft-blue));
+  transition: all 0.3s;
+}
+
+.header-kiln {
+  background-color: white;
+  border-bottom: 1px solid var(--shadow);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-kiln {
+  background-color: white;
+  border-right: 1px solid #e5e7eb;
+}
+
+.content-kiln {
+  background-color: var(--warm-paper);
+}

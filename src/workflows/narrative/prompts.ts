@@ -1,15 +1,4 @@
-import type { Targets, Prompts, PromptParams } from './types';
-
-export function getTargets(): Targets {
-  return {
-    SECTION: Number(localStorage.getItem('SECTION_TARGET') ?? 0.75),
-    NOTE: Number(localStorage.getItem('NOTE_TARGET') ?? 0.78),
-    SECTION_MAX_REVS: Number(localStorage.getItem('SECTION_MAX_REVISIONS') ?? 3),
-    NOTE_MAX_REVS: Number(localStorage.getItem('NOTE_MAX_REVISIONS') ?? 3),
-  };
-}
-
-export const PROMPTS: Prompts = {
+export const NARRATIVE_PROMPTS = {
   plan_outline: ({ sketch }: { sketch: string }) => `You are a clinical note planner and medical expert. Given a one-line patient sketch, synthesize a realistic, comprehensive outline for a full clinical note. 
 
 Background:
@@ -97,10 +86,8 @@ Formatting rules (important):
 - Use Markdown headings for section titles with exactly two hash marks: "## Title".
 - Do NOT use bold (**) or other styles for section titles; use only the "## " marker.
 
-Output ONLY the final text.`,
-
-  // FHIR prompts moved to workflows/fhir/prompts.ts
-  fhir_composition_plan: (() => { throw new Error('fhir_composition_plan prompt moved to workflows/fhir/prompts.ts'); }) as any,
-  fhir_generate_resource: (() => { throw new Error('fhir_generate_resource prompt moved to workflows/fhir/prompts.ts'); }) as any,
-  fhir_resource_validate_refine: (() => { throw new Error('fhir_resource_validate_refine prompt moved to workflows/fhir/prompts.ts'); }) as any
+Output ONLY the final text.`
 };
+
+export type NarrativePromptKey = keyof typeof NARRATIVE_PROMPTS;
+

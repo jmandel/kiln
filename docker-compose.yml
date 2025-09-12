@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  fhir-synthesizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fhir-synthesizer:latest
+    container_name: fhir-synthesizer
+    ports:
+      - "3500:3500"
+    environment:
+      - NODE_ENV=production
+      - PORT=3500
+      - VALIDATOR_HEAP=4g
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3500/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    volumes:
+      # Optional: Mount local database if you want to preserve it between rebuilds
+      # - ./server/db:/app/server/db:ro
+    networks:
+      - fhir-network
+
+networks:
+  fhir-network:
+    driver: bridge

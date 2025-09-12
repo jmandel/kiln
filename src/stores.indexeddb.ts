@@ -1,10 +1,10 @@
-import type { ID, Document, Workflow, Artifact, Step, Link, Event, Stores } from './types';
-import { EventHub } from './types';
+import type { ID, Workflow, Artifact, Step, Link, Event, Stores, KnownDocument, DocumentType, InputsUnion, Document } from './types';
+import { EventHub, isNarrativeInputs, isFhirInputs } from './types';
 import { nowIso } from './helpers';
 import { emitArtifactSaved, emitLinkSaved, emitStepSaved } from './stores.base';
 
-const DB_NAME = 'narrative_db_v1';
-const DB_VERSION = 1;
+const DB_NAME = 'narrative_db_v2';
+const DB_VERSION = 2;
 
 async function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -12,7 +12,9 @@ async function openDb(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains('documents')) {
-        db.createObjectStore('documents', { keyPath: 'id' });
+        const s = db.createObjectStore('documents', { keyPath: 'id' });
+        s.createIndex('type', 'type', { unique: false });
+        s.createIndex('updatedAt', 'updatedAt', { unique: false });
       }
       if (!db.objectStoreNames.contains('workflows')) {
         const s = db.createObjectStore('workflows', { keyPath: 'id' });
@@ -50,46 +52,82 @@ export async function createIndexedDbStores(): Promise<Stores> {
   const db = await openDb();
   const events = new EventHub();
 
+  // Function overloads for typed document access
+  async function docsAll(): Promise<KnownDocument[]>;
+  async function docsAll<T extends InputsUnion>(type: DocumentType): Promise<Document<T>[]>;
+  async function docsAll(type?: DocumentType): Promise<any[]> {
+    const t0 = tx(db, ['documents']);
+    const s0 = t0.objectStore('documents');
+    const req0 = s0.getAll();
+    const list: any[] = await new Promise(res => { req0.onsuccess = () => res(req0.result as any[]); });
+    const sorted = list.slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    if (!type) return sorted as KnownDocument[];
+    const filtered = sorted.filter(d => d.type === type);
+    const guarded = filtered.filter((d) => {
+      return (type === 'narrative' && isNarrativeInputs(d.inputs)) || (type === 'fhir' && isFhirInputs(d.inputs));
+    });
+    return guarded as any;
+  }
+
+  async function docsGet(id: ID): Promise<KnownDocument | undefined>;
+  async function docsGet<T extends InputsUnion>(id: ID, expectedType: DocumentType): Promise<Document<T> | undefined>;
+  async function docsGet(id: ID, expectedType?: DocumentType): Promise<any | undefined> {
+    const t0 = tx(db, ['documents']);
+    const s0 = t0.objectStore('documents');
+    const req0 = s0.get(id);
+    const rec = await new Promise<any>(res => { req0.onsuccess = () => res(req0.result as any | undefined); });
+    if (!rec) return undefined;
+    if (!expectedType) return rec as KnownDocument;
+    if (rec.type !== expectedType) return undefined;
+    const ok = (expectedType === 'narrative' && isNarrativeInputs(rec.inputs)) || (expectedType === 'fhir' && isFhirInputs(rec.inputs));
+    if (!ok) return undefined;
+    return rec as any;
+  }
+
   const stores: Stores = {
     documents: {
-      async create(id: ID, title: string, sketch: string): Promise<void> {
+      async create<T extends InputsUnion>(id: ID, title: string, type: DocumentType, inputs: T): Promise<void> {
         const t = tx(db, ['documents'], 'readwrite');
         const s = t.objectStore('documents');
         const getReq = s.get(id);
         await new Promise(res => { getReq.onsuccess = () => res(null); });
-        const existing = getReq.result as Document | undefined;
+        const existing = getReq.result as KnownDocument | undefined;
         if (!existing) {
-          const rec: Document = { id, title, sketch, status: 'running', createdAt: nowIso(), updatedAt: nowIso() };
-          s.put(rec);
+          // Basic guard before insert
+          const ok = (type === 'narrative' && isNarrativeInputs(inputs)) || (type === 'fhir' && isFhirInputs(inputs));
+          if (!ok) throw new Error(`Invalid inputs for type '${type}'`);
+          const rec: KnownDocument = { id, title, type, inputs, status: 'running', createdAt: nowIso(), updatedAt: nowIso() } as KnownDocument;
+          s.put(rec as any);
           await new Promise(res => { t.oncomplete = () => res(null); });
-          events.emit({ type: 'document_created', id, title } as Event);
+          events.emit({ type: 'document_created', id, title, documentId: id, documentType: type } as Event);
         }
       },
-      async all(): Promise<Document[]> {
-        const t = tx(db, ['documents']);
+      all: docsAll as any,
+      get: docsGet as any,
+      async put(doc: KnownDocument): Promise<void> {
+        const t = tx(db, ['documents'], 'readwrite');
         const s = t.objectStore('documents');
-        const req = s.getAll();
-        const list: Document[] = await new Promise(res => { req.onsuccess = () => res(req.result as Document[]); });
-        return list.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        // Guard before upsert
+        const ok = (doc.type === 'narrative' && isNarrativeInputs((doc as any).inputs)) || (doc.type === 'fhir' && isFhirInputs((doc as any).inputs));
+        if (!ok) throw new Error(`Invalid inputs for type '${(doc as any).type}'`);
+        s.put(doc as any);
+        await new Promise(res => { t.oncomplete = () => res(null); });
+        events.emit({ type: 'document_created', id: doc.id, title: doc.title, documentId: doc.id, documentType: doc.type } as Event);
       },
-      async get(id: ID): Promise<Document | undefined> {
-        const t = tx(db, ['documents']);
-        const s = t.objectStore('documents');
-        const req = s.get(id);
-        return await new Promise(res => { req.onsuccess = () => res(req.result as Document | undefined); });
-      },
-      async updateStatus(id: ID, status: Document['status']): Promise<void> {
+      async updateStatus(id: ID, status: KnownDocument['status']): Promise<void> {
         const t = tx(db, ['documents'], 'readwrite');
         const s = t.objectStore('documents');
         const getReq = s.get(id);
         await new Promise(res => { getReq.onsuccess = () => res(null); });
-        const doc = getReq.result as Document | undefined;
+        const doc = getReq.result as KnownDocument | undefined;
         if (doc) {
-          doc.status = status;
-          doc.updatedAt = nowIso();
-          s.put(doc);
+          const prev = (doc as any).status;
+          (doc as any).status = status;
+          (doc as any).updatedAt = nowIso();
+          s.put(doc as any);
           await new Promise(res => { t.oncomplete = () => res(null); });
-          events.emit({ type: 'document_status', id, status } as Event);
+          try { console.log('[doc.status]', { id, from: prev, to: status }); } catch {}
+          events.emit({ type: 'document_status', id, status, documentId: id, documentType: (doc as any).type } as Event);
         }
       },
       async delete(id: ID): Promise<void> {
@@ -184,7 +222,6 @@ export async function createIndexedDbStores(): Promise<Stores> {
         const list: Artifact[] = await new Promise(res => { req.onsuccess = () => res(req.result as Artifact[]); });
         for (const a of list) s.delete(a.id);
         await new Promise(res => { t.oncomplete = () => res(null); });
-        // Notify UI so it refreshes artifact list immediately on resume
         events.emit({ type: 'artifacts_cleared', documentId } as Event);
       }
     },
@@ -291,7 +328,6 @@ export async function createIndexedDbStores(): Promise<Stores> {
         const list: Link[] = await new Promise(res => { req.onsuccess = () => res(req.result as Link[]); });
         for (const l of list) s.delete(l.id);
         await new Promise(res => { t.oncomplete = () => res(null); });
-        // Notify UI so it refreshes link-derived views immediately on resume
         events.emit({ type: 'links_cleared', documentId } as Event);
       }
     },

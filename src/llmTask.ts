@@ -1,8 +1,15 @@
 import { PROMPTS } from './prompts';
+import { NARRATIVE_PROMPTS } from './workflows/narrative/prompts';
+import { FHIR_PROMPTS } from './workflows/fhir/prompts';
 import type { Context, Artifact } from './types';
 
-export function buildPrompt(key: keyof typeof PROMPTS, params: any): string {
-  const template = PROMPTS[key];
+type GlobalKey = keyof typeof PROMPTS;
+type NarrativeKey = keyof typeof NARRATIVE_PROMPTS;
+type FhirKey = keyof typeof FHIR_PROMPTS;
+export type AnyPromptKey = GlobalKey | NarrativeKey | FhirKey;
+
+export function buildPrompt(key: AnyPromptKey, params: any): string {
+  const template = (NARRATIVE_PROMPTS as any)[key] || (FHIR_PROMPTS as any)[key] || (PROMPTS as any)[key];
   return template(params as any);
 }
 
@@ -11,7 +18,7 @@ type LinkInput = { dir: 'from' | 'to'; role: string; ref: { type: 'artifact' | '
 export async function runLLMTask<T = any>(
   ctx: Context,
   modelTask: string,
-  promptKey: keyof typeof PROMPTS,
+  promptKey: AnyPromptKey,
   params: any,
   opts: {
     expect: 'text' | 'json';

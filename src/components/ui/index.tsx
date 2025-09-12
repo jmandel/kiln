@@ -1,21 +1,21 @@
 import React, { ReactNode, useState, Children, cloneElement } from 'react';
 
 export const Card = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
-  <div className={`rounded-lg border border-gray-200 bg-white ${className}`}>
+  <div className={`card-kiln ${className}`}>
     {children}
   </div>
 );
 
 export const Badge = ({ variant = "default", children }: { variant?: string; children: ReactNode }) => {
   const variants: Record<string, string> = {
-    default: "bg-gray-100 text-gray-700",
-    success: "bg-emerald-50 text-emerald-700",
-    warning: "bg-amber-50 text-amber-700",
-    error: "bg-rose-50 text-rose-700",
-    info: "bg-blue-50 text-blue-700"
+    default: "badge-kiln bg-gray-100 text-gray-700",
+    success: "badge-success",
+    warning: "badge-warning",
+    error: "badge-error",
+    info: "badge-blue"
   };
   return (
-    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${variants[variant] || variants.default}`}>
+    <span className={`${variants[variant] || variants.default}`}>
       {children}
     </span>
   );
@@ -33,10 +33,10 @@ export const MetricPill = ({
   total?: number; 
   icon?: string 
 }) => (
-  <div className="flex items-center gap-1.5 text-sm">
-    {icon && <span className="text-gray-500">{icon}</span>}
-    <span className="text-gray-600">{label}:</span>
-    <span className="font-medium">
+  <div className="flex items-center gap-1.5 text-sm bg-warm-paper/50 px-3 py-1.5 rounded-soft">
+    {icon && <span className="text-kiln-ember/60">{icon}</span>}
+    <span className="text-gray-600 font-medium">{label}:</span>
+    <span className="font-semibold text-text-charcoal">
       {value}
       {total && <span className="text-gray-500">/{total}</span>}
     </span>
@@ -71,35 +71,40 @@ export const ViewToggle = ({
 
 export const StatusBadge = ({ status }: { status: string }) => {
   const map: Record<string, { text: string; className: string }> = {
-    queued: { text: 'Queued', className: 'bg-gray-100 text-gray-700' },
-    running: { text: 'Running', className: 'bg-blue-50 text-blue-700' },
-    done: { text: 'Done', className: 'bg-emerald-50 text-emerald-700' },
-    error: { text: 'Error', className: 'bg-rose-50 text-rose-700' }
+    queued: { text: 'Queued', className: 'badge-kiln bg-gray-100 text-gray-700' },
+    running: { text: 'Running', className: 'badge-blue' },
+    done: { text: 'Done', className: 'badge-success' },
+    error: { text: 'Error', className: 'badge-error' }
   };
   const variant = map[status] || map.running;
   return (
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${variant.className}`}>
+    <span className={variant.className}>
       {variant.text}
     </span>
   );
 };
 
-export const EmptyState = ({ message = "Select a job from the left to view progress." }: { message?: string }) => (
-  <div className="rounded-2xl border border-gray-200 p-12 text-center">
+export const EmptyState = ({ message = "Create a new job or select one to begin" }: { message?: string }) => (
+  <div className="card-kiln p-16 text-center max-w-md mx-auto">
+    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-4 text-kiln-ember/40">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+      <path d="M2 17l10 5 10-5"/>
+      <path d="M2 12l10 5 10-5"/>
+    </svg>
     <div className="text-gray-600">{message}</div>
   </div>
 );
 
 export const ErrorBanner = ({ error, onResume, onOpenFailed }: { error: string; onResume?: () => void; onOpenFailed?: () => void }) => (
-  <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-800 p-4">
-    <div className="text-sm font-medium mb-1">Error</div>
+  <div className="card-kiln bg-rose-50 border-rose-200 text-rose-800 p-4">
+    <div className="text-sm font-medium mb-1">Something went awry in the kiln</div>
     <div className="text-sm">{error}</div>
     <div className="flex items-center gap-3 mt-2">
       {onResume && (
-        <button className="px-2.5 py-1 text-xs bg-rose-600 text-white rounded hover:bg-rose-700" onClick={onResume}>Resume</button>
+        <button className="btn-kiln text-xs px-2.5 py-1" onClick={onResume}>Resume</button>
       )}
       {onOpenFailed && (
-        <button className="px-2.5 py-1 text-xs border border-rose-300 text-rose-800 rounded hover:bg-rose-100" onClick={onOpenFailed}>Open failed step</button>
+        <button className="btn-kiln-outline text-xs px-2.5 py-1" onClick={onOpenFailed}>Open failed step</button>
       )}
     </div>
   </div>

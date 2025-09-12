@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+.gitmodules
+
+# Dependencies that will be rebuilt
+node_modules
+server/node_modules
+
+# Build artifacts
+dist
+build
+*.log
+
+# Development files
+.env.local
+.env.development
+*.md
+!README.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+coverage
+.nyc_output
+*.test.ts
+*.spec.ts
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Design docs
+designs/
+fhir-ips/
+CLAUDE.md
+
+# Large files that will be downloaded during build
+server/validator.jar
+server/db/*.sqlite
+server/large-vocabularies/

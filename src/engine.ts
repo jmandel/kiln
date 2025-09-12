@@ -83,7 +83,7 @@ class LLMCallError extends Error {
   }
 }
 
-export function makeContext(stores: Stores, workflowId: ID, documentId: ID): Context {
+export function makeContext(stores: Stores, workflowId: ID, documentId: ID, extras?: { type?: string; inputs?: any }): Context {
   currentStepStack = [];
 
   async function step(key: string, fn: () => Promise<any>, opts: { title?: string; tags?: Record<string, any>; parentKey?: string; forceRecompute?: boolean; prompt?: string; } = {}): Promise<any> {
@@ -222,12 +222,14 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID): Con
     return callLLMCore(modelTask, prompt, opts);
   }
 
-  return {
+  const base: Context = {
     workflowId, documentId, stores,
     step, getStepResult, isPhaseComplete,
     createArtifact, link,
     callLLMEx
   };
+  // Attach typed inputs if provided (structural superset of Context)
+  return Object.assign({}, base, extras && extras.inputs ? { inputs: extras.inputs } : {});
 }
 
 async function llmCall(task: string, prompt: string, { expect = "text", temperature }: { expect?: "text" | "json"; temperature?: number; } = {}): Promise<{ result: any; tokensUsed: number; raw: string; attempts: number; status?: number }> {
@@ -343,8 +345,14 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
   throw new LLMCallError(`LLM call failed (exhausted ${retries} attempts)`, { rawContent: lastRaw });
 }
 
-export async function runWorkflow(stores: Stores, workflowId: ID, documentId: ID, pipeline: Array<(ctx: Context) => Promise<void>>): Promise<void> {
-  const ctx = makeContext(stores, workflowId, documentId);
+export async function runWorkflow(
+  stores: Stores,
+  workflowId: ID,
+  documentId: ID,
+  pipeline: Array<(ctx: Context) => Promise<void>>,
+  extras?: { type?: string; inputs?: any }
+): Promise<void> {
+  const ctx = makeContext(stores, workflowId, documentId, extras);
   const wfStart = Date.now();
   try { dbg('workflow.run.begin', { workflowId, documentId, phases: pipeline.length }); } catch {}
   await stores.workflows.setStatus(workflowId, "running");
