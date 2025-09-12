@@ -146,7 +146,6 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID): Con
     }
   }
 
-  // group/span removed (unused)
 
   async function getStepResult(stepKey: string): Promise<any> {
     const rec = await stores.steps.get(workflowId, stepKey);

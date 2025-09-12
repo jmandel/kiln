@@ -66,7 +66,6 @@ export interface Event {
   [key: string]: any;
 }
 
-// DocumentSummary removed (unused)
 
 export interface Config {
   baseURL: string;

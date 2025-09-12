@@ -388,5 +388,3 @@ export const IPS_NOTES: IPSNotes = {
 }`
   }
 };
-
-// getIPSNotesFor removed (unused)

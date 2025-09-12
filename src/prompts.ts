@@ -84,8 +84,6 @@ Specific Task: Score 0-1 on overall coherence, expansion, and consistency. Feedb
 
 Output JSON: {"critique": "...", "score": 0.XX}`,
 
-    // rewrite_note removed (unused)
-
   finalize_note: ({ noteDraft, sketch, guidance }: { noteDraft: string; sketch: string; guidance: string }) => `You are a final clinical polisher. Finalize the note for release.
 
 Background:

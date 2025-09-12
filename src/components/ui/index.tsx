@@ -21,7 +21,6 @@ export const Badge = ({ variant = "default", children }: { variant?: string; chi
   );
 };
 
-// Unused Tabs components removed
 
 export const MetricPill = ({ 
   label, 

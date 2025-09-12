@@ -96,7 +96,7 @@ export default function DocGenDashboard({
     }
   }, [state.status]);
 
-  // API bridge (legacy, only when uncontrolled)
+  // Expose dashboard state API for uncontrolled usage
   useEffect(() => {
     if (controlled) return;
     const api = {

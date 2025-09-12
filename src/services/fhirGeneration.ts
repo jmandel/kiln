@@ -396,7 +396,7 @@ export async function generateAndRefineResources(
             trace.push({ iter: INITIAL_BUDGET - budget + 1, action: 'update', result: 'redacted_invalid_codes', targets: stillBad, llmStepKey: localMeta?.stepKey, decision: localDecision });
             budget -= 1; continue;
           }
-          // (Partial-code update redaction removed.)
+          // Partial-code update redaction not applied (policy opts for rejection rather than partial redaction)
 
           const patch = Array.isArray(localDecision?.patch) ? localDecision.patch : [];
           if (!patch.length) {

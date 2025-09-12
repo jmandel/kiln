@@ -243,7 +243,6 @@ function createNoteDecideTask(_initial: number) {
   };
 }
 
-// createNoteRewriteTask removed (unused)
 
 async function getSectionSummaries(ctx: Context, outline: any): Promise<string> {
   if (!outline || !Array.isArray(outline.sections)) return '<sectionSummaries />';
@@ -442,7 +441,7 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
       }, { title: 'Analyze Codings (pre)', tags: { phase: 'fhir', contentHash: preHash } });
       await emitJsonArtifact(ctx, { kind: 'CodingValidationReport', title: 'Coding Validation Report (pre-recoding)', content: { items: preReport }, tags: { phase: 'fhir', stage: 'pre' } });
 
-      // 5. Legacy group recoder removed — rely solely on validate/refine loop
+      // Prepare a working copy for any subsequent recoding/refine steps
       const recodedResources: any[] = JSON.parse(JSON.stringify(generatedResources));
 
       // 6. Analyze again (post-refine placeholder; no pre-recoding stage now) and create reports
@@ -452,8 +451,7 @@ function buildDocumentWorkflow(input: { title: string; sketch: string }) {
       }, { title: 'Analyze Codings (post)', tags: { phase: 'fhir', contentHash: postHash } });
       await emitJsonArtifact(ctx, { kind: 'CodingValidationReport', title: 'Coding Validation Report (post-recoding)', content: { items: postReport }, tags: { phase: 'fhir', stage: 'post' } });
 
-      // Detailed recoding report removed with legacy recoder
-// 7. Finalize unresolved in-place with extensions
+      // 7. Finalize unresolved in-place with extensions
       const unresolvedPointers = postReport.filter((i: any) => i.status !== 'ok').map((i: any) => i.pointer);
       const finalResources = unresolvedPointers.length ? finalizeUnresolved(recodedResources, unresolvedPointers, attemptLogs) : recodedResources;
 
@@ -657,8 +655,6 @@ export async function runDocumentWorkflow(stores: Stores, input: { title: string
   await runWorkflow(stores, workflowId, documentId, pipeline);
 }
 
-// resume(stores) removed (unused; UI uses resumeDocument)
-
 // Resume workflows for a specific document, even if the workflow status is 'done',
 // as long as there are pending/running/failed steps for that document.
 export async function resumeDocument(stores: Stores, documentId: ID): Promise<void> {
@@ -733,4 +729,4 @@ export async function resumeDocument(stores: Stores, documentId: ID): Promise<vo
   try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'resume.end', documentId, mode: 'replay', workflowId: replayWfId })); } catch {}
   return;
 }
-// createLLMProduct removed; artifacts are created directly using callLLMEx metadata
+// Artifacts are created directly using callLLMEx metadata

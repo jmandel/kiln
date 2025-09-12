@@ -26,7 +26,6 @@ function guessKind(kind: string): 'draft'|'outline'|'assets'|'review'|'final'|st
   return k;
 }
 
-// Removed legacy HTML artifact viewer and dashboard projector
 
 // Configuration Modal Component
 function ConfigModal({ config, onSave, onClose }: { 
@@ -379,7 +378,7 @@ export default function DocGenApp(): React.ReactElement {
               </div>
             </div>
             
-            {/* Quick Actions removed — use metadata-driven cache controls near Rerun */}
+            {/* Quick Actions: use metadata-driven cache controls near Rerun */}
           </div>
 
           {/* Dashboard */}
