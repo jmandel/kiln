@@ -1,6 +1,7 @@
 import * as React from 'react';
-import type { Stores, ID } from '../types';
-import { DashboardStore, type DashboardView } from '../dashboardStore';
+import type { ID, Job } from '../types';
+import type { DashboardStore } from '../dashboardStore';
+import type { DashboardView } from '../dashboardStore';
 
 const EMPTY_STATE: DashboardView = {
   jobId: '',
@@ -9,24 +10,37 @@ const EMPTY_STATE: DashboardView = {
   metrics: { stepCounts: {}, totalTokens: 0, elapsedMs: 0 },
   artifacts: [],
   events: [],
-  phases: []
+  phases: [],
+  stepTypes: []
 };
 
-export function useDashboardState(stores: Stores | null, jobId: ID | null): DashboardView {
-  const storeRef = React.useRef<DashboardStore | null>(null);
+const EMPTY_JOBS: Job[] = [];
 
-  if (stores && !storeRef.current) {
-    storeRef.current = new DashboardStore(stores);
-  }
+// Singleton DashboardStore per app lifecycle
+let singleton: DashboardStore | null = null;
+function getStore(stores: Stores | null): DashboardStore | null {
+  if (!stores) return null;
+  if (!singleton) singleton = new DashboardStore(stores);
+  return singleton;
+}
 
+export function useDashboardState(store: DashboardStore | null, jobId: ID | null): DashboardView {
   React.useEffect(() => {
-    if (!storeRef.current || !jobId) return;
-    storeRef.current.select(jobId);
-  }, [jobId]);
+    if (!store || !jobId) return;
+    store.select(jobId);
+  }, [store, jobId]);
 
   return React.useSyncExternalStore(
-    (cb) => (storeRef.current && jobId) ? storeRef.current.subscribe(jobId, cb) : () => {},
-    () => (storeRef.current && jobId) ? storeRef.current.getState(jobId) : EMPTY_STATE,
+    (cb) => (store && jobId) ? store.subscribe(jobId, cb) : () => {},
+    () => (store && jobId) ? store.getState(jobId) : EMPTY_STATE,
     () => EMPTY_STATE
+  );
+}
+
+export function useJobsList(store: DashboardStore | null): Job[] {
+  return React.useSyncExternalStore(
+    (cb) => store ? store.subscribeToJobs(cb) : () => {},
+    () => store ? store.getJobs() : EMPTY_JOBS,
+    () => EMPTY_JOBS
   );
 }

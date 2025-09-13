@@ -9,7 +9,8 @@ import { pretty, tryJson } from './ui';
 // New jobs-first API (no runs in UI)
 import { createJob, startJob as startJobApi, rerunJob, clearJobCache as clearJobCacheAPI, resumeJob, triggerReadyJobs } from '../jobs';
 import { sha256 } from '../helpers';
-import { useDashboardState } from '../hooks/useDashboardState';
+import { useDashboardState, useJobsList } from '../hooks/useDashboardState';
+import { DashboardStore } from '../dashboardStore';
 import { JobsList } from './ui/JobsList';
 import { registry } from '../documentTypes/registry';
 import type { DocumentType, InputsUnion, FhirInputs, NarrativeInputs } from '../types';
@@ -139,7 +140,7 @@ function ConfigModal({ config, onSave, onClose }: {
 
 export default function DocGenApp(): React.ReactElement {
   const [stores, setStores] = useState<Stores | null>(null);
-  const [docs, setDocs] = useState<Job[]>([]);
+  const [store, setStore] = useState<DashboardStore | null>(null);
   const [selected, setSelected] = useState<ID | null>(null);
   const [input, setInput] = useState({ title: '', sketch: '' });
   const [modalOpen, setModalOpen] = useState(false);
@@ -167,39 +168,15 @@ export default function DocGenApp(): React.ReactElement {
       const s = await createStores();
       if (!mounted) return;
       setStores(s);
-      setDocs(await s.jobs.all());
+      const ds = new DashboardStore(s);
+      setStore(ds);
     })();
     return () => { mounted = false; };
   }, []);
 
   
-  useEffect(() => {
-    if (!stores) return;
-    (async () => {
-      setDocs(await stores.jobs.all());
-      // On initial mount, scan to trigger any ready dependents
-      try { await triggerReadyJobs(stores); } catch {}
-      // Auto-resume stalled jobs (running/failed) on app load
-      try {
-        const all = await stores.jobs.all();
-        const stalled = all.filter(j => j.status === 'running' || j.status === 'failed');
-        for (const j of stalled) {
-          try { await resumeJob(stores, j.id as ID); } catch (e) { console.warn('auto-resume failed', j.id, e); }
-        }
-      } catch (e) { console.warn('auto-resume scan failed', e); }
-    })();
-    const unsub = stores.events.subscribe(async (ev: any) => {
-      try { console.log('[ui.event]', ev.type, ev); } catch {}
-      if (ev.type === 'job_created' || ev.type === 'job_status') {
-        const allJobs = await stores.jobs.all();
-        setDocs(allJobs);
-        if (ev.type === 'job_status' && ev.status === 'done') {
-          try { await triggerReadyJobs(stores); } catch {}
-        }
-      }
-    });
-    return () => unsub();
-  }, [stores]);
+  // No automatic starts/resumes on startup. All runs are explicit via Rerun.
+  useEffect(() => { /* intentionally empty */ }, [stores]);
 
 
   // Ensure dashboard starts empty on first load (no placeholders)
@@ -228,11 +205,10 @@ export default function DocGenApp(): React.ReactElement {
     await stores.artifacts.deleteByJob(docId);
     await stores.steps.deleteByJob(docId);
     await stores.links.deleteByJob(docId);
-    const remaining = await stores.jobs.all();
-    setDocs(remaining);
     if (selected === docId) {
-      setSelected(remaining[0]?.id || null);
-      if (!remaining[0]) {
+      const remainingLocal = (docs || []).filter((d: any) => d.id !== docId);
+      setSelected(remainingLocal[0]?.id || null);
+      if (!remainingLocal[0]) {
         (window as any).docGen?.set && (window as any).docGen.set({
           jobId: '', title: 'No job selected', status: 'queued', metrics: { stepCounts: {}, totalTokens: 0, elapsedMs: 0 }, artifacts: [], events: []
         });
@@ -261,7 +237,8 @@ export default function DocGenApp(): React.ReactElement {
     await rerunJob(stores, selected);
   };
 
-  const selectedDoc = useMemo(() => docs.find(d => d.id === selected), [docs, selected]);
+  const docs = useJobsList(store);
+  const selectedDoc = useMemo(() => docs.find((d: any) => d.id === selected), [docs, selected]);
   const canConvertToFhir = useMemo(() => selectedDoc?.type === 'narrative' && selectedDoc?.status === 'done', [selectedDoc]);
   // Header creation controls (must run before any conditional returns)
   const doneNarratives = useMemo(
@@ -275,13 +252,14 @@ export default function DocGenApp(): React.ReactElement {
     setModalOpen(true);
   };
 
-  const openChainingModal = async () => {
+  const convertSelectedToFhir = async () => {
     if (!stores || !selected) return;
-    // Prefill from latest ReleaseCandidate of the selected Narrative doc
-    const arts = await stores.artifacts.listByJob(selected, a => a.kind === 'ReleaseCandidate');
-    const latest = arts.sort((a, b) => b.version - a.version)[0];
-    const init: Partial<FhirInputs> = latest?.content ? { noteText: latest.content as string, source: { jobId: selected, artifactId: latest.id } } : {};
-    openCreateModal('fhir', init);
+    try {
+      // Create a FHIR job that depends on the selected Narrative job; source by jobId
+      const fhirInputs: FhirInputs = { noteText: '', source: { jobId: selected } as any };
+      const docId = await createJob(stores, 'fhir', fhirInputs, 'FHIR Bundle', { dependsOn: [selected as ID] });
+      setSelected(docId);
+    } catch (e) { console.error('Convert to FHIR failed', e); }
   };
 
   // Generic: clear ALL step cache for this job, then resume (no workflow-specific knowledge)
@@ -300,15 +278,15 @@ export default function DocGenApp(): React.ReactElement {
   };
 
   const docList = useMemo(() => docs, [docs]);
-  const dashboardState = useDashboardState(stores, selected);
+  const dashboardState = useDashboardState(store, selected);
 
   // URL routing via query params
   React.useEffect(() => {
     const apply = () => {
       const sp = new URLSearchParams(window.location.search);
-      const doc = sp.get('doc');
+      const job = sp.get('job');
       const art = sp.get('artifact');
-      if (doc) setSelected(doc);
+      if (job) setSelected(job);
       setViewArtifactId(art);
     };
     window.addEventListener('popstate', apply);
@@ -318,7 +296,7 @@ export default function DocGenApp(): React.ReactElement {
 
   const openArtifact = (id: ID) => {
     const sp = new URLSearchParams();
-    if (selected) sp.set('doc', selected);
+    if (selected) sp.set('job', selected);
     sp.set('artifact', id);
     const url = `${window.location.pathname}?${sp.toString()}`;
     window.open(url, '_blank', 'noopener');
@@ -327,13 +305,13 @@ export default function DocGenApp(): React.ReactElement {
   // Full-page artifact viewer mode
   if (stores && new URLSearchParams(window.location.search).get('artifact')) {
     const sp = new URLSearchParams(window.location.search);
-    const docId = (sp.get('doc') as ID) || selected || (docs[0]?.id as ID);
+    const job = (sp.get('job') as ID) || selected || (docs[0]?.id as ID);
     const artId = sp.get('artifact') as ID;
-    if (!docId || !artId) return <div className="p-6">Loading…</div>;
+    if (!job || !artId) return <div className="p-6">Loading…</div>;
     return (
-      <ArtifactDetails stores={stores} jobId={docId} artifactId={artId} onClose={()=>{ if (window.history.length>1) history.back(); else window.close(); }} onOpenArtifact={(id)=>{
+      <ArtifactDetails stores={stores} jobId={job} artifactId={artId} onClose={()=>{ if (window.history.length>1) history.back(); else window.close(); }} onOpenArtifact={(id)=>{
         const q = new URLSearchParams(window.location.search);
-        if (docId) q.set('doc', docId);
+        if (job) q.set('job', job);
         q.set('artifact', id);
         history.pushState(null, '', `?${q.toString()}`);
         setViewArtifactId(id);
@@ -370,7 +348,6 @@ export default function DocGenApp(): React.ReactElement {
     if (!latest?.content) { alert('Selected Narrative has no ReleaseCandidate'); return; }
     const inputs: FhirInputs = { noteText: latest.content as string, source: { jobId: srcId as ID, artifactId: latest.id as ID } };
     const docId = await createJob(stores, 'fhir', inputs, 'FHIR Bundle', { dependsOn: [srcId as ID] });
-    try { await triggerReadyJobs(stores); } catch {}
     setSelected(docId);
     setFhirSourceId('');
   };
@@ -460,18 +437,21 @@ export default function DocGenApp(): React.ReactElement {
             onOpenArtifact={openArtifact}
           onRerun={async () => { if (!stores || !selected) return; await rerunJob(stores, selected); }}
           canConvertToFhir={!!canConvertToFhir}
-          onConvertToFhir={() => openChainingModal()}
-          onClearCache={async (phaseId?: string) => {
+          onConvertToFhir={() => convertSelectedToFhir()}
+          onClearCache={async (opts?: { all?: boolean; phase?: string; type?: string }) => {
             if (!stores || !selected) return;
-              // Phase-specific cache clear without clearing artifacts
-            const cleared = await clearJobCacheAPI(
-              stores, 
-              selected, 
-              (s: any) => {
-                if (!phaseId) return true;
-                try { const t = s.tagsJson ? JSON.parse(s.tagsJson) : {}; return String(t.phase || '') === String(phaseId); } catch { return false; }
+            // Clear cache by all/phase/type without clearing artifacts
+            const filter = (s: any) => {
+              if (!opts || opts.all) return true;
+              if (opts.phase) {
+                try { const t = s.tagsJson ? JSON.parse(s.tagsJson) : {}; return String(t.phase || '') === String(opts.phase); } catch { return false; }
               }
-            );
+              if (opts.type) {
+                try { return String(s.key || '').startsWith(`${opts.type}:`); } catch { return false; }
+              }
+              return true;
+            };
+            const cleared = await clearJobCacheAPI(stores, selected, filter);
             if (!cleared) { alert('No cached steps found for this selection.'); return; }
             try { await startJobApi(stores, selected); } catch (e) { console.error('Start after clear failed', e); }
           }}

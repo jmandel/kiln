@@ -31,7 +31,7 @@ export interface Step {
 }
 
 // =============================
-// Generic Document Model
+// Document Types & Inputs
 // =============================
 
 export type DocumentType = "narrative" | "fhir";
@@ -68,28 +68,8 @@ export interface Job {
   createdAt: string;
   updatedAt: string;
   lastRunAt?: string;
+  runCount?: number;
 }
-
-export interface DocumentTags {
-  blockedOn?: ID[];
-  [key: string]: any;
-}
-
-export interface BaseDocument {
-  id: ID;
-  title: string;
-  status: "running" | "done" | "blocked";
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Document<T = InputsUnion> extends BaseDocument {
-  type: DocumentType;
-  inputs: T;
-  tags?: DocumentTags;
-}
-
-export type KnownDocument = Document<NarrativeInputs> | Document<FhirInputs>;
 
 export function isNarrativeInputs(inputs: unknown): inputs is NarrativeInputs {
   return !!inputs && typeof inputs === 'object' && typeof (inputs as any).sketch === 'string';
@@ -107,14 +87,6 @@ export function isFhirInputs(inputs: unknown): inputs is FhirInputs {
   return noteTextOk && srcOk;
 }
 
-export function isNarrativeDocument(doc: KnownDocument | undefined): doc is Document<NarrativeInputs> {
-  return !!doc && doc.type === 'narrative' && isNarrativeInputs((doc as any).inputs);
-}
-
-export function isFhirDocument(doc: KnownDocument | undefined): doc is Document<FhirInputs> {
-  return !!doc && doc.type === 'fhir' && isFhirInputs((doc as any).inputs);
-}
-
 // =============================
 // Workflows / Context (generic-friendly)
 // =============================
@@ -130,6 +102,7 @@ export interface ContextOpts {
 export interface Context {
   jobId: ID;
   stores: Stores;
+  runCount?: number;
   step: (key: string, fn: () => Promise<any>, opts?: ContextOpts) => Promise<any>;
   getStepResult: (stepKey: string) => Promise<any>;
   isPhaseComplete: (phaseName: string) => Promise<boolean>;
@@ -157,7 +130,7 @@ export interface DocumentTypeDef<T extends InputsUnion> {
     onCancel: () => void;
   }>;
   buildWorkflow: (inputs: T) => DocumentWorkflow<T>;
-  previewComponent?: React.FC<{ document: Document<T> }>;
+  previewComponent?: React.FC<{ document: { inputs: T } }>;
 }
 
 // Simple document type registry interface
@@ -226,6 +199,8 @@ export interface Stores {
     all: () => Promise<Job[]>;
     get: (id: ID) => Promise<Job | undefined>;
     updateStatus: (id: ID, status: Job['status'], lastError?: string | null) => Promise<void>;
+    upsert: (job: Job) => Promise<void>;
+    setDependsOn?: (id: ID, dependsOn: ID[]) => Promise<void>;
     delete: (id: ID) => Promise<void>;
     listByDependsOn: (parentId: ID) => Promise<Job[]>;
   };

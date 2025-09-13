@@ -1,4 +1,4 @@
-import type { Stores, ID, Step, Artifact, Event } from './types';
+import type { Stores, ID, Step, Artifact, Event, Job } from './types';
 
 type Level = 'info' | 'warn' | 'error';
 
@@ -13,6 +13,7 @@ export type DashboardView = {
   events: Array<{ ts: string; level: Level; msg: string }>;
   error?: string;
   phases: Array<{ id: string; label: string; done: number; total: number; pct: number }>;
+  stepTypes: string[];
 };
 
 const defaultView: DashboardView = {
@@ -22,7 +23,8 @@ const defaultView: DashboardView = {
   metrics: { stepCounts: {}, totalTokens: 0, elapsedMs: 0 },
   artifacts: [],
   events: [],
-  phases: []
+  phases: [],
+  stepTypes: []
 };
 
 function guessKind(kind: string): 'draft'|'outline'|'assets'|'review'|'final'|string {
@@ -60,18 +62,27 @@ export class DashboardStore {
   private pendingEvents = new Map<ID, any[]>();
   private flushScheduled = false;
   private selectedDoc: ID | null = null;
+  // Global jobs list state for sidebar
+  private jobs: Job[] = [];
+  private jobsListeners = new Set<() => void>();
 
   constructor(private stores: Stores) {
     this.stores.events.subscribe((ev: Event) => {
       try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'event.recv', evType: (ev as any)?.type, jobId: (ev as any)?.jobId })); } catch {}
       const docId: ID | undefined = (ev as any).jobId;
+      // Keep global jobs list updated on job events only (avoid floods)
+      if ((ev as any).type === 'job_created' || (ev as any).type === 'job_status' || (ev as any).type === 'job_deleted') {
+        void this.updateJobsList();
+      }
       if (!docId) return;
-      if (this.selectedDoc && docId !== this.selectedDoc) return;
+      // Queue events for all jobs; we'll flush for the selected job when its view exists
       const q = this.pendingEvents.get(docId) || [];
       q.push(ev);
       this.pendingEvents.set(docId, q);
       this.scheduleFlush();
     });
+    // Initial global jobs snapshot
+    void this.updateJobsList();
   }
 
   select(jobId: ID) {
@@ -122,6 +133,7 @@ export class DashboardStore {
     const lastTs = steps.length ? steps[steps.length - 1].ts : jobStartTime;
     const elapsedMs = jobStartTime && lastTs ? (new Date(lastTs).getTime() - new Date(jobStartTime).getTime()) : 0;
     const phases = Array.from(pCounts.entries()).map(([id, v]) => ({ id, label: id, done: v.done, total: v.total, pct: v.total ? v.done / v.total : 0 }));
+    const stepTypes = Array.from(new Set(steps.map(s => String(s.key || '').split(':')[0] || 'other')));
 
     const artifacts = arts.map(a => ({
       id: a.id,
@@ -143,7 +155,7 @@ export class DashboardStore {
 
     const view: DashboardView = {
       jobId,
-      title: doc?.title || 'Document',
+      title: doc?.title || 'Job',
       status: doc?.status === 'done' ? 'done' : doc?.status === 'blocked' ? 'error' : 'running',
       currentPhase: (() => {
         const latest = steps.slice().sort((a,b)=> b.ts.localeCompare(a.ts))[0];
@@ -154,12 +166,15 @@ export class DashboardStore {
       artifacts,
       events: [],
       error,
-      phases
+      phases,
+      stepTypes
     };
 
     this.views.set(jobId, view);
     try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'bootstrap.done', jobId, artifacts: artifacts.length })); } catch {}
     this.notify(jobId);
+    // If events arrived while bootstrapping, flush them now that view exists
+    this.scheduleFlush();
   }
 
   private scheduleFlush() {
@@ -194,6 +209,11 @@ export class DashboardStore {
           const newPhase = safePhase(JSON.stringify(ev.tags || (ev.tagsJson ? JSON.parse(ev.tagsJson) : {})));
           const curStatus = ev.status as Step['status'];
           const prevStatus = prev?.status;
+          // track step types (prefix before ':')
+          try {
+            const t = String(ev.key || '').split(':')[0] || 'other';
+            if (!view.stepTypes.includes(t)) view.stepTypes = [...view.stepTypes, t];
+          } catch {}
 
           if (!prev) {
             view.metrics.stepCounts[curStatus] = (view.metrics.stepCounts[curStatus] || 0) + 1;
@@ -291,5 +311,30 @@ export class DashboardStore {
     const set = this.listeners.get(jobId);
     if (!set) return;
     for (const cb of set) { try { cb(); } catch {} }
+  }
+
+  // ===== Global jobs list (sidebar) =====
+  private async updateJobsList(): Promise<void> {
+    try {
+      const all = await this.stores.jobs.all();
+      const next = all.slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+      // Shallow equality check to avoid redundant notifications
+      const same = this.jobs.length === next.length && this.jobs.every((j, i) => j.id === next[i].id && j.status === next[i].status && j.updatedAt === next[i].updatedAt && j.title === next[i].title);
+      if (!same) {
+        this.jobs = next;
+        this.notifyGlobalJobs();
+      }
+    } catch (e) { console.warn('updateJobsList failed', e); }
+  }
+
+  subscribeToJobs(cb: () => void): () => void {
+    this.jobsListeners.add(cb);
+    return () => { this.jobsListeners.delete(cb); };
+  }
+
+  getJobs(): Job[] { return this.jobs; }
+
+  private notifyGlobalJobs() {
+    for (const cb of this.jobsListeners) { try { cb(); } catch {} }
   }
 }

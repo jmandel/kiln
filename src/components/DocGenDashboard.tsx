@@ -73,7 +73,7 @@ export default function DocGenDashboard({
   onOpenArtifact?: (id: string) => void; 
   onRerun?: () => void;
   onOpenFailed?: () => void;
-  onClearCache?: (phaseId?: string) => void;
+  onClearCache?: (opts?: { all?: boolean; phase?: string; type?: string }) => void;
   canConvertToFhir?: boolean;
   onConvertToFhir?: () => void;
 }) {
@@ -190,10 +190,14 @@ export default function DocGenDashboard({
                   <button className="btn-kiln-outline whitespace-nowrap" onClick={() => setCacheMenuOpen(v => !v)}>Clear Cache</button>
                   {cacheMenuOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white border rounded-md shadow-lg z-10">
-                      <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache(undefined); }}>Clear all steps</button>
+                      <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache({ all: true }); }}>All steps</button>
                       <div className="px-3 py-1 text-xs text-gray-500">By phase</div>
                       {(state.phases || []).map(p => (
-                        <button key={p.id} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache(p.id); }}>Clear “{p.label}”</button>
+                        <button key={p.id} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache({ phase: p.id }); }}>{p.label}</button>
+                      ))}
+                      <div className="px-3 py-1 text-xs text-gray-500">By type</div>
+                      {(state as any).stepTypes && (state as any).stepTypes.map((t: string) => (
+                        <button key={t} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache({ type: t }); }}>{t}:*</button>
                       ))}
                     </div>
                   )}

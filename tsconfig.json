@@ -12,5 +12,7 @@
     "types": ["react", "react-dom"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

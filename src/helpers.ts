@@ -54,13 +54,6 @@ export function resolveTaskConfig(taskKind: string | undefined): Config {
   return { baseURL, apiKey, model, temperature };
 }
 
-export const STORAGE_KEYS = {
-  documents: 'narrative_documents',
-  artifacts: 'narrative_artifacts',
-  steps: 'narrative_steps',
-  links: 'narrative_links'
-} as const;
-
 // Resolve the Terminology Server base URL consistently across environments
 
 export function getTerminologyServerURL(): string {

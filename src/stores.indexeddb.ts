@@ -105,11 +105,36 @@ export async function createIndexedDbStores(): Promise<Stores> {
           events.emit({ type: 'job_status', jobId: id, status, lastError: job.lastError } as any);
         }
       },
+      async upsert(jobRec) {
+        const t = tx(db, ['jobs'], 'readwrite');
+        const s = t.objectStore('jobs');
+        s.put(jobRec as any);
+        await new Promise(res => { t.oncomplete = () => res(null); });
+        try { console.log('[job.upsert]', { id: jobRec.id, status: (jobRec as any).status, runCount: (jobRec as any).runCount }); } catch {}
+        // Emit status to refresh UI
+        events.emit({ type: 'job_status', jobId: jobRec.id, status: (jobRec as any).status, lastError: (jobRec as any).lastError } as any);
+      },
+      async setDependsOn(id, dependsOn) {
+        const t = tx(db, ['jobs'], 'readwrite');
+        const s = t.objectStore('jobs');
+        const getReq = s.get(id);
+        await new Promise(res => { getReq.onsuccess = () => res(null); });
+        const job = getReq.result as any | undefined;
+        if (job) {
+          job.dependsOn = dependsOn || [];
+          job.updatedAt = nowIso();
+          s.put(job);
+          await new Promise(res => { t.oncomplete = () => res(null); });
+          try { console.log('[job.dependsOn]', { id, dependsOn: job.dependsOn }); } catch {}
+          events.emit({ type: 'job_status', jobId: id, status: job.status, lastError: job.lastError } as any);
+        }
+      },
       async delete(id) {
         const t = tx(db, ['jobs'], 'readwrite');
         const s = t.objectStore('jobs');
         s.delete(id);
         await new Promise(res => { t.oncomplete = () => res(null); });
+        try { events.emit({ type: 'job_deleted', jobId: id } as any); } catch {}
       },
       async listByDependsOn(parentId) {
         const t = tx(db, ['jobs']);

@@ -15,7 +15,7 @@ export async function createJob<T extends InputsUnion>(
     ? `Patient: ${((inputs as any).sketch || '').slice(0, 30)}...`
     : 'FHIR Bundle');
   const idSeed = `${type}:${computedTitle}:${JSON.stringify(inputs)}`;
-  const jobId = `doc:${await sha256(idSeed)}` as ID; // reuse existing documents store keying
+  const jobId = `job:${await sha256(idSeed)}` as ID;
 
   // Create job record (single source of truth)
   try { await stores.jobs.create(jobId, computedTitle, type, inputs as any, options.dependsOn || []); } catch {}
@@ -37,12 +37,15 @@ export async function startJob(stores: Stores, jobId: ID): Promise<void> {
   if (!def) throw new Error(`Unknown job type: ${job.type}`);
   const pipeline = def.buildWorkflow(job.inputs as any);
   try { await stores.jobs.updateStatus(jobId, 'running'); } catch {}
-  await runPipeline(stores, jobId, pipeline, { type: job.type as any, inputs: job.inputs as any });
+  await runPipeline(stores, jobId, pipeline, { type: job.type as any, inputs: job.inputs as any, runCount: (job as any).runCount || 0 });
 }
 
 export async function rerunJob(stores: Stores, jobId: ID): Promise<void> {
   const job = await stores.jobs.get(jobId);
   if (!job) throw new Error(`Job not found: ${jobId}`);
+  // Increment runCount to invalidate stale contexts
+  const updated = { ...job, runCount: (job.runCount || 0) + 1, updatedAt: new Date().toISOString() } as any;
+  await stores.jobs.upsert(updated);
 
   // Clear outputs (artifacts + links)
   await stores.artifacts.deleteByJob(jobId);

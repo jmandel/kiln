@@ -737,7 +737,7 @@
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".5rem"}}>
               <span className="muted">Pretty‑printed JSON</span>
               <button className="btnlink" onClick={()=>{
-                const txt = JSON.stringify(resource, null, 2);
+                const txt = JSON.stringify(resource, (k, v) => k === '__anchor' ? undefined : v, 2);
                 if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>alert("Copy failed."));
                 else {
                   // fallback
@@ -747,7 +747,7 @@
                 }
               }}>Copy JSON</button>
             </div>
-            <pre className="json"><code>{JSON.stringify(resource, null, 2)}</code></pre>
+            <pre className="json"><code>{JSON.stringify(resource, (k, v) => k === '__anchor' ? undefined : v, 2)}</code></pre>
           </div>
 
           <div style={{display:"flex",justifyContent:"space-between",marginTop:".5rem"}}>

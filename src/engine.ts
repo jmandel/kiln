@@ -157,6 +157,12 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
   }
 
   async function link(from: { type: string; id: ID }, role: string, to: { type: string; id: ID }, tags?: Record<string, any>): Promise<Link> {
+    try {
+      const latest = await stores.jobs.get(jobId);
+      const ctxRun = (extras as any)?.runCount || 0;
+      const latestRun = (latest as any)?.runCount || 0;
+      if (ctxRun !== latestRun) throw new StaleRunError(ctxRun, latestRun, 'Stale run — skipping link');
+    } catch {}
     const id = `link:${await sha256(`${jobId}:${from.type}:${from.id}:${role}:${to.type}:${to.id}`)}`;
     const rec: Link = {
       id, jobId: jobId as any,
@@ -169,10 +175,19 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
   }
 
   async function createArtifact(spec: { id?: ID; kind: string; version: number; title?: string; content?: string; tags?: Record<string, any>; links?: Array<{ dir: "from"; role: string; ref: { type: string; id: ID }; tags?: Record<string, any>; }>; autoProduced?: boolean; }): Promise<Artifact> {
+    // Attach runCount for debugging/traceability
+    const runCountTag = (extras as any)?.runCount ?? 0;
+    const mergedTags = { ...(spec.tags || {}), runCount: runCountTag };
+    try {
+      const latest = await stores.jobs.get(jobId);
+      const ctxRun = (extras as any)?.runCount || 0;
+      const latestRun = (latest as any)?.runCount || 0;
+      if (ctxRun !== latestRun) throw new StaleRunError(ctxRun, latestRun, 'Stale run — skipping artifact');
+    } catch {}
     const id = spec.id ?? `artifact:${await sha256(`${jobId}:${spec.kind}:${spec.version}:${spec.title || ""}:${JSON.stringify(spec.tags || {})}`)}`;
     const base: Artifact = {
       id, jobId: jobId as any, kind: spec.kind, version: spec.version,
-      title: spec.title, content: spec.content, tags: spec.tags,
+      title: spec.title, content: spec.content, tags: mergedTags,
       createdAt: nowIso(), updatedAt: nowIso()
     };
     await stores.artifacts.upsert(base);
@@ -183,9 +198,13 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
     }
 
     for (const l of spec.links || []) {
-      const from = l.dir === "from" ? { type: "artifact", id: base.id } : l.ref;
-      const to = l.dir === "from" ? l.ref : { type: "artifact", id: base.id };
-      await link(from, l.role, to, l.tags);
+      // If the reference is a step, create a step -> artifact link (producer/contributor semantics)
+      if ((l.ref as any)?.type === 'step') {
+        await link(l.ref as any, l.role, { type: 'artifact', id: base.id }, l.tags);
+      } else {
+        // Otherwise, default to artifact -> ref (e.g., artifact uses/relates to another artifact)
+        await link({ type: 'artifact', id: base.id }, l.role, l.ref as any, l.tags);
+      }
     }
     return base;
   }
@@ -228,7 +247,8 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
     jobId, stores,
     step, getStepResult, isPhaseComplete,
     createArtifact, link,
-    callLLMEx
+    callLLMEx,
+    runCount: (extras as any)?.runCount || 0
   };
   // Attach typed inputs if provided (structural superset of Context)
   return Object.assign({}, base, extras && extras.inputs ? { inputs: extras.inputs } : {});
@@ -354,7 +374,7 @@ export async function runPipeline(
   stores: Stores,
   jobId: ID,
   pipeline: Array<(ctx: Context) => Promise<void>>,
-  extras?: { type?: string; inputs?: any }
+  extras?: { type?: string; inputs?: any; runCount?: number }
 ): Promise<void> {
   const ctx = makeContext(stores, jobId, extras);
   try { await stores.jobs.updateStatus(jobId, 'running'); } catch {}
@@ -364,6 +384,11 @@ export async function runPipeline(
     }
     try { await stores.jobs.updateStatus(jobId, 'done'); } catch {}
   } catch (e: any) {
+    if (e instanceof StaleRunError) {
+      // Old run aborted due to newer run; do not mark failed
+      dbg('pipeline.stale_abort', { jobId });
+      return;
+    }
     const msg = typeof e?.message === 'string' ? e.message : String(e);
     try { await stores.jobs.updateStatus(jobId, 'failed' as any, msg); } catch {}
     try { console.warn('[job.failed]', { jobId, error: msg }); } catch {}

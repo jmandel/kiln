@@ -87,11 +87,21 @@ export function JobsList({ jobs, selected, onSelect, onDelete }: JobsListProps) 
               <div className="text-xs text-gray-500 mt-1">
                 {job.id.slice(0, 12)}...
               </div>
-              {job.dependsOn && job.dependsOn.length > 0 && (
-                <div className="text-[11px] text-amber-700 mt-1">
-                  Blocked on: {job.dependsOn.map(id => id.slice(0, 8)).join(', ')}
-                </div>
-              )}
+              {(() => {
+                const deps = Array.isArray(job.dependsOn) ? job.dependsOn : [];
+                if (deps.length === 0) return null;
+                // Determine unresolved dependencies based on the jobs list we have
+                const unresolved = deps.filter(id => (jobs.find(j => j.id === id)?.status) !== 'done');
+                if (unresolved.length > 0) {
+                  return (
+                    <div className="text-[11px] text-amber-700 mt-1">
+                      Blocked on: {unresolved.map(id => id.slice(0, 8)).join(', ')}
+                    </div>
+                  );
+                }
+                // All deps resolved: optionally show a subtle note, or nothing
+                return null;
+              })()}
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge(job.status)}
