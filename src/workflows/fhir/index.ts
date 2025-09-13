@@ -123,11 +123,11 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
     const generatedResources: any[] = await generateAndRefineResources(ctx, note_text, references, subjectRef, encounterRef);
 
     const preHash = await sha256(JSON.stringify(generatedResources));
-    const { report: preReport } = await ctx.step(`analyze_codings:${preHash}`, async () => analyzeCodings(generatedResources), { title: 'Analyze Codings (pre)', tags: { phase: 'fhir', contentHash: preHash } });
+    const { report: preReport } = await ctx.step(`analyze_codings:${preHash}`, async () => analyzeCodings(ctx, generatedResources), { title: 'Analyze Codings (pre)', tags: { phase: 'fhir', contentHash: preHash } });
     await emitJsonArtifact(ctx, { kind: 'CodingValidationReport', title: 'Coding Validation Report (pre-recoding)', content: { items: preReport }, tags: { phase: 'fhir', stage: 'pre' } });
     const recodedResources: any[] = JSON.parse(JSON.stringify(generatedResources));
     const postHash = await sha256(JSON.stringify(recodedResources));
-    const { report: postReport } = await ctx.step(`analyze_codings_post:${postHash}`, async () => analyzeCodings(recodedResources), { title: 'Analyze Codings (post)', tags: { phase: 'fhir', contentHash: postHash } });
+    const { report: postReport } = await ctx.step(`analyze_codings_post:${postHash}`, async () => analyzeCodings(ctx, recodedResources), { title: 'Analyze Codings (post)', tags: { phase: 'fhir', contentHash: postHash } });
     await emitJsonArtifact(ctx, { kind: 'CodingValidationReport', title: 'Coding Validation Report (post-recoding)', content: { items: postReport }, tags: { phase: 'fhir', stage: 'post' } });
     const unresolvedPointers = postReport.filter((i: any) => i.status !== 'ok').map((i: any) => i.pointer);
     const finalResources = unresolvedPointers.length ? finalizeUnresolved(recodedResources, unresolvedPointers, {}) : recodedResources;

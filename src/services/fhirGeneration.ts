@@ -1,11 +1,12 @@
 import { IPS_NOTES } from '../ips-notes';
 import { searchTerminology, type TerminologySearchResult } from '../tools';
-import { analyzeCodings } from '../codingAnalysis';
+import { analyzeCodings, batchExists } from '../codingAnalysis';
 import { validateResource } from '../validator';
+import type { Context } from '../types';
 import { FHIR_PROMPTS } from '../workflows/fhir/prompts';
 import { runLLMTask } from '../llmTask';
 import { emitJsonArtifact } from './artifacts';
-import { sha256, getTerminologyServerURL } from '../helpers';
+import { sha256 } from '../helpers';
 import type { Context } from '../types';
 
 export async function generateAndRefineResources(
@@ -60,9 +61,9 @@ export async function generateAndRefineResources(
       // Initial dynamic budget: max(default, validator_error_count + 2 * unresolved_codings + 5)
       const DEFAULT_ITERS = Number(localStorage.getItem('FHIR_VALIDATION_MAX_ITERS') || 12);
       try {
-        const initReportRes = await analyzeCodings([resource]);
+        const initReportRes = await analyzeCodings(ctx, [resource]);
         const initUnresolved = (initReportRes?.report || []).filter((it: any) => it.status !== 'ok').length;
-        const initValRes = await validateResource(resource);
+        const initValRes = await validateResource(resource, ctx);
         const initErrors = (initValRes?.issues || []).filter((x: any) => String(x?.severity || '').toLowerCase() === 'error').length;
         const MAX_ITERS = Math.max(DEFAULT_ITERS, initErrors + (2 * initUnresolved) + 5);
         var budget = MAX_ITERS;
@@ -197,7 +198,7 @@ export async function generateAndRefineResources(
         const resHash = await sha256(JSON.stringify(resource));
         const iterIndex = INITIAL_BUDGET - budget + 1;
         const { report } = await ctx.step(`refine:analyze:${resHash}`, async () => {
-          return await analyzeCodings([resource]);
+          return await analyzeCodings(ctx, [resource]);
         }, { title: 'Analyze Codings', tags: { phase: 'fhir', stage: 'validate-refine', refineIter: iterIndex } });
         const preReport = report || [];
         const initialValidation = await ctx.step(`refine:validate:${resHash}`, async () => {
@@ -519,12 +520,7 @@ export async function generateAndRefineResources(
               const allPairs = invalidCodings.map(ic => ({ system: ic.system, code: ic.code }));
               let existsResults: Array<{ system?: string; code?: string; exists?: boolean; display?: string }> = [];
               try {
-                const base = getTerminologyServerURL();
-                const resp = await fetch(`${base}/tx/codes/exists`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: allPairs }) });
-                if (resp.ok) {
-                  const body = await resp.json();
-                  existsResults = Array.isArray(body?.results) ? body.results : [];
-                }
+                existsResults = await batchExists(ctx, allPairs);
               } catch {}
               const lookupCanonical = (sys?: string, code?: string): string | undefined => {
                 const hit = existsResults.find(r => String(r.system||'') === String(sys||'') && String(r.code||'') === String(code||''));
@@ -549,7 +545,7 @@ export async function generateAndRefineResources(
           // Ensure this step appears in artifact step list
           try { contributedStepKeys.add(`refine:validate:${candHash}`); } catch {}
           const { report: candReport } = await ctx.step(`refine:analyze:${candHash}`, async () => {
-            return await analyzeCodings([candidate]);
+            return await analyzeCodings(ctx, [candidate]);
           }, { title: 'Analyze Candidate Codings', tags: { phase: 'fhir', stage: 'validate-refine' } });
 
           // Accept unconditionally after filtering. Validator/analyzer output is for feedback only.
@@ -595,8 +591,8 @@ export async function generateAndRefineResources(
       let postIssues = 0;
       let isValid = false;
       try {
-        const { report: afterReport } = await analyzeCodings([resource]);
-        const valAfter = await validateResource(resource);
+        const { report: afterReport } = await analyzeCodings(ctx, [resource]);
+        const valAfter = await validateResource(resource, ctx);
         const unresolvedItems = (afterReport || []).filter((it: any) => it.status !== 'ok');
         const issues = (valAfter?.issues || []);
         postUnresolved = unresolvedItems.length;

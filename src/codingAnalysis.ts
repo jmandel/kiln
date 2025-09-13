@@ -1,4 +1,5 @@
-import { getTerminologyServerURL } from './helpers';
+import type { Context } from './types';
+import { getTerminologyServerURL, sha256 } from './helpers';
 
 export type CodingEntry = {
   pointer: string;
@@ -55,18 +56,24 @@ function normDisplay(s?: string): string {
   return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-async function batchExists(items: Array<{ system?: string; code?: string }>): Promise<Array<{ system?: string; code?: string; exists: boolean; display?: string; normalizedSystem?: string }>> {
+export async function batchExists(ctx: Context | undefined, items: Array<{ system?: string; code?: string }>): Promise<Array<{ system?: string; code?: string; exists: boolean; display?: string; normalizedSystem?: string }>> {
   const base = getTerminologyServerURL();
-  const res = await fetch(`${base}/tx/codes/exists`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ items })
-  });
-  if (!res.ok) throw new Error(`codes/exists failed: ${res.status}`);
-  const data = await res.json();
-  return data.results || [];
+  const doFetch = async () => {
+    const res = await fetch(`${base}/tx/codes/exists`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items })
+    });
+    if (!res.ok) throw new Error(`codes/exists failed: ${res.status}`);
+    const data = await res.json();
+    return data.results || [];
+  };
+  if (!ctx) return await doFetch();
+  const hash = await sha256(JSON.stringify(items));
+  const stepKey = `exists:${hash.slice(0, 16)}`;
+  return await ctx.step(stepKey, doFetch, { title: 'Batch Code Exists', tags: { phase: 'terminology', itemsCount: items.length, inputHash: hash } });
 }
 
-export async function analyzeCodings(resources: any[]): Promise<{ report: CodingReportItem[]; recodePointers: string[] }> {
+export async function analyzeCodings(ctx: Context, resources: any[]): Promise<{ report: CodingReportItem[]; recodePointers: string[] }> {
   const allEntries: Array<{ resIdx: number; entry: CodingEntry }> = [];
   resources.forEach((r: any, idx: number) => {
     const entries = collectCodings(r, '');
@@ -74,7 +81,7 @@ export async function analyzeCodings(resources: any[]): Promise<{ report: Coding
   });
 
   const pairs = allEntries.map(({ entry }) => ({ system: entry.system, code: entry.code }));
-  const exists = await batchExists(pairs);
+  const exists = await batchExists(ctx, pairs);
   const report: CodingReportItem[] = [];
   const recodePointers: string[] = [];
 

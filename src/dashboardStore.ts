@@ -1,4 +1,5 @@
 import type { Stores, ID, Step, Artifact, Event, Job } from './types';
+import { triggerReadyJobs } from './jobs';
 
 type Level = 'info' | 'warn' | 'error';
 
@@ -73,6 +74,10 @@ export class DashboardStore {
       // Keep global jobs list updated on job events only (avoid floods)
       if ((ev as any).type === 'job_created' || (ev as any).type === 'job_status' || (ev as any).type === 'job_deleted') {
         void this.updateJobsList();
+        // Start dependent jobs when parents complete, and also when a dependent job is created
+        if ((ev as any).type === 'job_created' || ((ev as any).type === 'job_status' && (ev as any).status === 'done')) {
+          void triggerReadyJobs(this.stores).catch(()=>{});
+        }
       }
       if (!docId) return;
       // Queue events for all jobs; we'll flush for the selected job when its view exists

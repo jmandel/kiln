@@ -73,6 +73,20 @@ export class PauseForApprovalError extends Error {
   }
 }
 
+export class StaleRunError extends Error {
+  ctxRun: number;
+  latestRun: number;
+  constructor(ctxRun: number, latestRun: number, message?: string) {
+    super(message || 'Stale run');
+    this.ctxRun = ctxRun;
+    this.latestRun = latestRun;
+  }
+}
+
+export class JobDeletedError extends Error {
+  constructor(message?: string) { super(message || 'Job was deleted'); }
+}
+
 class LLMCallError extends Error {
   rawContent?: string;
   status?: number;
@@ -89,6 +103,12 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
   async function step(key: string, fn: () => Promise<any>, opts: { title?: string; tags?: Record<string, any>; parentKey?: string; forceRecompute?: boolean; prompt?: string; } = {}): Promise<any> {
     const fullKey = opts.parentKey ? `${opts.parentKey}:${key}` : key;
     const reqT0 = Date.now();
+    // Abort if job was deleted mid-run
+    const jobRec = await stores.jobs.get(jobId);
+    if (!jobRec) {
+      dbg('step.abort.job_deleted', { key: fullKey });
+      throw new JobDeletedError();
+    }
     const existing = await stores.steps.get(jobId, fullKey);
     // Initial request log
     dbg('step.request', { key: fullKey, title: opts.title, parent: opts.parentKey, cachedCandidate: !!(existing && existing.status === 'done' && !opts.forceRecompute) });
@@ -157,12 +177,11 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
   }
 
   async function link(from: { type: string; id: ID }, role: string, to: { type: string; id: ID }, tags?: Record<string, any>): Promise<Link> {
-    try {
-      const latest = await stores.jobs.get(jobId);
-      const ctxRun = (extras as any)?.runCount || 0;
-      const latestRun = (latest as any)?.runCount || 0;
-      if (ctxRun !== latestRun) throw new StaleRunError(ctxRun, latestRun, 'Stale run — skipping link');
-    } catch {}
+    const latest = await stores.jobs.get(jobId);
+    if (!latest) throw new JobDeletedError('Job deleted — skipping link');
+    const ctxRun = (extras as any)?.runCount || 0;
+    const latestRun = (latest as any)?.runCount || 0;
+    if (ctxRun !== latestRun) throw new StaleRunError(ctxRun, latestRun, 'Stale run — skipping link');
     const id = `link:${await sha256(`${jobId}:${from.type}:${from.id}:${role}:${to.type}:${to.id}`)}`;
     const rec: Link = {
       id, jobId: jobId as any,
@@ -178,12 +197,11 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
     // Attach runCount for debugging/traceability
     const runCountTag = (extras as any)?.runCount ?? 0;
     const mergedTags = { ...(spec.tags || {}), runCount: runCountTag };
-    try {
-      const latest = await stores.jobs.get(jobId);
-      const ctxRun = (extras as any)?.runCount || 0;
-      const latestRun = (latest as any)?.runCount || 0;
-      if (ctxRun !== latestRun) throw new StaleRunError(ctxRun, latestRun, 'Stale run — skipping artifact');
-    } catch {}
+    const latest = await stores.jobs.get(jobId);
+    if (!latest) throw new JobDeletedError('Job deleted — skipping artifact');
+    const ctxRun = (extras as any)?.runCount || 0;
+    const latestRun = (latest as any)?.runCount || 0;
+    if (ctxRun !== latestRun) throw new StaleRunError(ctxRun, latestRun, 'Stale run — skipping artifact');
     const id = spec.id ?? `artifact:${await sha256(`${jobId}:${spec.kind}:${spec.version}:${spec.title || ""}:${JSON.stringify(spec.tags || {})}`)}`;
     const base: Artifact = {
       id, jobId: jobId as any, kind: spec.kind, version: spec.version,
@@ -376,10 +394,15 @@ export async function runPipeline(
   pipeline: Array<(ctx: Context) => Promise<void>>,
   extras?: { type?: string; inputs?: any; runCount?: number }
 ): Promise<void> {
+  // If job was deleted before starting, abort silently
+  const initial = await stores.jobs.get(jobId);
+  if (!initial) { dbg('pipeline.abort.job_deleted.prestart', { jobId }); return; }
   const ctx = makeContext(stores, jobId, extras);
   try { await stores.jobs.updateStatus(jobId, 'running'); } catch {}
   try {
     for (const phaseFn of pipeline) {
+      const alive = await stores.jobs.get(jobId);
+      if (!alive) { throw new JobDeletedError(); }
       await phaseFn(ctx);
     }
     try { await stores.jobs.updateStatus(jobId, 'done'); } catch {}
@@ -387,6 +410,11 @@ export async function runPipeline(
     if (e instanceof StaleRunError) {
       // Old run aborted due to newer run; do not mark failed
       dbg('pipeline.stale_abort', { jobId });
+      return;
+    }
+    if (e instanceof JobDeletedError) {
+      // Job deleted mid-run; abort quietly
+      dbg('pipeline.job_deleted_abort', { jobId });
       return;
     }
     const msg = typeof e?.message === 'string' ? e.message : String(e);

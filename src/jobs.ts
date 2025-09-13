@@ -14,7 +14,9 @@ export async function createJob<T extends InputsUnion>(
   const computedTitle = title || (type === 'narrative'
     ? `Patient: ${((inputs as any).sketch || '').slice(0, 30)}...`
     : 'FHIR Bundle');
-  const idSeed = `${type}:${computedTitle}:${JSON.stringify(inputs)}`;
+  // Always create a unique id regardless of inputs/title
+  const nonce = `:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
+  const idSeed = `${type}:${computedTitle}:${JSON.stringify(inputs)}${nonce}`;
   const jobId = `job:${await sha256(idSeed)}` as ID;
 
   // Create job record (single source of truth)
@@ -26,6 +28,8 @@ export async function createJob<T extends InputsUnion>(
   } else {
     try { await stores.jobs.updateStatus(jobId, 'queued' as any); } catch {}
   }
+  // Immediately check if dependencies are already satisfied (e.g., creating FHIR from a completed Narrative)
+  try { await triggerReadyJobs(stores); } catch {}
   return jobId;
 }
 
