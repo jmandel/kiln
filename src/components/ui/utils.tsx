@@ -10,7 +10,7 @@ export const formatTime = (iso: string): string => {
   const date = new Date(iso);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
-  
+
   if (diff < 60000) return 'just now';
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
@@ -19,13 +19,13 @@ export const formatTime = (iso: string): string => {
 
 export const getVariantForKind = (kind: string): string => {
   const map: Record<string, string> = {
-    'outline': 'info',
-    'draft': 'default',
-    'final': 'success',
-    'error': 'error',
-    'fhir': 'warning',
-    'assets': 'info',
-    'review': 'warning'
+    outline: 'info',
+    draft: 'default',
+    final: 'success',
+    error: 'error',
+    fhir: 'warning',
+    assets: 'info',
+    review: 'warning',
   };
   return map[kind.toLowerCase()] || 'default';
 };

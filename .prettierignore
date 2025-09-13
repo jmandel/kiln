@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+bun.lockb
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+
+# Cache and temporary files
+.cache/
+tmp/
+temp/
+*.log
+
+# Generated files
+coverage/
+*.min.js
+*.min.css
+
+# Version control
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment files
+.env*
+
+# Test data and fixtures
+test-data/
+fixtures/
+
+# Large data files
+*.sqlite
+*.db
+
+# Vendor files
+vendor/
+
+# Specific project directories that might contain generated/external code
+fhir-ips/
+fhirschema-test/
+readme-updater/

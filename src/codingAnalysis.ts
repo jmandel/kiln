@@ -26,12 +26,21 @@ function collectCodings(node: any, basePointer = ''): CodingEntry[] {
   const out: CodingEntry[] = [];
   const walk = (n: any, p: string) => {
     if (!n) return;
-    if (Array.isArray(n)) { n.forEach((item, i) => walk(item, `${p}/${i}`)); return; }
+    if (Array.isArray(n)) {
+      n.forEach((item, i) => walk(item, `${p}/${i}`));
+      return;
+    }
     if (!isObject(n)) return;
 
     if (Array.isArray(n.coding)) {
       n.coding.forEach((c: any, i: number) => {
-        if (isObject(c)) out.push({ pointer: `${p}/coding/${i}`, system: c.system, code: c.code, display: c.display });
+        if (isObject(c))
+          out.push({
+            pointer: `${p}/coding/${i}`,
+            system: c.system,
+            code: c.code,
+            display: c.display,
+          });
       });
     }
     const lastSeg = (p.split('/').filter(Boolean).pop() || '').toString();
@@ -53,15 +62,30 @@ function collectCodings(node: any, basePointer = ''): CodingEntry[] {
 }
 
 function normDisplay(s?: string): string {
-  return String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  return String(s || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 }
 
-export async function batchExists(ctx: Context | undefined, items: Array<{ system?: string; code?: string }>): Promise<Array<{ system?: string; code?: string; exists: boolean; display?: string; normalizedSystem?: string }>> {
+export async function batchExists(
+  ctx: Context | undefined,
+  items: Array<{ system?: string; code?: string }>
+): Promise<
+  Array<{
+    system?: string;
+    code?: string;
+    exists: boolean;
+    display?: string;
+    normalizedSystem?: string;
+  }>
+> {
   const base = getTerminologyServerURL();
   const doFetch = async () => {
     const res = await fetch(`${base}/tx/codes/exists`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
     });
     if (!res.ok) throw new Error(`codes/exists failed: ${res.status}`);
     const data = await res.json();
@@ -70,14 +94,20 @@ export async function batchExists(ctx: Context | undefined, items: Array<{ syste
   if (!ctx) return await doFetch();
   const hash = await sha256(JSON.stringify(items));
   const stepKey = `exists:${hash.slice(0, 16)}`;
-  return await ctx.step(stepKey, doFetch, { title: 'Batch Code Exists', tags: { phase: 'terminology', itemsCount: items.length, inputHash: hash } });
+  return await ctx.step(stepKey, doFetch, {
+    title: 'Batch Code Exists',
+    tags: { phase: 'terminology', itemsCount: items.length, inputHash: hash },
+  });
 }
 
-export async function analyzeCodings(ctx: Context, resources: any[]): Promise<{ report: CodingReportItem[]; recodePointers: string[] }> {
+export async function analyzeCodings(
+  ctx: Context,
+  resources: any[]
+): Promise<{ report: CodingReportItem[]; recodePointers: string[] }> {
   const allEntries: Array<{ resIdx: number; entry: CodingEntry }> = [];
   resources.forEach((r: any, idx: number) => {
     const entries = collectCodings(r, '');
-    entries.forEach(e => allEntries.push({ resIdx: idx, entry: e }));
+    entries.forEach((e) => allEntries.push({ resIdx: idx, entry: e }));
   });
 
   const pairs = allEntries.map(({ entry }) => ({ system: entry.system, code: entry.code }));
@@ -87,7 +117,7 @@ export async function analyzeCodings(ctx: Context, resources: any[]): Promise<{ 
 
   for (let i = 0; i < allEntries.length; i++) {
     const { resIdx, entry } = allEntries[i];
-    const ex = exists[i] || { exists: false } as any;
+    const ex = exists[i] || ({ exists: false } as any);
     const original = { system: entry.system, code: entry.code, display: entry.display };
     const rt = resources[resIdx]?.resourceType;
     const rid = resources[resIdx]?.id;
@@ -95,7 +125,14 @@ export async function analyzeCodings(ctx: Context, resources: any[]): Promise<{ 
 
     // UCUM units: never treat as unresolved in this pipeline
     if (String(entry.system || '') === 'http://unitsofmeasure.org') {
-      report.push({ pointer: entry.pointer, original, status: 'ok', resourceType: rt, id: rid, resourceRef });
+      report.push({
+        pointer: entry.pointer,
+        original,
+        status: 'ok',
+        resourceType: rt,
+        id: rid,
+        resourceRef,
+      });
       continue;
     }
 
@@ -103,7 +140,14 @@ export async function analyzeCodings(ctx: Context, resources: any[]): Promise<{ 
       const canonicalDisp = ex.display || '';
       const matches = normDisplay(canonicalDisp) === normDisplay(entry.display);
       if (matches) {
-        report.push({ pointer: entry.pointer, original, status: 'ok', resourceType: rt, id: rid, resourceRef });
+        report.push({
+          pointer: entry.pointer,
+          original,
+          status: 'ok',
+          resourceType: rt,
+          id: rid,
+          resourceRef,
+        });
         continue;
       }
     }
@@ -114,10 +158,10 @@ export async function analyzeCodings(ctx: Context, resources: any[]): Promise<{ 
       pointer: entry.pointer,
       original,
       status: 'recoding',
-      reason: (entry.system && entry.code && ex.exists) ? 'display_mismatch' : 'not_found',
+      reason: entry.system && entry.code && ex.exists ? 'display_mismatch' : 'not_found',
       resourceType: rt,
       id: rid,
-      resourceRef
+      resourceRef,
     });
   }
 
@@ -133,9 +177,15 @@ export function finalizeUnresolved(
   const seen = new Set(unresolvedPointers);
   const uniquePointers = Array.from(seen);
   const get = (root: any, pointer: string) => {
-    const segs = pointer.split('/').filter(Boolean).map(s => decodeURIComponent(s));
+    const segs = pointer
+      .split('/')
+      .filter(Boolean)
+      .map((s) => decodeURIComponent(s));
     let cur = root;
-    for (const s of segs) { if (!cur) return null; cur = Array.isArray(cur) ? cur[Number(s)] : cur[s]; }
+    for (const s of segs) {
+      if (!cur) return null;
+      cur = Array.isArray(cur) ? cur[Number(s)] : cur[s];
+    }
     return cur && typeof cur === 'object' ? cur : null;
   };
   const EXT_URL = 'http://kraken.fhir.me/StructureDefinition/coding-issue';
@@ -144,7 +194,10 @@ export function finalizeUnresolved(
       const tgt = get(r, p);
       if (!tgt) continue;
       const proposed = (tgt as any)._proposed_coding || {};
-      const potentials = ((tgt as any)._potential_displays || '').split(',').map((x: string) => x.trim()).filter(Boolean);
+      const potentials = ((tgt as any)._potential_displays || '')
+        .split(',')
+        .map((x: string) => x.trim())
+        .filter(Boolean);
       const rt = (r as any)?.resourceType;
       const rid = (r as any)?.id;
       const resourceRef = rt ? `${rt}/${rid || ''}` : undefined;
@@ -158,10 +211,10 @@ export function finalizeUnresolved(
         pointer: p,
         proposed: { system: proposed.system, display: proposed.display },
         potentials,
-        queries: log?.attempts ? log.attempts.map(a => ({ query: a.query, hits: a.hitCount })) : undefined,
+        queries: log?.attempts ? log.attempts.map((a) => ({ query: a.query, hits: a.hitCount })) : undefined,
         attempts: log?.attempts ? compactAttempts(log.attempts) : undefined,
         failure: log?.failureReason,
-        note: 'unresolved_after_recoding'
+        note: 'unresolved_after_recoding',
       };
       const ex: any = { url: EXT_URL, valueString: JSON.stringify(payload) };
       const curExt = Array.isArray((tgt as any).extension) ? (tgt as any).extension : [];
@@ -175,40 +228,55 @@ export function finalizeUnresolved(
 }
 
 function compactAttempts(atts: any[]): any[] {
-  return atts.slice(-3).map(a => ({
+  return atts.slice(-3).map((a) => ({
     query: a.query,
     systems: a.systems,
     hitCount: a.hitCount,
-    sample: (a.sample || []).slice(0,3),
+    sample: (a.sample || []).slice(0, 3),
     decision: {
       action: a.decision?.action,
       terms: a.decision?.terms,
       reason: a.decision?.reason,
       selection: a.decision?.selection,
-      justification: a.decision?.justification ? String(a.decision.justification).slice(0, 240) : undefined
-    }
+      justification: a.decision?.justification ? String(a.decision.justification).slice(0, 240) : undefined,
+    },
   }));
 }
 
 function sweepLeftoverPlaceholders(resources: any[], EXT_URL: string) {
   const walk = (node: any) => {
     if (!node || typeof node !== 'object') return;
-    if (Array.isArray(node)) { node.forEach(walk); return; }
-    if (node && (node._proposed_coding || node._potential_displays || node._potential_systems || node._potential_codes)) {
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (
+      node &&
+      (node._proposed_coding || node._potential_displays || node._potential_systems || node._potential_codes)
+    ) {
       const proposed = (node as any)._proposed_coding || {};
-      const potentials = ((node as any)._potential_displays || '').split(',').map((x: string)=>x.trim()).filter(Boolean);
+      const potentials = ((node as any)._potential_displays || '')
+        .split(',')
+        .map((x: string) => x.trim())
+        .filter(Boolean);
       delete (node as any)._proposed_coding;
       delete (node as any)._potential_displays;
       delete (node as any)._potential_systems;
       delete (node as any)._potential_codes;
-      const payload = { proposed: { system: proposed.system, display: proposed.display }, potentials, note: 'unresolved_after_recoding' };
+      const payload = {
+        proposed: { system: proposed.system, display: proposed.display },
+        potentials,
+        note: 'unresolved_after_recoding',
+      };
       const ex: any = { url: EXT_URL, valueString: JSON.stringify(payload) };
       const curExt = Array.isArray((node as any).extension) ? (node as any).extension : [];
       const filtered = curExt.filter((e: any) => e?.url !== EXT_URL);
       filtered.push(ex);
       (node as any).extension = filtered;
     }
-    Object.keys(node).forEach(k => { if (!k.startsWith('_')) walk((node as any)[k]); });
+    Object.keys(node).forEach((k) => {
+      if (!k.startsWith('_')) walk((node as any)[k]);
+    });
   };
   resources.forEach(walk);
 }

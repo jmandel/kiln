@@ -7,10 +7,14 @@
     "dev": "bun --hot src/server.ts",
     "setup": "bun run server/scripts/setup.ts",
     "build:static": "bun run scripts/build-static.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "format": "prettier --write \"**/*.{js,ts,jsx,tsx,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{js,ts,jsx,tsx,json,md,yml,yaml}\"",
+    "lint:fix": "prettier --write \"**/*.{js,ts,jsx,tsx,json,md,yml,yaml}\""
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "prettier": "^3.6.2"
   },
   "peerDependencies": {
     "typescript": "^5"

@@ -1,6 +1,10 @@
 export function tryJson(s?: string): any | null {
   if (!s) return null;
-  try { return JSON.parse(s); } catch { return null; }
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
 }
 
 export function pretty(s: any): string {

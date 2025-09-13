@@ -4,26 +4,26 @@
  * Creates a fresh database with individual designation rows for better search matching
  */
 
-import { Database } from "bun:sqlite";
-import { existsSync, unlinkSync } from "fs";
+import { Database } from 'bun:sqlite';
+import { existsSync, unlinkSync } from 'fs';
 
 // Configuration
-const DB_PATH = process.env.TERMINOLOGY_DB_PATH || "./db/terminology.sqlite";
-const VOCAB_DIR = "./large-vocabularies";
+const DB_PATH = process.env.TERMINOLOGY_DB_PATH || './db/terminology.sqlite';
+const VOCAB_DIR = './large-vocabularies';
 
 // Known system URLs
 const SYSTEM_URLS = {
-  loinc: "http://loinc.org",
-  snomed: "http://snomed.info/sct",
-  rxnorm: "http://www.nlm.nih.gov/research/umls/rxnorm",
+  loinc: 'http://loinc.org',
+  snomed: 'http://snomed.info/sct',
+  rxnorm: 'http://www.nlm.nih.gov/research/umls/rxnorm',
 } as const;
 
 // External sources
-const FHIR_R4_VALUESETS = "https://hl7.org/fhir/R4/valuesets.json";
-const UTG_IG = "https://build.fhir.org/ig/HL7/UTG/full-ig.zip";
+const FHIR_R4_VALUESETS = 'https://hl7.org/fhir/R4/valuesets.json';
+const UTG_IG = 'https://build.fhir.org/ig/HL7/UTG/full-ig.zip';
 
 interface CodeSystemHeader {
-  resourceType: "CodeSystem";
+  resourceType: 'CodeSystem';
   url: string;
   version?: string;
   name?: string;
@@ -102,7 +102,7 @@ class TerminologyLoader {
    */
   async loadNDJSON(filePath: string) {
     console.log(`📂 Loading: ${filePath}`);
-    
+
     const file = Bun.file(filePath);
     const compressed = await file.arrayBuffer();
     const decompressed = Bun.gunzipSync(new Uint8Array(compressed));
@@ -116,13 +116,13 @@ class TerminologyLoader {
     // First line is the CodeSystem resource
     const codeSystem = JSON.parse(lines[0]) as CodeSystemHeader;
     const system = codeSystem.url;
-    
+
     if (!system) {
       throw new Error(`No system URL in: ${filePath}`);
     }
 
     console.log(`🔍 System: ${system} (version: ${codeSystem.version || 'unknown'})`);
-    
+
     // Prepare statements
     const insertConcept = this.db.prepare(`
       INSERT OR REPLACE INTO concepts (system, code, display)
@@ -145,18 +145,14 @@ class TerminologyLoader {
     const transaction = this.db.transaction((batch: string[]) => {
       for (const line of batch) {
         if (!line.trim()) continue;
-        
+
         try {
           const concept = JSON.parse(line) as Concept;
           if (!concept.code) continue;
 
           // Insert concept
-          insertConcept.run(
-            system,
-            concept.code,
-            concept.display || ''
-          );
-          
+          insertConcept.run(system, concept.code, concept.display || '');
+
           // Get concept ID
           const conceptRow = getConceptId.get(system, concept.code) as { id: number };
           if (!conceptRow) continue;
@@ -169,14 +165,10 @@ class TerminologyLoader {
           // Insert all other designations
           for (const designation of concept.designation || []) {
             if (designation.value && designation.value !== concept.display) {
-              insertDesignation.run(
-                conceptRow.id,
-                designation.value,
-                designation.use?.code || null
-              );
+              insertDesignation.run(conceptRow.id, designation.value, designation.use?.code || null);
             }
           }
-          
+
           processedCount++;
         } catch (e) {
           // Skip invalid lines silently
@@ -194,18 +186,22 @@ class TerminologyLoader {
     }
 
     // Update code system record
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT OR REPLACE INTO code_systems (system, version, name, title, date, concept_count, source)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      system,
-      codeSystem.version || null,
-      codeSystem.name || null,
-      codeSystem.title || null,
-      codeSystem.date || null,
-      processedCount,
-      filePath
-    );
+    `
+      )
+      .run(
+        system,
+        codeSystem.version || null,
+        codeSystem.name || null,
+        codeSystem.title || null,
+        codeSystem.date || null,
+        processedCount,
+        filePath
+      );
 
     console.log(`✅ Loaded ${processedCount} concepts from ${system}`);
     return processedCount;
@@ -218,14 +214,14 @@ class TerminologyLoader {
     const files = {
       loinc: [] as string[],
       snomed: [] as string[],
-      rxnorm: [] as string[]
+      rxnorm: [] as string[],
     };
 
     // Scan for vocabulary files
-    const glob = new Bun.Glob("CodeSystem-*.ndjson.gz");
+    const glob = new Bun.Glob('CodeSystem-*.ndjson.gz');
     for await (const path of glob.scan({ cwd: VOCAB_DIR })) {
       const fullPath = `${VOCAB_DIR}/${path}`;
-      
+
       if (path.includes('loinc') && !path.match(/-[a-z]{2}-[A-Z]{2}\./)) {
         files.loinc.push(fullPath);
       } else if (path.includes('snomed')) {
@@ -243,7 +239,7 @@ class TerminologyLoader {
         console.log(`⚠️  No ${vocab} files found in ${VOCAB_DIR}`);
         continue;
       }
-      
+
       // Sort to get latest (assumes version/date in filename)
       paths.sort().reverse();
       const latest = paths[0];
@@ -259,7 +255,7 @@ class TerminologyLoader {
    */
   async loadFHIRValuesets() {
     console.log(`📥 Downloading FHIR R4 valuesets from ${FHIR_R4_VALUESETS}...`);
-    
+
     const response = await fetch(FHIR_R4_VALUESETS);
     if (!response.ok) {
       throw new Error(`Failed to download FHIR valuesets: ${response.statusText}`);
@@ -303,12 +299,8 @@ class TerminologyLoader {
       const transaction = this.db.transaction(() => {
         for (const concept of concepts) {
           if (!concept.code) continue;
-          
-          insertConcept.run(
-            system,
-            concept.code,
-            concept.display || ''
-          );
+
+          insertConcept.run(system, concept.code, concept.display || '');
 
           // Get concept ID and insert display as designation
           const conceptRow = getConceptId.get(system, concept.code) as { id: number };
@@ -322,17 +314,21 @@ class TerminologyLoader {
       transaction();
 
       // Update code system record
-      this.db.prepare(`
+      this.db
+        .prepare(
+          `
         INSERT OR REPLACE INTO code_systems (system, version, name, title, concept_count, source)
         VALUES (?, ?, ?, ?, ?, ?)
-      `).run(
-        system,
-        resource.version || null,
-        resource.name || null,
-        resource.title || null,
-        concepts.length,
-        'FHIR R4 Valuesets'
-      );
+      `
+        )
+        .run(
+          system,
+          resource.version || null,
+          resource.name || null,
+          resource.title || null,
+          concepts.length,
+          'FHIR R4 Valuesets'
+        );
 
       loadedSystems++;
     }
@@ -346,10 +342,10 @@ class TerminologyLoader {
    */
   async loadUTG() {
     console.log(`📥 Downloading UTG from ${UTG_IG}...`);
-    
+
     const tempDir = `/tmp/utg-${Date.now()}`;
     const zipPath = `${tempDir}/utg.zip`;
-    
+
     // Create temp directory
     await Bun.write(`${tempDir}/.keep`, '');
 
@@ -358,7 +354,7 @@ class TerminologyLoader {
     if (!response.ok) {
       throw new Error(`Failed to download UTG: ${response.statusText}`);
     }
-    
+
     const buffer = await response.arrayBuffer();
     await Bun.write(zipPath, buffer);
     console.log(`💾 Downloaded UTG (${(buffer.byteLength / 1024 / 1024).toFixed(1)} MB)`);
@@ -366,13 +362,13 @@ class TerminologyLoader {
     // Extract
     const proc = Bun.spawn(['unzip', '-q', '-o', zipPath, '-d', tempDir], {
       stdout: 'pipe',
-      stderr: 'pipe'
+      stderr: 'pipe',
     });
-    
+
     await proc.exited;
-    
+
     // Find and load CodeSystem files
-    const csGlob = new Bun.Glob("**/CodeSystem-*.json");
+    const csGlob = new Bun.Glob('**/CodeSystem-*.json');
     let loadedSystems = 0;
     let loadedConcepts = 0;
 
@@ -392,13 +388,13 @@ class TerminologyLoader {
 
     for await (const path of csGlob.scan({ cwd: tempDir })) {
       const fullPath = `${tempDir}/${path}`;
-      
+
       try {
         const file = Bun.file(fullPath);
         const codeSystem = await file.json();
-        
+
         if (codeSystem.resourceType !== 'CodeSystem') continue;
-        
+
         const system = codeSystem.url;
         if (!system) continue;
 
@@ -412,12 +408,8 @@ class TerminologyLoader {
         const processConceptHierarchy = (concepts: any[]) => {
           for (const concept of concepts) {
             if (!concept.code) continue;
-            
-            insertConcept.run(
-              system,
-              concept.code,
-              concept.display || ''
-            );
+
+            insertConcept.run(system, concept.code, concept.display || '');
 
             // Get concept ID and insert display as designation
             const conceptRow = getConceptId.get(system, concept.code) as { id: number };
@@ -440,17 +432,21 @@ class TerminologyLoader {
         transaction();
 
         // Update code system record
-        this.db.prepare(`
+        this.db
+          .prepare(
+            `
           INSERT OR REPLACE INTO code_systems (system, version, name, title, concept_count, source)
           VALUES (?, ?, ?, ?, ?, ?)
-        `).run(
-          system,
-          codeSystem.version || null,
-          codeSystem.name || null,
-          codeSystem.title || null,
-          concepts.length,
-          'UTG'
-        );
+        `
+          )
+          .run(
+            system,
+            codeSystem.version || null,
+            codeSystem.name || null,
+            codeSystem.title || null,
+            concepts.length,
+            'UTG'
+          );
 
         loadedSystems++;
       } catch (e) {
@@ -470,7 +466,7 @@ class TerminologyLoader {
    */
   optimize() {
     console.log(`🔧 Optimizing database...`);
-    
+
     // Create FTS table for designations
     console.log(`  • Creating FTS index for designations...`);
     this.db.exec(`
@@ -480,14 +476,14 @@ class TerminologyLoader {
         content_rowid='id'
       );
     `);
-    
+
     // Populate FTS from designations table
     console.log(`  • Building FTS index...`);
-    this.db.exec("INSERT INTO designations_fts(rowid, label) SELECT id, label FROM designations");
-    
+    this.db.exec('INSERT INTO designations_fts(rowid, label) SELECT id, label FROM designations');
+
     // Optimize FTS index
     this.db.exec("INSERT INTO designations_fts(designations_fts) VALUES('optimize')");
-    
+
     // Add triggers for future updates
     this.db.exec(`
       CREATE TRIGGER designations_ai AFTER INSERT ON designations BEGIN
@@ -505,19 +501,25 @@ class TerminologyLoader {
         DELETE FROM designations_fts WHERE rowid = old.id;
       END;
     `);
-    
+
     // Analyze for query planning
-    this.db.exec("ANALYZE");
+    this.db.exec('ANALYZE');
   }
 
   /**
    * Print summary statistics
    */
   printSummary() {
-    const systems = this.db.prepare("SELECT COUNT(*) as count FROM code_systems").get() as { count: number };
-    const concepts = this.db.prepare("SELECT COUNT(*) as count FROM concepts").get() as { count: number };
-    const designations = this.db.prepare("SELECT COUNT(*) as count FROM designations").get() as { count: number };
-    
+    const systems = this.db.prepare('SELECT COUNT(*) as count FROM code_systems').get() as {
+      count: number;
+    };
+    const concepts = this.db.prepare('SELECT COUNT(*) as count FROM concepts').get() as {
+      count: number;
+    };
+    const designations = this.db.prepare('SELECT COUNT(*) as count FROM designations').get() as {
+      count: number;
+    };
+
     console.log(`
 📊 Summary:
   • Code Systems: ${systems.count}
@@ -527,12 +529,16 @@ class TerminologyLoader {
     `);
 
     // Show top systems by concept count
-    const topSystems = this.db.prepare(`
+    const topSystems = this.db
+      .prepare(
+        `
       SELECT system, concept_count, version 
       FROM code_systems 
       ORDER BY concept_count DESC 
       LIMIT 10
-    `).all() as Array<{ system: string; concept_count: number; version: string }>;
+    `
+      )
+      .all() as Array<{ system: string; concept_count: number; version: string }>;
 
     console.log(`🏆 Top Code Systems:`);
     for (const sys of topSystems) {
@@ -573,7 +579,6 @@ async function main() {
 
     // 5. Summary
     loader.printSummary();
-
   } catch (error) {
     console.error(`\n❌ Error: ${error}`);
     process.exit(1);

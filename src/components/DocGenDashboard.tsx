@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  Card, 
-  Badge, 
-  StatusBadge, 
-  MetricPill, 
-  EmptyState, 
-  ErrorBanner,
-  ViewToggle 
-} from './ui/index';
+import { Card, Badge, StatusBadge, MetricPill, EmptyState, ErrorBanner, ViewToggle } from './ui/index';
 import { ArtifactsTable, ArtifactsGrid, ArtifactsTimeline } from './ui/ArtifactsTable';
 import { EventsList } from './ui/EventsList';
 import { PhaseProgress } from './ui/PhaseProgress';
@@ -55,22 +47,22 @@ const defaultState: DocGenState = {
   status: 'queued',
   metrics: { stepCounts: {}, totalTokens: 0, elapsedMs: 0 },
   artifacts: [],
-  events: []
+  events: [],
 };
 
-export default function DocGenDashboard({ 
+export default function DocGenDashboard({
   state: controlled,
-  initial = defaultState, 
-  onOpenArtifact, 
+  initial = defaultState,
+  onOpenArtifact,
   onRerun,
   onOpenFailed,
   onClearCache,
   canConvertToFhir,
-  onConvertToFhir
-}: { 
+  onConvertToFhir,
+}: {
   state?: DocGenState;
-  initial?: DocGenState; 
-  onOpenArtifact?: (id: string) => void; 
+  initial?: DocGenState;
+  onOpenArtifact?: (id: string) => void;
   onRerun?: () => void;
   onOpenFailed?: () => void;
   onClearCache?: (opts?: { all?: boolean; phase?: string; type?: string }) => void;
@@ -80,7 +72,7 @@ export default function DocGenDashboard({
   const [internalState, setInternalState] = useState<DocGenState>(initial);
   const state = controlled ?? internalState;
   const setState = controlled ? () => {} : setInternalState;
-  
+
   const [artifactView, setArtifactView] = useState<'table' | 'cards' | 'timeline'>('table');
   const [eventsPanelOpen, setEventsPanelOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
@@ -88,7 +80,7 @@ export default function DocGenDashboard({
 
   // Auto-open events panel when new errors occur
   useEffect(() => {
-    const hasErrors = state.events.some(e => e.level === 'error');
+    const hasErrors = state.events.some((e) => e.level === 'error');
     if (hasErrors && !eventsPanelOpen) setEventsPanelOpen(true);
   }, [state.events]);
 
@@ -105,13 +97,13 @@ export default function DocGenDashboard({
     if (controlled) return;
     const api = {
       push(partial: Partial<DocGenState>) {
-        setState(prev => {
+        setState((prev) => {
           const next: DocGenState = { ...prev, ...partial } as DocGenState;
           if (partial?.events?.length) {
             next.events = [...prev.events, ...partial.events].slice(-50);
           }
           if (partial?.artifacts?.length) {
-            const map = new Map<string, Artifact>(prev.artifacts.map(a => [a.id, a]));
+            const map = new Map<string, Artifact>(prev.artifacts.map((a) => [a.id, a]));
             for (const a of partial.artifacts) {
               map.set(a.id, { ...(map.get(a.id) as Artifact), ...a });
             }
@@ -126,7 +118,9 @@ export default function DocGenDashboard({
       set(full: DocGenState) {
         setState(full);
       },
-      get() { return state; }
+      get() {
+        return state;
+      },
     };
     (window as any).docGen = api;
   }, [state, controlled]);
@@ -134,10 +128,9 @@ export default function DocGenDashboard({
   const hasContent = state.jobId && state.artifacts.length > 0;
   const isRunning = state.status === 'running';
 
-  const elapsedMs = (isRunning && state.jobStartTime)
-    ? now.getTime() - new Date(state.jobStartTime).getTime()
-    : state.metrics.elapsedMs;
-  
+  const elapsedMs =
+    isRunning && state.jobStartTime ? now.getTime() - new Date(state.jobStartTime).getTime() : state.metrics.elapsedMs;
+
   return (
     <div className="h-full bg-gray-50">
       {/* Sticky Header */}
@@ -148,64 +141,81 @@ export default function DocGenDashboard({
               <h1 className="text-2xl font-bold text-text-charcoal">{state.title || 'No job selected'}</h1>
               <div className="flex items-center gap-4 mt-2">
                 <StatusBadge status={state.status} />
-                {state.currentPhase && (
-                  <span className="text-sm text-gray-600">
-                    Phase: {state.currentPhase}
-                  </span>
-                )}
-                {state.jobId && (
-                  <span className="text-xs text-gray-400">
-                    ID: {state.jobId.slice(0, 12)}...
-                  </span>
-                )}
+                {state.currentPhase && <span className="text-sm text-gray-600">Phase: {state.currentPhase}</span>}
+                {state.jobId && <span className="text-xs text-gray-400">ID: {state.jobId.slice(0, 12)}...</span>}
               </div>
             </div>
-            
+
             {/* Compact metrics bar */}
             <div className="flex items-center gap-6 text-sm">
-              <MetricPill 
-                label="Time" 
-                value={formatDuration(elapsedMs)}
-                icon="⏱" 
-              />
-              <MetricPill 
-                label="Steps" 
+              <MetricPill label="Time" value={formatDuration(elapsedMs)} icon="⏱" />
+              <MetricPill
+                label="Steps"
                 value={state.metrics.stepCounts.done || 0}
                 total={getTotalSteps(state.metrics.stepCounts)}
-                icon="📊" 
+                icon="📊"
               />
-              <MetricPill 
-                label="Tokens" 
-                value={`${(state.metrics.totalTokens / 1000).toFixed(1)}k`}
-                icon="💬" 
-              />
+              <MetricPill label="Tokens" value={`${(state.metrics.totalTokens / 1000).toFixed(1)}k`} icon="💬" />
               {state.jobId && onRerun && (
-                <button className="btn-kiln-secondary whitespace-nowrap" onClick={onRerun}>Rerun</button>
+                <button className="btn-kiln-secondary whitespace-nowrap" onClick={onRerun}>
+                  Rerun
+                </button>
               )}
               {state.jobId && canConvertToFhir && state.status === 'done' && (
-                <button className="btn-kiln whitespace-nowrap" onClick={onConvertToFhir}>Convert to FHIR</button>
+                <button className="btn-kiln whitespace-nowrap" onClick={onConvertToFhir}>
+                  Convert to FHIR
+                </button>
               )}
               {state.jobId && onClearCache && (
                 <div className="relative">
-                  <button className="btn-kiln-outline whitespace-nowrap" onClick={() => setCacheMenuOpen(v => !v)}>Clear Cache</button>
+                  <button className="btn-kiln-outline whitespace-nowrap" onClick={() => setCacheMenuOpen((v) => !v)}>
+                    Clear Cache
+                  </button>
                   {cacheMenuOpen && (
                     <div className="absolute right-0 mt-2 w-56 bg-white border rounded-md shadow-lg z-10">
-                      <button className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache({ all: true }); }}>All steps</button>
+                      <button
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        onClick={() => {
+                          setCacheMenuOpen(false);
+                          onClearCache({ all: true });
+                        }}
+                      >
+                        All steps
+                      </button>
                       <div className="px-3 py-1 text-xs text-gray-500">By phase</div>
-                      {(state.phases || []).map(p => (
-                        <button key={p.id} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache({ phase: p.id }); }}>{p.label}</button>
+                      {(state.phases || []).map((p) => (
+                        <button
+                          key={p.id}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          onClick={() => {
+                            setCacheMenuOpen(false);
+                            onClearCache({ phase: p.id });
+                          }}
+                        >
+                          {p.label}
+                        </button>
                       ))}
                       <div className="px-3 py-1 text-xs text-gray-500">By type</div>
-                      {(state as any).stepTypes && (state as any).stepTypes.map((t: string) => (
-                        <button key={t} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={() => { setCacheMenuOpen(false); onClearCache({ type: t }); }}>{t}:*</button>
-                      ))}
+                      {(state as any).stepTypes &&
+                        (state as any).stepTypes.map((t: string) => (
+                          <button
+                            key={t}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                            onClick={() => {
+                              setCacheMenuOpen(false);
+                              onClearCache({ type: t });
+                            }}
+                          >
+                            {t}:*
+                          </button>
+                        ))}
                     </div>
                   )}
                 </div>
               )}
             </div>
           </div>
-          
+
           {/* Progress bar */}
           {isRunning && state.phases && state.phases.length > 0 && (
             <div className="mt-3">
@@ -224,53 +234,38 @@ export default function DocGenDashboard({
 
       {/* Main Content Area */}
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {!state.jobId ? (
+        {!state.jobId ?
           <EmptyState />
-        ) : (
-          <div className="flex gap-6">
+        : <div className="flex gap-6">
             {/* Primary Content */}
             <div className="flex-1 min-w-0">
               <Card className="p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-medium">Artifacts</h2>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">
-                      {state.artifacts.length} items
-                    </span>
-                    <ViewToggle 
-                      views={['table', 'cards', 'timeline']} 
+                    <span className="text-sm text-gray-500">{state.artifacts.length} items</span>
+                    <ViewToggle
+                      views={['table', 'cards', 'timeline']}
                       active={artifactView}
                       onChange={(v) => setArtifactView(v as any)}
                     />
                   </div>
                 </div>
-                
-                {state.artifacts.length === 0 ? (
-                  <div className="text-sm text-gray-500 text-center py-8">
-                    No artifacts generated yet.
-                  </div>
-                ) : (
-                  <>
+
+                {state.artifacts.length === 0 ?
+                  <div className="text-sm text-gray-500 text-center py-8">No artifacts generated yet.</div>
+                : <>
                     {artifactView === 'table' && (
-                      <ArtifactsTable 
-                        items={state.artifacts} 
-                        onOpen={onOpenArtifact || (() => {})}
-                      />
+                      <ArtifactsTable items={state.artifacts} onOpen={onOpenArtifact || (() => {})} />
                     )}
                     {artifactView === 'cards' && (
-                      <ArtifactsGrid 
-                        items={state.artifacts} 
-                        onOpen={onOpenArtifact || (() => {})}
-                      />
+                      <ArtifactsGrid items={state.artifacts} onOpen={onOpenArtifact || (() => {})} />
                     )}
                     {artifactView === 'timeline' && (
-                      <ArtifactsTimeline 
-                        items={state.artifacts} 
-                        onOpen={onOpenArtifact || (() => {})}
-                      />
+                      <ArtifactsTimeline items={state.artifacts} onOpen={onOpenArtifact || (() => {})} />
                     )}
                   </>
-                )}
+                }
               </Card>
 
               {/* Phase progress cards (when not running) */}
@@ -283,14 +278,12 @@ export default function DocGenDashboard({
             </div>
 
             {/* Collapsible Events Sidebar */}
-            <div className={`transition-all duration-300 ${
-              eventsPanelOpen ? 'w-96' : 'w-12'
-            }`}>
-              {eventsPanelOpen ? (
+            <div className={`transition-all duration-300 ${eventsPanelOpen ? 'w-96' : 'w-12'}`}>
+              {eventsPanelOpen ?
                 <Card className="p-4 h-full max-h-[600px] overflow-hidden flex flex-col">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-medium">Recent Events</h3>
-                    <button 
+                    <button
                       onClick={() => setEventsPanelOpen(false)}
                       className="text-gray-400 hover:text-gray-600 text-lg leading-none"
                       aria-label="Close events panel"
@@ -300,23 +293,20 @@ export default function DocGenDashboard({
                   </div>
                   <EventsList events={state.events} className="flex-1 overflow-auto" />
                 </Card>
-              ) : (
-                <button
+              : <button
                   onClick={() => setEventsPanelOpen(true)}
                   className="w-12 h-32 bg-white border border-gray-200 rounded-lg flex flex-col items-center justify-center hover:bg-gray-50 relative"
                   aria-label="Open events panel"
                 >
-                  <span className="text-xs text-gray-500 -rotate-90 whitespace-nowrap">
-                    Events
-                  </span>
-                  {state.events.some(e => e.level === 'error') && (
+                  <span className="text-xs text-gray-500 -rotate-90 whitespace-nowrap">Events</span>
+                  {state.events.some((e) => e.level === 'error') && (
                     <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                   )}
                 </button>
-              )}
+              }
             </div>
           </div>
-        )}
+        }
       </div>
     </div>
   );

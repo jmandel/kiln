@@ -11,7 +11,7 @@ const EMPTY_STATE: DashboardView = {
   artifacts: [],
   events: [],
   phases: [],
-  stepTypes: []
+  stepTypes: [],
 };
 
 const EMPTY_JOBS: Job[] = [];
@@ -31,16 +31,16 @@ export function useDashboardState(store: DashboardStore | null, jobId: ID | null
   }, [store, jobId]);
 
   return React.useSyncExternalStore(
-    (cb) => (store && jobId) ? store.subscribe(jobId, cb) : () => {},
-    () => (store && jobId) ? store.getState(jobId) : EMPTY_STATE,
+    (cb) => (store && jobId ? store.subscribe(jobId, cb) : () => {}),
+    () => (store && jobId ? store.getState(jobId) : EMPTY_STATE),
     () => EMPTY_STATE
   );
 }
 
 export function useJobsList(store: DashboardStore | null): Job[] {
   return React.useSyncExternalStore(
-    (cb) => store ? store.subscribeToJobs(cb) : () => {},
-    () => store ? store.getJobs() : EMPTY_JOBS,
+    (cb) => (store ? store.subscribeToJobs(cb) : () => {}),
+    () => (store ? store.getJobs() : EMPTY_JOBS),
     () => EMPTY_JOBS
   );
 }

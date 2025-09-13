@@ -11,5 +11,5 @@ registry.register('narrative', {
   inputsShape: { sketch: '' },
   InputComponent: NarrativeInputForm,
   previewComponent: NarrativePreview,
-  buildWorkflow
+  buildWorkflow,
 });

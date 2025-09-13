@@ -16,7 +16,7 @@ export function emitArtifactSaved(events: EventHub, a: Artifact): void {
     id: a.id,
     kind: a.kind,
     version: a.version,
-    tags: a.tags || {}
+    tags: a.tags || {},
   } as Event);
 }
 
@@ -30,7 +30,7 @@ export function emitLinkSaved(events: EventHub, l: Link): void {
     fromId: l.fromId,
     toType: l.toType,
     toId: l.toId,
-    tags: l.tags || {}
+    tags: l.tags || {},
   } as Event);
 }
 
@@ -49,6 +49,6 @@ export function emitStepSaved(
     durationMs: rec.durationMs,
     llmTokens: rec.llmTokens,
     prompt: rec.prompt,
-    ts: rec.ts
+    ts: rec.ts,
   } as Event);
 }

@@ -1635,9 +1635,7 @@
           "reference": "Practitioner/practitioner-1"
         },
         "occurrenceTiming": {
-          "event": [
-            "2023-10-08"
-          ]
+          "event": ["2023-10-08"]
         },
         "performerType": {
           "coding": [
@@ -2006,21 +2004,15 @@
         "name": [
           {
             "family": "Blackbeard",
-            "given": [
-              "Anne"
-            ],
-            "prefix": [
-              "Captain"
-            ]
+            "given": ["Anne"],
+            "prefix": ["Captain"]
           }
         ],
         "gender": "female",
         "birthDate": "1952-06-15",
         "address": [
           {
-            "line": [
-              "Harbor View Lane 42"
-            ],
+            "line": ["Harbor View Lane 42"],
             "city": "Portside",
             "state": "CA",
             "postalCode": "94901",
@@ -2088,12 +2080,8 @@
         "name": [
           {
             "family": "Smith",
-            "given": [
-              "John"
-            ],
-            "prefix": [
-              "Dr."
-            ]
+            "given": ["John"],
+            "prefix": ["Dr."]
           }
         ],
         "gender": "male",

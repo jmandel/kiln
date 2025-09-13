@@ -1,7 +1,11 @@
 // Utilities for parsing Markdown note sections and stitching XHTML narratives
 
 export function canonicalizeHeader(header: string): string {
-  return header.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  return header
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // Capture each H2 section (## Title) through the next H2 or end-of-text.
@@ -32,8 +36,8 @@ export function renderSectionNarrative(noteText: string, sectionTitle: string): 
   const html = marked.parse(content) as string;
 
   const xhtml = simpleSanitize(html)
-    .replace(/<br\s*>/gi,'<br/>')
-    .replace(/<hr\s*>/gi,'<hr/>')
+    .replace(/<br\s*>/gi, '<br/>')
+    .replace(/<hr\s*>/gi, '<hr/>')
     .trim();
   return `<div xmlns="http://www.w3.org/1999/xhtml">${xhtml}</div>`;
 }
@@ -56,20 +60,51 @@ function simpleSanitize(html: string): string {
     // Remove all attributes except href and name
     let hrefMatch = /\bhref\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(attrs);
     let nameMatch = /\bname\s*=\s*("([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(attrs);
-    let href = hrefMatch ? (hrefMatch[2] || hrefMatch[3] || hrefMatch[4] || '') : '';
+    let href = hrefMatch ? hrefMatch[2] || hrefMatch[3] || hrefMatch[4] || '' : '';
     const safe = /^(https?:|mailto:)/i.test(href) ? href : '';
-    const name = nameMatch ? (nameMatch[2] || nameMatch[3] || nameMatch[4] || '') : '';
+    const name = nameMatch ? nameMatch[2] || nameMatch[3] || nameMatch[4] || '' : '';
     const parts: string[] = [];
     if (safe) parts.push(`href="${escapeAttr(safe)}"`);
     if (name) parts.push(`name="${escapeAttr(name)}"`);
     return `<a ${parts.join(' ')}>`;
   });
   // Remove unknown tags by whitelisting allowed tag names via a simple pass: keep tag names and angle brackets as-is for allowed tags; strip others.
-  const allowed = new Set(['div','p','span','b','strong','i','em','u','sub','sup','br','ul','ol','li','table','thead','tbody','tfoot','tr','th','td','h1','h2','h3','h4','h5','h6','a']);
+  const allowed = new Set([
+    'div',
+    'p',
+    'span',
+    'b',
+    'strong',
+    'i',
+    'em',
+    'u',
+    'sub',
+    'sup',
+    'br',
+    'ul',
+    'ol',
+    'li',
+    'table',
+    'thead',
+    'tbody',
+    'tfoot',
+    'tr',
+    'th',
+    'td',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'a',
+  ]);
   out = out.replace(/<\/?([a-z0-9]+)(\b[^>]*)?>/gi, (m, name) => {
     return allowed.has(String(name).toLowerCase()) ? m : '';
   });
   return out;
 }
 
-function escapeAttr(s: string): string { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+function escapeAttr(s: string): string {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}

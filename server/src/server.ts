@@ -1,18 +1,16 @@
 #!/usr/bin/env bun
-import { join } from "path";
-import { createApiFetch } from "./api";
+import { join } from 'path';
+import { createApiFetch } from './api';
 
 // Configuration
 const PORT = Number(Bun.env.PORT ?? 3500);
-const DB_PATH = Bun.env.TERMINOLOGY_DB_PATH ?? "./db/terminology.sqlite";
+const DB_PATH = Bun.env.TERMINOLOGY_DB_PATH ?? './db/terminology.sqlite';
 // Validator JAR default: support both project root and assets location
-const VALIDATOR_JAR = Bun.env.VALIDATOR_JAR
-  ? Bun.env.VALIDATOR_JAR
-  : [
-      join(import.meta.dir, "..", "validator.jar"),
-      join(import.meta.dir, "..", "assets", "validator.jar"),
-    ][0];
-const JAVA_HEAP = Bun.env.VALIDATOR_HEAP ?? "4g";
+const VALIDATOR_JAR =
+  Bun.env.VALIDATOR_JAR ?
+    Bun.env.VALIDATOR_JAR
+  : [join(import.meta.dir, '..', 'validator.jar'), join(import.meta.dir, '..', 'assets', 'validator.jar')][0];
+const JAVA_HEAP = Bun.env.VALIDATOR_HEAP ?? '4g';
 
 // Initialize services via API factory
 console.log(`Initializing services...`);
@@ -25,7 +23,7 @@ const { fetch, shutdown } = createApiFetch({
 // Main server
 const server = Bun.serve({
   port: PORT,
-  hostname: "0.0.0.0",
+  hostname: '0.0.0.0',
   fetch,
 });
 
@@ -55,14 +53,13 @@ Environment variables:
 `);
 
 // Graceful shutdown
-process.on("SIGINT", () => {
-  console.log("\nShutting down services...");
+process.on('SIGINT', () => {
+  console.log('\nShutting down services...');
   shutdown();
   process.exit(0);
 });
 
-process.on("SIGTERM", () => {
+process.on('SIGTERM', () => {
   shutdown();
   process.exit(0);
 });
-

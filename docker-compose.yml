@@ -8,14 +8,14 @@ services:
     image: fhir-synthesizer:latest
     container_name: fhir-synthesizer
     ports:
-      - "3500:3500"
+      - '3500:3500'
     environment:
       - NODE_ENV=production
       - PORT=3500
       - VALIDATOR_HEAP=4g
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3500/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3500/health']
       interval: 30s
       timeout: 3s
       retries: 3

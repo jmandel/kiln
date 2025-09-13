@@ -1,6 +1,6 @@
 export type ID = string;
 
-export type EntityType = "artifact" | "step" | "job";
+export type EntityType = 'artifact' | 'step' | 'job';
 
 export interface Artifact {
   id: ID;
@@ -18,7 +18,7 @@ export interface Step {
   jobId: ID;
   key: string;
   title?: string;
-  status: "running" | "pending" | "done" | "failed";
+  status: 'running' | 'pending' | 'done' | 'failed';
   resultJson: string;
   tagsJson?: string | null;
   parentKey?: string | null;
@@ -34,7 +34,7 @@ export interface Step {
 // Document Types & Inputs
 // =============================
 
-export type DocumentType = "narrative" | "fhir";
+export type DocumentType = 'narrative' | 'fhir';
 
 export interface NarrativeInputs {
   sketch: string;
@@ -79,11 +79,12 @@ export function isFhirInputs(inputs: unknown): inputs is FhirInputs {
   if (!inputs || typeof inputs !== 'object') return false;
   const noteTextOk = typeof (inputs as any).noteText === 'string';
   const src = (inputs as any).source;
-  const srcOk = src == null || (
-    src && typeof src === 'object' && typeof (src as any).jobId === 'string' && (
-      (src as any).artifactId == null || typeof (src as any).artifactId === 'string'
-    )
-  );
+  const srcOk =
+    src == null ||
+    (src &&
+      typeof src === 'object' &&
+      typeof (src as any).jobId === 'string' &&
+      ((src as any).artifactId == null || typeof (src as any).artifactId === 'string'));
   return noteTextOk && srcOk;
 }
 
@@ -106,9 +107,42 @@ export interface Context {
   step: (key: string, fn: () => Promise<any>, opts?: ContextOpts) => Promise<any>;
   getStepResult: (stepKey: string) => Promise<any>;
   isPhaseComplete: (phaseName: string) => Promise<boolean>;
-  createArtifact: (spec: { id?: ID; kind: string; version: number; title?: string; content?: string; tags?: Record<string, any>; links?: Array<{ dir: "from"; role: string; ref: { type: EntityType; id: ID }; tags?: Record<string, any>; }>; autoProduced?: boolean; }) => Promise<Artifact>;
-  link: (from: { type: EntityType; id: ID }, role: string, to: { type: EntityType; id: ID }, tags?: Record<string, any>) => Promise<any>;
-  callLLMEx?: (modelTask: string, prompt: string, opts?: { expect?: "text" | "json"; temperature?: number; tags?: Record<string, any>; }) => Promise<{ result: any; meta: { stepKey: string; tokensUsed: number; raw: string; attempts: number; status?: number; prompt: string } }>;
+  createArtifact: (spec: {
+    id?: ID;
+    kind: string;
+    version: number;
+    title?: string;
+    content?: string;
+    tags?: Record<string, any>;
+    links?: Array<{
+      dir: 'from';
+      role: string;
+      ref: { type: EntityType; id: ID };
+      tags?: Record<string, any>;
+    }>;
+    autoProduced?: boolean;
+  }) => Promise<Artifact>;
+  link: (
+    from: { type: EntityType; id: ID },
+    role: string,
+    to: { type: EntityType; id: ID },
+    tags?: Record<string, any>
+  ) => Promise<any>;
+  callLLMEx?: (
+    modelTask: string,
+    prompt: string,
+    opts?: { expect?: 'text' | 'json'; temperature?: number; tags?: Record<string, any> }
+  ) => Promise<{
+    result: any;
+    meta: {
+      stepKey: string;
+      tokensUsed: number;
+      raw: string;
+      attempts: number;
+      status?: number;
+      prompt: string;
+    };
+  }>;
 }
 
 export type TypedContext<T> = Context & { inputs: T };
@@ -228,7 +262,7 @@ export interface Stores {
 }
 
 export class EventHub {
-  private subs = new Set<((ev: Event) => void)>();
+  private subs = new Set<(ev: Event) => void>();
 
   subscribe(fn: (ev: Event) => void): () => void {
     this.subs.add(fn);
@@ -238,7 +272,9 @@ export class EventHub {
   emit(ev: Event): void {
     for (const s of this.subs) {
       queueMicrotask(() => {
-        try { s(ev); } catch {}
+        try {
+          s(ev);
+        } catch {}
       });
     }
   }

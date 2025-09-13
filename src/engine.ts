@@ -46,7 +46,7 @@ function isDebugEnabled(): boolean {
   } catch {}
   try {
     // globalThis flag alternative
-    const g: any = (globalThis as any);
+    const g: any = globalThis as any;
     if (g && g.WORKFLOW_DEBUG != null) return !/^0|false|off$/i.test(String(g.WORKFLOW_DEBUG));
   } catch {}
   return false;
@@ -84,7 +84,9 @@ export class StaleRunError extends Error {
 }
 
 export class JobDeletedError extends Error {
-  constructor(message?: string) { super(message || 'Job was deleted'); }
+  constructor(message?: string) {
+    super(message || 'Job was deleted');
+  }
 }
 
 class LLMCallError extends Error {
@@ -100,7 +102,17 @@ class LLMCallError extends Error {
 export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string; inputs?: any }): Context {
   currentStepStack = [];
 
-  async function step(key: string, fn: () => Promise<any>, opts: { title?: string; tags?: Record<string, any>; parentKey?: string; forceRecompute?: boolean; prompt?: string; } = {}): Promise<any> {
+  async function step(
+    key: string,
+    fn: () => Promise<any>,
+    opts: {
+      title?: string;
+      tags?: Record<string, any>;
+      parentKey?: string;
+      forceRecompute?: boolean;
+      prompt?: string;
+    } = {}
+  ): Promise<any> {
     const fullKey = opts.parentKey ? `${opts.parentKey}:${key}` : key;
     const reqT0 = Date.now();
     // Abort if job was deleted mid-run
@@ -111,19 +123,53 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
     }
     const existing = await stores.steps.get(jobId, fullKey);
     // Initial request log
-    dbg('step.request', { key: fullKey, title: opts.title, parent: opts.parentKey, cachedCandidate: !!(existing && existing.status === 'done' && !opts.forceRecompute) });
-    if (existing && existing.status === "done" && !opts.forceRecompute) {
-      stores.events.emit({ type: "step_replayed", jobId, key: fullKey, title: opts.title, tags: opts.tags || {} });
+    dbg('step.request', {
+      key: fullKey,
+      title: opts.title,
+      parent: opts.parentKey,
+      cachedCandidate: !!(existing && existing.status === 'done' && !opts.forceRecompute),
+    });
+    if (existing && existing.status === 'done' && !opts.forceRecompute) {
+      stores.events.emit({
+        type: 'step_replayed',
+        jobId,
+        key: fullKey,
+        title: opts.title,
+        tags: opts.tags || {},
+      });
       const r0 = Date.now();
       const val = JSON.parse(existing.resultJson);
       const replayMs = Date.now() - r0;
-      dbg('step.replay', { key: fullKey, title: opts.title, parent: opts.parentKey, cached: true, origDurationMs: existing.durationMs, replayMs });
-      dbg('step.response', { key: fullKey, title: opts.title, fromCache: true, responseMs: Date.now() - reqT0 });
+      dbg('step.replay', {
+        key: fullKey,
+        title: opts.title,
+        parent: opts.parentKey,
+        cached: true,
+        origDurationMs: existing.durationMs,
+        replayMs,
+      });
+      dbg('step.response', {
+        key: fullKey,
+        title: opts.title,
+        fromCache: true,
+        responseMs: Date.now() - reqT0,
+      });
       return val;
     }
     const rec: Partial<Step> = {
-      jobId, key: fullKey, title: opts.title, status: "running", resultJson: "", tagsJson: opts.tags ? JSON.stringify(opts.tags) : null,
-      parentKey: opts.parentKey ?? currentStepStack.at(-1) ?? null, error: null, progress: 0, durationMs: null, llmTokens: null, prompt: opts.prompt ?? null, ts: nowIso()
+      jobId,
+      key: fullKey,
+      title: opts.title,
+      status: 'running',
+      resultJson: '',
+      tagsJson: opts.tags ? JSON.stringify(opts.tags) : null,
+      parentKey: opts.parentKey ?? currentStepStack.at(-1) ?? null,
+      error: null,
+      progress: 0,
+      durationMs: null,
+      llmTokens: null,
+      prompt: opts.prompt ?? null,
+      ts: nowIso(),
     };
     await stores.steps.put(rec);
     currentStepStack.push(fullKey);
@@ -136,47 +182,67 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
       const finalRec = await stores.steps.get(jobId, fullKey);
       const updatedRec = { ...(finalRec || rec) };
 
-      updatedRec.status = "done";
+      updatedRec.status = 'done';
       updatedRec.progress = 1;
       updatedRec.durationMs = Date.now() - t0;
       updatedRec.resultJson = JSON.stringify(out);
       await stores.steps.put(updatedRec);
       dbg('step.end', { key: fullKey, ok: true, durationMs: updatedRec.durationMs });
-      dbg('step.response', { key: fullKey, title: opts.title, fromCache: false, responseMs: Date.now() - reqT0 });
+      dbg('step.response', {
+        key: fullKey,
+        title: opts.title,
+        fromCache: false,
+        responseMs: Date.now() - reqT0,
+      });
       return out;
     } catch (e: unknown) {
-      rec.status = "failed";
+      rec.status = 'failed';
       rec.error = String((e as Error)?.message || e);
       rec.durationMs = Date.now() - t0;
       // If LLM error provided raw content, persist it for debugging
       const raw = (e as any)?.rawContent;
       const status = (e as any)?.status;
-      const stack = (e as any)?.stack || (new Error(String(rec.error))).stack;
+      const stack = (e as any)?.stack || new Error(String(rec.error)).stack;
       try {
-        rec.resultJson = JSON.stringify({ error: rec.error, ...(raw != null ? { raw } : {}), status, stack });
+        rec.resultJson = JSON.stringify({
+          error: rec.error,
+          ...(raw != null ? { raw } : {}),
+          status,
+          stack,
+        });
       } catch {}
       await stores.steps.put(rec);
       dbg('step.end', { key: fullKey, ok: false, durationMs: rec.durationMs, error: rec.error });
-      dbg('step.response', { key: fullKey, title: opts.title, fromCache: false, responseMs: Date.now() - reqT0, error: rec.error });
+      dbg('step.response', {
+        key: fullKey,
+        title: opts.title,
+        fromCache: false,
+        responseMs: Date.now() - reqT0,
+        error: rec.error,
+      });
       throw e;
     } finally {
       currentStepStack.pop();
     }
   }
 
-
   async function getStepResult(stepKey: string): Promise<any> {
     const rec = await stores.steps.get(jobId, stepKey);
-    return rec && rec.status === "done" ? JSON.parse(rec.resultJson) : undefined;
+    return rec && rec.status === 'done' ? JSON.parse(rec.resultJson) : undefined;
   }
 
   async function isPhaseComplete(phaseName: string): Promise<boolean> {
     const phaseSteps = await stores.steps.listByJob(jobId);
-    const phaseKeys = phaseSteps.filter(s => s.key.startsWith(`phase:${phaseName}:`));
-    return phaseKeys.length > 0 && phaseKeys.every(s => s.status === "done");
+    const phaseKeys = phaseSteps.filter((s) => s.key.startsWith(`phase:${phaseName}:`));
+    return phaseKeys.length > 0 && phaseKeys.every((s) => s.status === 'done');
   }
 
-  async function link(from: { type: string; id: ID }, role: string, to: { type: string; id: ID }, tags?: Record<string, any>): Promise<Link> {
+  async function link(
+    from: { type: string; id: ID },
+    role: string,
+    to: { type: string; id: ID },
+    tags?: Record<string, any>
+  ): Promise<Link> {
     const latest = await stores.jobs.get(jobId);
     if (!latest) throw new JobDeletedError('Job deleted — skipping link');
     const ctxRun = (extras as any)?.runCount || 0;
@@ -184,16 +250,35 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
     if (ctxRun !== latestRun) throw new StaleRunError(ctxRun, latestRun, 'Stale run — skipping link');
     const id = `link:${await sha256(`${jobId}:${from.type}:${from.id}:${role}:${to.type}:${to.id}`)}`;
     const rec: Link = {
-      id, jobId: jobId as any,
-      fromType: from.type as any, fromId: from.id,
-      toType: to.type as any, toId: to.id,
-      role, tags, createdAt: nowIso()
+      id,
+      jobId: jobId as any,
+      fromType: from.type as any,
+      fromId: from.id,
+      toType: to.type as any,
+      toId: to.id,
+      role,
+      tags,
+      createdAt: nowIso(),
     };
     await stores.links.upsert(rec);
     return rec;
   }
 
-  async function createArtifact(spec: { id?: ID; kind: string; version: number; title?: string; content?: string; tags?: Record<string, any>; links?: Array<{ dir: "from"; role: string; ref: { type: string; id: ID }; tags?: Record<string, any>; }>; autoProduced?: boolean; }): Promise<Artifact> {
+  async function createArtifact(spec: {
+    id?: ID;
+    kind: string;
+    version: number;
+    title?: string;
+    content?: string;
+    tags?: Record<string, any>;
+    links?: Array<{
+      dir: 'from';
+      role: string;
+      ref: { type: string; id: ID };
+      tags?: Record<string, any>;
+    }>;
+    autoProduced?: boolean;
+  }): Promise<Artifact> {
     // Attach runCount for debugging/traceability
     const runCountTag = (extras as any)?.runCount ?? 0;
     const mergedTags = { ...(spec.tags || {}), runCount: runCountTag };
@@ -202,17 +287,25 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
     const ctxRun = (extras as any)?.runCount || 0;
     const latestRun = (latest as any)?.runCount || 0;
     if (ctxRun !== latestRun) throw new StaleRunError(ctxRun, latestRun, 'Stale run — skipping artifact');
-    const id = spec.id ?? `artifact:${await sha256(`${jobId}:${spec.kind}:${spec.version}:${spec.title || ""}:${JSON.stringify(spec.tags || {})}`)}`;
+    const id =
+      spec.id ??
+      `artifact:${await sha256(`${jobId}:${spec.kind}:${spec.version}:${spec.title || ''}:${JSON.stringify(spec.tags || {})}`)}`;
     const base: Artifact = {
-      id, jobId: jobId as any, kind: spec.kind, version: spec.version,
-      title: spec.title, content: spec.content, tags: mergedTags,
-      createdAt: nowIso(), updatedAt: nowIso()
+      id,
+      jobId: jobId as any,
+      kind: spec.kind,
+      version: spec.version,
+      title: spec.title,
+      content: spec.content,
+      tags: mergedTags,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
     };
     await stores.artifacts.upsert(base);
 
     const curStepKey = currentStepStack.at(-1);
     if (curStepKey && spec.autoProduced !== false) {
-      await link({ type: "step", id: curStepKey }, "produced", { type: "artifact", id: base.id });
+      await link({ type: 'step', id: curStepKey }, 'produced', { type: 'artifact', id: base.id });
     }
 
     for (const l of spec.links || []) {
@@ -230,55 +323,99 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
   async function callLLMCore(
     modelTask: string,
     prompt: string,
-    opts?: { expect?: "text" | "json"; temperature?: number; tags?: Record<string, any>; }
-  ): Promise<{ result: any; meta: { stepKey: string; tokensUsed: number; raw: string; attempts: number; status?: number; prompt: string } }> {
+    opts?: { expect?: 'text' | 'json'; temperature?: number; tags?: Record<string, any> }
+  ): Promise<{
+    result: any;
+    meta: {
+      stepKey: string;
+      tokensUsed: number;
+      raw: string;
+      attempts: number;
+      status?: number;
+      prompt: string;
+    };
+  }> {
     const fullKey = `llm:${modelTask}:${await sha256(prompt)}`;
     let metaLocal: any = null;
     // Resolve effective config for provenance tagging (does not affect key)
     const cfg = resolveTaskConfig(modelTask);
     const usedTemperature = opts?.temperature ?? cfg.temperature ?? 0.2;
-    const result = await step(fullKey, async () => {
-      const { result, tokensUsed, raw, attempts, status } = await llmCall(modelTask, prompt, opts ?? {});
-      metaLocal = { tokensUsed, raw, attempts, status };
-      const stepRec = await stores.steps.get(jobId, fullKey);
-      if (stepRec) {
-        const tags = stepRec.tagsJson ? JSON.parse(stepRec.tagsJson) : {};
-        const llmProv = { model: cfg.model, temperature: usedTemperature, baseURL: cfg.baseURL };
-        const newTags = { ...tags, modelTask, llm: llmProv, attempts, llmRaw: raw };
-        await stores.steps.put({ ...stepRec, llmTokens: tokensUsed, prompt, tagsJson: JSON.stringify(newTags) });
-      }
-      return result;
-    }, { title: `LLM: ${modelTask}`, tags: { ...(opts?.tags || {}), modelTask }, prompt });
-    const meta = { stepKey: fullKey, tokensUsed: metaLocal?.tokensUsed || 0, raw: metaLocal?.raw || '', attempts: metaLocal?.attempts || 1, status: metaLocal?.status, prompt };
+    const result = await step(
+      fullKey,
+      async () => {
+        const { result, tokensUsed, raw, attempts, status } = await llmCall(modelTask, prompt, opts ?? {});
+        metaLocal = { tokensUsed, raw, attempts, status };
+        const stepRec = await stores.steps.get(jobId, fullKey);
+        if (stepRec) {
+          const tags = stepRec.tagsJson ? JSON.parse(stepRec.tagsJson) : {};
+          const llmProv = { model: cfg.model, temperature: usedTemperature, baseURL: cfg.baseURL };
+          const newTags = { ...tags, modelTask, llm: llmProv, attempts, llmRaw: raw };
+          await stores.steps.put({
+            ...stepRec,
+            llmTokens: tokensUsed,
+            prompt,
+            tagsJson: JSON.stringify(newTags),
+          });
+        }
+        return result;
+      },
+      { title: `LLM: ${modelTask}`, tags: { ...(opts?.tags || {}), modelTask }, prompt }
+    );
+    const meta = {
+      stepKey: fullKey,
+      tokensUsed: metaLocal?.tokensUsed || 0,
+      raw: metaLocal?.raw || '',
+      attempts: metaLocal?.attempts || 1,
+      status: metaLocal?.status,
+      prompt,
+    };
     return { result, meta };
   }
 
   async function callLLMEx(
     modelTask: string,
     prompt: string,
-    opts?: { expect?: "text" | "json"; temperature?: number; tags?: Record<string, any>; }
-  ): Promise<{ result: any; meta: { stepKey: string; tokensUsed: number; raw: string; attempts: number; status?: number; prompt: string } }> {
+    opts?: { expect?: 'text' | 'json'; temperature?: number; tags?: Record<string, any> }
+  ): Promise<{
+    result: any;
+    meta: {
+      stepKey: string;
+      tokensUsed: number;
+      raw: string;
+      attempts: number;
+      status?: number;
+      prompt: string;
+    };
+  }> {
     return callLLMCore(modelTask, prompt, opts);
   }
 
   const base: Context = {
-    jobId, stores,
-    step, getStepResult, isPhaseComplete,
-    createArtifact, link,
+    jobId,
+    stores,
+    step,
+    getStepResult,
+    isPhaseComplete,
+    createArtifact,
+    link,
     callLLMEx,
-    runCount: (extras as any)?.runCount || 0
+    runCount: (extras as any)?.runCount || 0,
   };
   // Attach typed inputs if provided (structural superset of Context)
   return Object.assign({}, base, extras && extras.inputs ? { inputs: extras.inputs } : {});
 }
 
-async function llmCall(task: string, prompt: string, { expect = "text", temperature }: { expect?: "text" | "json"; temperature?: number; } = {}): Promise<{ result: any; tokensUsed: number; raw: string; attempts: number; status?: number }> {
+async function llmCall(
+  task: string,
+  prompt: string,
+  { expect = 'text', temperature }: { expect?: 'text' | 'json'; temperature?: number } = {}
+): Promise<{ result: any; tokensUsed: number; raw: string; attempts: number; status?: number }> {
   const cfg = resolveTaskConfig(task);
   if (!cfg.apiKey) throw new Error("API key required for LLM; set localStorage 'TASK_DEFAULT_API_KEY'");
   const retries = Number(localStorage.getItem('TASK_DEFAULT_RETRIES') ?? 3);
   let lastRaw = '';
   let lastStatus: number | undefined = undefined;
-  const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+  const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
   const backoffMs = (attempt: number) => {
     const base = 250 * Math.pow(2, Math.max(0, attempt - 1));
     return Math.min(2000, base) + Math.floor(Math.random() * 100);
@@ -288,28 +425,49 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
   try {
     for (let attempt = 1; attempt <= retries; attempt++) {
       const a0 = Date.now();
-      dbg('llm.fetch.begin', { task, attempt, expect, temperature: temperature ?? cfg.temperature });
+      dbg('llm.fetch.begin', {
+        task,
+        attempt,
+        expect,
+        temperature: temperature ?? cfg.temperature,
+      });
       let response: Response;
       try {
         response = await fetch(`${cfg.baseURL}/chat/completions`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
+          headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             model: cfg.model,
             temperature: temperature ?? cfg.temperature ?? 0.2,
             messages: [
-              { role: "system", content: expect === "json" ? "Return only JSON. No commentary." : "You write narrative text." },
-              { role: "user", content: prompt }
+              {
+                role: 'system',
+                content: expect === 'json' ? 'Return only JSON. No commentary.' : 'You write narrative text.',
+              },
+              { role: 'user', content: prompt },
             ],
-            response_format: expect === "json" ? { type: "json_object" } : undefined
-          })
+            response_format: expect === 'json' ? { type: 'json_object' } : undefined,
+          }),
         });
       } catch (netErr: any) {
         lastRaw = String(netErr?.message || netErr || 'fetch failed');
-        dbg('llm.fetch.end', { task, attempt, ok: false, error: lastRaw, durationMs: Date.now() - a0 });
+        dbg('llm.fetch.end', {
+          task,
+          attempt,
+          ok: false,
+          error: lastRaw,
+          durationMs: Date.now() - a0,
+        });
         if (attempt >= retries) {
           // Wrap with details to surface in step failure UI
-          throw new LLMCallError(`LLM fetch failed: ${lastRaw}`, { rawContent: JSON.stringify({ baseURL: cfg.baseURL, model: cfg.model, message: String(lastRaw) }), status: lastStatus });
+          throw new LLMCallError(`LLM fetch failed: ${lastRaw}`, {
+            rawContent: JSON.stringify({
+              baseURL: cfg.baseURL,
+              model: cfg.model,
+              message: String(lastRaw),
+            }),
+            status: lastStatus,
+          });
         }
         await sleep(backoffMs(attempt));
         await sleep(backoffMs(attempt));
@@ -319,9 +477,18 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
         const body = await response.text();
         lastRaw = body;
         lastStatus = response.status;
-        dbg('llm.fetch.end', { task, attempt, ok: false, httpStatus: response.status, durationMs: Date.now() - a0 });
+        dbg('llm.fetch.end', {
+          task,
+          attempt,
+          ok: false,
+          httpStatus: response.status,
+          durationMs: Date.now() - a0,
+        });
         if (attempt >= retries) {
-          throw new LLMCallError(`LLM HTTP error ${response.status}: ${response.statusText} (after ${retries} attempts)`, { rawContent: body, status: response.status });
+          throw new LLMCallError(
+            `LLM HTTP error ${response.status}: ${response.statusText} (after ${retries} attempts)`,
+            { rawContent: body, status: response.status }
+          );
         }
         continue;
       }
@@ -331,45 +498,98 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
       } catch (e: any) {
         lastRaw = String(e?.message || 'invalid JSON response');
         lastStatus = response.status;
-        dbg('llm.fetch.end', { task, attempt, ok: false, httpStatus: lastStatus, parseError: lastRaw, durationMs: Date.now() - a0 });
+        dbg('llm.fetch.end', {
+          task,
+          attempt,
+          ok: false,
+          httpStatus: lastStatus,
+          parseError: lastRaw,
+          durationMs: Date.now() - a0,
+        });
         if (attempt >= retries) {
-          throw new LLMCallError(`LLM response JSON parse failed (after ${retries} attempts)`, { rawContent: await response.text().catch(()=>''), status: lastStatus });
+          throw new LLMCallError(`LLM response JSON parse failed (after ${retries} attempts)`, {
+            rawContent: await response.text().catch(() => ''),
+            status: lastStatus,
+          });
         }
         await sleep(backoffMs(attempt));
         continue;
       }
       // Treat explicit API error payloads as retryable failures even if HTTP 200
       if (data && typeof data === 'object' && data.error) {
-        lastRaw = (function(){ try { return JSON.stringify(data); } catch { return String(data); }})();
+        lastRaw = (function () {
+          try {
+            return JSON.stringify(data);
+          } catch {
+            return String(data);
+          }
+        })();
         lastStatus = response.status;
-        dbg('llm.fetch.end', { task, attempt, ok: false, httpStatus: lastStatus, apiError: true, durationMs: Date.now() - a0 });
+        dbg('llm.fetch.end', {
+          task,
+          attempt,
+          ok: false,
+          httpStatus: lastStatus,
+          apiError: true,
+          durationMs: Date.now() - a0,
+        });
         if (attempt >= retries) {
-          throw new LLMCallError(`LLM API error in response (after ${retries} attempts)`, { rawContent: lastRaw, status: lastStatus });
+          throw new LLMCallError(`LLM API error in response (after ${retries} attempts)`, {
+            rawContent: lastRaw,
+            status: lastStatus,
+          });
         }
         await sleep(backoffMs(attempt));
         continue;
       }
       // Safely extract content; do not use reasoning fallbacks
-      const contentNode = Array.isArray(data?.choices) && data.choices.length > 0 ? data.choices[0]?.message?.content : undefined;
+      const contentNode =
+        Array.isArray(data?.choices) && data.choices.length > 0 ? data.choices[0]?.message?.content : undefined;
       if (typeof contentNode !== 'string') {
-        lastRaw = (function(){ try { return JSON.stringify(data); } catch { return String(data); }})();
+        lastRaw = (function () {
+          try {
+            return JSON.stringify(data);
+          } catch {
+            return String(data);
+          }
+        })();
         lastStatus = response.status;
-        dbg('llm.fetch.end', { task, attempt, ok: false, httpStatus: lastStatus, badShape: true, durationMs: Date.now() - a0 });
+        dbg('llm.fetch.end', {
+          task,
+          attempt,
+          ok: false,
+          httpStatus: lastStatus,
+          badShape: true,
+          durationMs: Date.now() - a0,
+        });
         if (attempt >= retries) {
-          throw new LLMCallError(`LLM returned unexpected response shape (after ${retries} attempts)`, { rawContent: lastRaw, status: lastStatus });
+          throw new LLMCallError(`LLM returned unexpected response shape (after ${retries} attempts)`, {
+            rawContent: lastRaw,
+            status: lastStatus,
+          });
         }
         await sleep(backoffMs(attempt));
         continue;
       }
-      const content = contentNode ?? "";
+      const content = contentNode ?? '';
       lastRaw = content;
       const tokensUsed = data.usage?.total_tokens ?? 0;
-      dbg('llm.fetch.end', { task, attempt, ok: true, httpStatus: lastStatus, durationMs: Date.now() - a0, tokensUsed });
-      if (expect === "json") {
+      dbg('llm.fetch.end', {
+        task,
+        attempt,
+        ok: true,
+        httpStatus: lastStatus,
+        durationMs: Date.now() - a0,
+        tokensUsed,
+      });
+      if (expect === 'json') {
         const obj = tolerantJsonParse(content);
         if (!obj) {
           if (attempt >= retries) {
-            throw new LLMCallError(`LLM returned non-JSON content (after ${retries} attempts)`, { rawContent: content, status: lastStatus });
+            throw new LLMCallError(`LLM returned non-JSON content (after ${retries} attempts)`, {
+              rawContent: content,
+              status: lastStatus,
+            });
           }
           await sleep(backoffMs(attempt));
           continue;
@@ -382,7 +602,9 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
     llmPool.release();
   }
   // Should not reach here, but throw with last raw
-  throw new LLMCallError(`LLM call failed (exhausted ${retries} attempts)`, { rawContent: lastRaw });
+  throw new LLMCallError(`LLM call failed (exhausted ${retries} attempts)`, {
+    rawContent: lastRaw,
+  });
 }
 
 // Removed legacy runWorkflow; runPipeline is the job-centric entrypoint
@@ -396,16 +618,25 @@ export async function runPipeline(
 ): Promise<void> {
   // If job was deleted before starting, abort silently
   const initial = await stores.jobs.get(jobId);
-  if (!initial) { dbg('pipeline.abort.job_deleted.prestart', { jobId }); return; }
+  if (!initial) {
+    dbg('pipeline.abort.job_deleted.prestart', { jobId });
+    return;
+  }
   const ctx = makeContext(stores, jobId, extras);
-  try { await stores.jobs.updateStatus(jobId, 'running'); } catch {}
+  try {
+    await stores.jobs.updateStatus(jobId, 'running');
+  } catch {}
   try {
     for (const phaseFn of pipeline) {
       const alive = await stores.jobs.get(jobId);
-      if (!alive) { throw new JobDeletedError(); }
+      if (!alive) {
+        throw new JobDeletedError();
+      }
       await phaseFn(ctx);
     }
-    try { await stores.jobs.updateStatus(jobId, 'done'); } catch {}
+    try {
+      await stores.jobs.updateStatus(jobId, 'done');
+    } catch {}
   } catch (e: any) {
     if (e instanceof StaleRunError) {
       // Old run aborted due to newer run; do not mark failed
@@ -418,7 +649,11 @@ export async function runPipeline(
       return;
     }
     const msg = typeof e?.message === 'string' ? e.message : String(e);
-    try { await stores.jobs.updateStatus(jobId, 'failed' as any, msg); } catch {}
-    try { console.warn('[job.failed]', { jobId, error: msg }); } catch {}
+    try {
+      await stores.jobs.updateStatus(jobId, 'failed' as any, msg);
+    } catch {}
+    try {
+      console.warn('[job.failed]', { jobId, error: msg });
+    } catch {}
   }
 }

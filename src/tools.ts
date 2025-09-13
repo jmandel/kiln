@@ -23,7 +23,11 @@ export interface TerminologySearchResult {
   perQueryHits?: Array<{ query: string; hits: TerminologyHit[]; count?: number }>;
 }
 
-export async function searchTerminology(query: string | string[], systems?: string[], limit: number = 200): Promise<TerminologySearchResult> {
+export async function searchTerminology(
+  query: string | string[],
+  systems?: string[],
+  limit: number = 200
+): Promise<TerminologySearchResult> {
   const TERMINOLOGY_SERVER = getTerminologyServerURL();
 
   const queries = Array.isArray(query) ? query : [query];
@@ -32,25 +36,36 @@ export async function searchTerminology(query: string | string[], systems?: stri
   const response = await fetch(`${TERMINOLOGY_SERVER}/tx/search`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body
+    body,
   });
-  
+
   if (!response.ok) {
     throw new Error(`Terminology search failed: ${response.status}`);
   }
-  
+
   const data = await response.json();
-  const results = (Array.isArray(data?.results) ? data.results : []) as Array<{ query: string; hits: TerminologyHit[]; count?: number; fullSystem?: boolean; guidance?: string }>;
-  const flatHits = results.flatMap(r => Array.isArray(r.hits) ? r.hits : []);
-  const perQuery = results.map(r => ({ query: r.query, count: Array.isArray(r.hits) ? r.hits.length : (r.count ?? 0) }));
-  const fullSystem = results.some(r => !!r.fullSystem);
-  const guidance = (results.find(r => typeof r.guidance === 'string' && String(r.guidance).trim())?.guidance) as string | undefined;
+  const results = (Array.isArray(data?.results) ? data.results : []) as Array<{
+    query: string;
+    hits: TerminologyHit[];
+    count?: number;
+    fullSystem?: boolean;
+    guidance?: string;
+  }>;
+  const flatHits = results.flatMap((r) => (Array.isArray(r.hits) ? r.hits : []));
+  const perQuery = results.map((r) => ({
+    query: r.query,
+    count: Array.isArray(r.hits) ? r.hits.length : (r.count ?? 0),
+  }));
+  const fullSystem = results.some((r) => !!r.fullSystem);
+  const guidance = results.find((r) => typeof r.guidance === 'string' && String(r.guidance).trim())?.guidance as
+    | string
+    | undefined;
   return {
     hits: flatHits,
     count: flatHits.length,
     guidance,
     fullSystem,
     perQuery,
-    perQueryHits: results
+    perQueryHits: results,
   };
 }

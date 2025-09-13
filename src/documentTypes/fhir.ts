@@ -11,5 +11,5 @@ registry.register('fhir', {
   inputsShape: { noteText: '', source: undefined },
   InputComponent: FhirInputForm,
   previewComponent: FhirPreview,
-  buildWorkflow
+  buildWorkflow,
 });

@@ -11,8 +11,9 @@ export const registry: DocumentTypeRegistry = {
     return d as DocumentTypeDef<T> | undefined;
   },
   all(): Array<{ type: 'narrative' | 'fhir'; def: DocumentTypeDef<InputsUnion> }> {
-    return Array.from(defs.entries()).map(([type, def]) => ({ type: type as 'narrative' | 'fhir', def }));
-  }
+    return Array.from(defs.entries()).map(([type, def]) => ({
+      type: type as 'narrative' | 'fhir',
+      def,
+    }));
+  },
 };
-
-

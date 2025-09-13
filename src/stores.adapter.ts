@@ -8,4 +8,3 @@ export async function createStores(): Promise<Stores> {
   const s = await createIndexedDbStores();
   return s;
 }
-

@@ -33,6 +33,7 @@ The server will run on http://localhost:3500 by default.
 ## Setup Details
 
 The `setup` script will:
+
 - Download the FHIR validator JAR from GitHub
 - Set up the large-vocabularies repository as a git submodule
 - Create necessary directories
@@ -77,6 +78,7 @@ Tests generate detailed reports in `tests/*-report.json` for manual inspection.
 ## Database Schema
 
 The terminology database uses a normalized schema:
+
 - `concepts` - Core concept information (system, code, display)
 - `designations` - All labels/designations for concepts (searchable via FTS5)
 - `code_systems` - Metadata about loaded code systems

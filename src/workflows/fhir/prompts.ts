@@ -2,7 +2,21 @@
 
 export const FHIR_PROMPTS = {
   // Composition planning prompt (restored wording)
-  fhir_composition_plan: ({ note_text, section_titles, subject_ref, encounter_ref, ips_notes, ips_example }: { note_text: string, section_titles?: string[], subject_ref?: string, encounter_ref?: string, ips_notes?: string[], ips_example?: string }) => `You are an expert FHIR document architect. Given a clinical note, create a FHIR Composition resource that outlines the necessary sections and resources.
+  fhir_composition_plan: ({
+    note_text,
+    section_titles,
+    subject_ref,
+    encounter_ref,
+    ips_notes,
+    ips_example,
+  }: {
+    note_text: string;
+    section_titles?: string[];
+    subject_ref?: string;
+    encounter_ref?: string;
+    ips_notes?: string[];
+    ips_example?: string;
+  }) => `You are an expert FHIR document architect. Given a clinical note, create a FHIR Composition resource that outlines the necessary sections and resources.
 
 High-level goals:
 - Represent results, orders, and performed actions with the correct resource types.
@@ -52,19 +66,39 @@ Clinical Note:
 ${note_text}
 </note>
 
-${section_titles && section_titles.length ? `
+${
+  section_titles && section_titles.length ?
+    `
 Required Section Titles (use EXACTLY these, in this order):
-${section_titles.map(t => `- ${t}`).join('\n')}
-` : ''}
+${section_titles.map((t) => `- ${t}`).join('\n')}
+`
+  : ''
+}
 
-${(ips_notes && ips_notes.length) ? `\nIPS Composition Guidance (shape & constraints):\n${ips_notes.map((n: string) => `- ${n}`).join('\n')}\n` : ''}
+${ips_notes && ips_notes.length ? `\nIPS Composition Guidance (shape & constraints):\n${ips_notes.map((n: string) => `- ${n}`).join('\n')}\n` : ''}
 
 ${ips_example ? `Example Composition shell (2-space pretty JSON):\n${ips_example}\n` : ''}
 
 Return ONLY the FHIR Composition resource as a single JSON object. Do not include any other text or explanations.`,
 
   // Resource generation prompt (restored wording)
-  fhir_generate_resource: ({ note_text, resource_reference, resource_description, subject_ref, encounter_ref, ips_notes, ips_example }: { note_text: string, resource_reference: string, resource_description: string, subject_ref?: string, encounter_ref?: string, ips_notes?: string[], ips_example?: string }) => `You are an expert FHIR resource author. Given a full clinical note for context, and a specific instruction for a resource to create, generate a single, complete FHIR resource in JSON format.
+  fhir_generate_resource: ({
+    note_text,
+    resource_reference,
+    resource_description,
+    subject_ref,
+    encounter_ref,
+    ips_notes,
+    ips_example,
+  }: {
+    note_text: string;
+    resource_reference: string;
+    resource_description: string;
+    subject_ref?: string;
+    encounter_ref?: string;
+    ips_notes?: string[];
+    ips_example?: string;
+  }) => `You are an expert FHIR resource author. Given a full clinical note for context, and a specific instruction for a resource to create, generate a single, complete FHIR resource in JSON format.
 
 Full Clinical Note (for context):
 <note>
@@ -89,13 +123,21 @@ Representation guidance (important):
 - Quantity values: For \`Quantity\` (e.g., Observation.valueQuantity), always use UCUM — set \`system\` to "http://unitsofmeasure.org", \`unit\` to the human-readable unit, and \`code\` to the correct UCUM code. Do not emit placeholder fields for quantities.
  - Subject/Encounter: If the resource supports \`subject\` or \`encounter\`, set them to the provided references so all resources in this document consistently refer to the same patient and encounter.
 
-${(ips_notes && ips_notes.length) ? `IPS Guidance (if applicable):
-${ips_notes.map(n => `- ${n}`).join('\n')}
-` : ''}
+${
+  ips_notes && ips_notes.length ?
+    `IPS Guidance (if applicable):
+${ips_notes.map((n) => `- ${n}`).join('\n')}
+`
+  : ''
+}
 
-${ips_example ? `Example (2-space pretty JSON — shape and coding style):
+${
+  ips_example ?
+    `Example (2-space pretty JSON — shape and coding style):
 ${ips_example}
-` : ''}
+`
+  : ''
+}
 
 Coding guidance (important):
 - Emit real \`Coding\` entries with \`system\`, \`code\`, and \`display\` for all \`CodeableConcept\`s. Prefer canonical systems based on context (e.g., SNOMED for problems/findings, LOINC for observations/tests, RxNorm for medications, FHIR built-in code systems for enumerations).
@@ -113,15 +155,31 @@ Return ONLY the generated FHIR resource as a single JSON object.
     attempts,
     searchNotebook,
     warnings,
-    budgetRemaining
+    budgetRemaining,
   }: {
-    resource: any,
-    unresolvedCodings: any[],
-    validatorErrors: Array<{ path?: string; severity?: string; message: string }>,
-    attempts: Record<string, { queries: string[] }>,
-    searchNotebook: Record<string, Array<{ query: string; systems?: string[]; meta?: any; resultsByQuery?: Array<{ query: string; hits: Array<{ system: string; code: string; display?: string }> }> }>>,
-    warnings?: Array<{ pointer: string; invalid?: Array<{ system?: string; code?: string }>; partials?: Array<{ path: string }>; message?: string }> ,
-    budgetRemaining: number
+    resource: any;
+    unresolvedCodings: any[];
+    validatorErrors: Array<{ path?: string; severity?: string; message: string }>;
+    attempts: Record<string, { queries: string[] }>;
+    searchNotebook: Record<
+      string,
+      Array<{
+        query: string;
+        systems?: string[];
+        meta?: any;
+        resultsByQuery?: Array<{
+          query: string;
+          hits: Array<{ system: string; code: string; display?: string }>;
+        }>;
+      }>
+    >;
+    warnings?: Array<{
+      pointer: string;
+      invalid?: Array<{ system?: string; code?: string }>;
+      partials?: Array<{ path: string }>;
+      message?: string;
+    }>;
+    budgetRemaining: number;
   }) => `You are a FHIR resource repair assistant. Your task is to reduce coding/validation issues for a single resource using minimal, safe edits.
 
 Allowed actions (choose exactly one per turn):
@@ -148,21 +206,29 @@ Coding guidance (LOINC selection):
 - When selecting LOINC codes, prefer standard test/observable codes for single measurements.
 - Do NOT propose LOINC Part (\`LP...\`) or LOINC Answer (\`LA...\`) codes unless an attribute explicitly requires Part/Answer usage.
 
-${warnings && warnings.length ? `Previous Attempt Feedback (read carefully):
-${warnings.map(w => {
-  if (w.invalid && w.invalid.length) {
-    const items = w.invalid.map((i:any)=>{
-      const base = `${i.system||''}|${i.code||''}`;
-      return i.canonicalDisplay ? `${base} (canonical display: "${i.canonicalDisplay}")` : base;
-    }).join(', ');
-    return `- Invalid codes at ${w.pointer || '(unspecified)'}: ${items}`;
-  }
-  if (w.partials && w.partials.length) {
-    return `- Partial update at ${w.pointer || '(unspecified)'}: when changing a Coding's code, also set system and display in the same replacement.`;
-  }
-  return w.message ? `- ${w.message}` : '';
-}).join('\n')}
-` : ''}
+${
+  warnings && warnings.length ?
+    `Previous Attempt Feedback (read carefully):
+${warnings
+  .map((w) => {
+    if (w.invalid && w.invalid.length) {
+      const items = w.invalid
+        .map((i: any) => {
+          const base = `${i.system || ''}|${i.code || ''}`;
+          return i.canonicalDisplay ? `${base} (canonical display: "${i.canonicalDisplay}")` : base;
+        })
+        .join(', ');
+      return `- Invalid codes at ${w.pointer || '(unspecified)'}: ${items}`;
+    }
+    if (w.partials && w.partials.length) {
+      return `- Partial update at ${w.pointer || '(unspecified)'}: when changing a Coding's code, also set system and display in the same replacement.`;
+    }
+    return w.message ? `- ${w.message}` : '';
+  })
+  .join('\n')}
+`
+  : ''
+}
 
 Search and modeling guidance (keep forward progress):
 - Term picking: start with the core concept (1–3 tokens). If no hits, try synonyms or a simpler hypernym; avoid repeating the same phrase.
@@ -179,7 +245,7 @@ Budget remaining (turns): ${budgetRemaining}
 Current Resource (JSON):
 ${JSON.stringify(resource, null, 2)}
 
-${warnings && warnings.length ? `Warnings (filtered, not applied in the previous step):\n${warnings.map(w => `- pointer: ${w.pointer}${w.invalid && w.invalid.length ? ` — removed: ${w.invalid.map(i => `${i.system}|${i.code}`).join(', ')}` : ''}${w.partials && w.partials.length ? ` — dropped partial property edits` : ''}${w.message ? ` — ${w.message}` : ''}`).join('\n')}` : ''}
+${warnings && warnings.length ? `Warnings (filtered, not applied in the previous step):\n${warnings.map((w) => `- pointer: ${w.pointer}${w.invalid && w.invalid.length ? ` — removed: ${w.invalid.map((i) => `${i.system}|${i.code}`).join(', ')}` : ''}${w.partials && w.partials.length ? ` — dropped partial property edits` : ''}${w.message ? ` — ${w.message}` : ''}`).join('\n')}` : ''}
 
 Unresolved Codings:
 ${JSON.stringify(unresolvedCodings, null, 2)}
@@ -212,7 +278,7 @@ Output JSON ONLY, matching one of these shapes:
   { "op": "remove", "path": "/valueCodeableConcept/coding/0" }
 ] }
 
-`
+`,
 };
 
 export type FhirPromptKey = keyof typeof FHIR_PROMPTS;

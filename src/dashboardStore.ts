@@ -10,7 +10,14 @@ export type DashboardView = {
   currentPhase?: string;
   jobStartTime?: string;
   metrics: { stepCounts: Record<string, number>; totalTokens: number; elapsedMs: number };
-  artifacts: Array<{ id: string; name: string; kind: string; status: 'done'; createdAt?: string; phase?: string }>;
+  artifacts: Array<{
+    id: string;
+    name: string;
+    kind: string;
+    status: 'done';
+    createdAt?: string;
+    phase?: string;
+  }>;
   events: Array<{ ts: string; level: Level; msg: string }>;
   error?: string;
   phases: Array<{ id: string; label: string; done: number; total: number; pct: number }>;
@@ -25,10 +32,10 @@ const defaultView: DashboardView = {
   artifacts: [],
   events: [],
   phases: [],
-  stepTypes: []
+  stepTypes: [],
 };
 
-function guessKind(kind: string): 'draft'|'outline'|'assets'|'review'|'final'|string {
+function guessKind(kind: string): 'draft' | 'outline' | 'assets' | 'review' | 'final' | string {
   const k = (kind || '').toLowerCase();
   if (k.includes('outline')) return 'outline';
   if (k.includes('draft')) return 'draft';
@@ -40,11 +47,22 @@ function guessKind(kind: string): 'draft'|'outline'|'assets'|'review'|'final'|st
 
 function toMsg(ev: any): { level: Level; msg: string } | null {
   switch (ev.type) {
-    case 'step_saved':     return { level: ev.status === 'failed' ? 'error' : ev.status === 'pending' ? 'warn' : 'info', msg: `Step ${ev.title || ev.key} → ${ev.status}` };
-    case 'artifact_saved': return { level: 'info', msg: `Artifact ${ev.kind} v${ev.version} saved` };
-    case 'job_created':     return { level: 'info', msg: `Job created` };
-    case 'job_status':      return { level: ev.status === 'failed' ? 'error' : 'info', msg: `Job → ${ev.status}` };
-    default: return null;
+    case 'step_saved':
+      return {
+        level:
+          ev.status === 'failed' ? 'error'
+          : ev.status === 'pending' ? 'warn'
+          : 'info',
+        msg: `Step ${ev.title || ev.key} → ${ev.status}`,
+      };
+    case 'artifact_saved':
+      return { level: 'info', msg: `Artifact ${ev.kind} v${ev.version} saved` };
+    case 'job_created':
+      return { level: 'info', msg: `Job created` };
+    case 'job_status':
+      return { level: ev.status === 'failed' ? 'error' : 'info', msg: `Job → ${ev.status}` };
+    default:
+      return null;
   }
 }
 
@@ -52,7 +70,12 @@ type StepMeta = { status: Step['status']; phase: string; llmTokens?: number; ts:
 type PhaseCounts = Map<string, { done: number; total: number }>;
 
 function safePhase(tagsJson?: string | null): string {
-  try { const t = tagsJson ? JSON.parse(tagsJson) : {}; return t.phase || 'untagged'; } catch { return 'untagged'; }
+  try {
+    const t = tagsJson ? JSON.parse(tagsJson) : {};
+    return t.phase || 'untagged';
+  } catch {
+    return 'untagged';
+  }
 }
 
 export class DashboardStore {
@@ -69,14 +92,31 @@ export class DashboardStore {
 
   constructor(private stores: Stores) {
     this.stores.events.subscribe((ev: Event) => {
-      try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'event.recv', evType: (ev as any)?.type, jobId: (ev as any)?.jobId })); } catch {}
+      try {
+        console.log(
+          '[WF]',
+          JSON.stringify({
+            ts: new Date().toISOString(),
+            type: 'event.recv',
+            evType: (ev as any)?.type,
+            jobId: (ev as any)?.jobId,
+          })
+        );
+      } catch {}
       const docId: ID | undefined = (ev as any).jobId;
       // Keep global jobs list updated on job events only (avoid floods)
-      if ((ev as any).type === 'job_created' || (ev as any).type === 'job_status' || (ev as any).type === 'job_deleted') {
+      if (
+        (ev as any).type === 'job_created' ||
+        (ev as any).type === 'job_status' ||
+        (ev as any).type === 'job_deleted'
+      ) {
         void this.updateJobsList();
         // Start dependent jobs when parents complete, and also when a dependent job is created
-        if ((ev as any).type === 'job_created' || ((ev as any).type === 'job_status' && (ev as any).status === 'done')) {
-          void triggerReadyJobs(this.stores).catch(()=>{});
+        if (
+          (ev as any).type === 'job_created' ||
+          ((ev as any).type === 'job_status' && (ev as any).status === 'done')
+        ) {
+          void triggerReadyJobs(this.stores).catch(() => {});
         }
       }
       if (!docId) return;
@@ -102,9 +142,14 @@ export class DashboardStore {
 
   subscribe(jobId: ID, cb: () => void): () => void {
     let set = this.listeners.get(jobId);
-    if (!set) { set = new Set(); this.listeners.set(jobId, set); }
+    if (!set) {
+      set = new Set();
+      this.listeners.set(jobId, set);
+    }
     set.add(cb);
-    return () => { set!.delete(cb); };
+    return () => {
+      set!.delete(cb);
+    };
   }
 
   getState(jobId: ID): DashboardView {
@@ -114,7 +159,7 @@ export class DashboardStore {
   private async bootstrap(jobId: ID): Promise<void> {
     const doc = await this.stores.jobs.get(jobId);
     const steps = await this.stores.steps.listByJob(jobId);
-    const arts  = await this.stores.artifacts.listByJob(jobId);
+    const arts = await this.stores.artifacts.listByJob(jobId);
 
     const sIndex = new Map<string, StepMeta>();
     const pCounts: PhaseCounts = new Map();
@@ -126,7 +171,9 @@ export class DashboardStore {
       const meta: StepMeta = { status: s.status, phase: ph, llmTokens: s.llmTokens || 0, ts: s.ts };
       sIndex.set(`${s.jobId}:${s.key}`, meta);
       if (!pCounts.has(ph)) pCounts.set(ph, { done: 0, total: 0 });
-      const pc = pCounts.get(ph)!; pc.total += 1; if (s.status === 'done') pc.done += 1;
+      const pc = pCounts.get(ph)!;
+      pc.total += 1;
+      if (s.status === 'done') pc.done += 1;
       stepCounts[s.status] = (stepCounts[s.status] || 0) + 1;
       tokens += s.llmTokens || 0;
     }
@@ -136,34 +183,56 @@ export class DashboardStore {
 
     const jobStartTime = doc?.createdAt || steps[0]?.ts || undefined;
     const lastTs = steps.length ? steps[steps.length - 1].ts : jobStartTime;
-    const elapsedMs = jobStartTime && lastTs ? (new Date(lastTs).getTime() - new Date(jobStartTime).getTime()) : 0;
-    const phases = Array.from(pCounts.entries()).map(([id, v]) => ({ id, label: id, done: v.done, total: v.total, pct: v.total ? v.done / v.total : 0 }));
-    const stepTypes = Array.from(new Set(steps.map(s => String(s.key || '').split(':')[0] || 'other')));
+    const elapsedMs = jobStartTime && lastTs ? new Date(lastTs).getTime() - new Date(jobStartTime).getTime() : 0;
+    const phases = Array.from(pCounts.entries()).map(([id, v]) => ({
+      id,
+      label: id,
+      done: v.done,
+      total: v.total,
+      pct: v.total ? v.done / v.total : 0,
+    }));
+    const stepTypes = Array.from(new Set(steps.map((s) => String(s.key || '').split(':')[0] || 'other')));
 
-    const artifacts = arts.map(a => ({
+    const artifacts = arts.map((a) => ({
       id: a.id,
       name: a.title || `${a.kind} v${a.version}`,
       kind: guessKind(a.kind),
       status: 'done' as const,
       createdAt: a.updatedAt,
-      phase: a.tags?.phase
+      phase: a.tags?.phase,
     }));
 
     // Latest failed step for banner
     let error: string | undefined;
-    const failed = steps.filter(s => s.status === 'failed').sort((a, b) => b.ts.localeCompare(a.ts))[0];
+    const failed = steps.filter((s) => s.status === 'failed').sort((a, b) => b.ts.localeCompare(a.ts))[0];
     if (failed) {
-      const details = failed.resultJson ? (() => { try { return JSON.parse(failed.resultJson); } catch { return null; } })() : null;
-      const rawSnippet = details?.raw ? String(details.raw).slice(0, 200).replace(/\s+/g, ' ') + (String(details.raw).length > 200 ? '…' : '') : '';
-      error = `${failed.title || failed.key} — ${failed.error || 'failed'}` + (rawSnippet ? ` — Raw: ${rawSnippet}` : '');
+      const details =
+        failed.resultJson ?
+          (() => {
+            try {
+              return JSON.parse(failed.resultJson);
+            } catch {
+              return null;
+            }
+          })()
+        : null;
+      const rawSnippet =
+        details?.raw ?
+          String(details.raw).slice(0, 200).replace(/\s+/g, ' ') + (String(details.raw).length > 200 ? '…' : '')
+        : '';
+      error =
+        `${failed.title || failed.key} — ${failed.error || 'failed'}` + (rawSnippet ? ` — Raw: ${rawSnippet}` : '');
     }
 
     const view: DashboardView = {
       jobId,
       title: doc?.title || 'Job',
-      status: doc?.status === 'done' ? 'done' : doc?.status === 'blocked' ? 'error' : 'running',
+      status:
+        doc?.status === 'done' ? 'done'
+        : doc?.status === 'blocked' ? 'error'
+        : 'running',
       currentPhase: (() => {
-        const latest = steps.slice().sort((a,b)=> b.ts.localeCompare(a.ts))[0];
+        const latest = steps.slice().sort((a, b) => b.ts.localeCompare(a.ts))[0];
         return latest ? safePhase(latest.tagsJson) : undefined;
       })(),
       jobStartTime,
@@ -172,11 +241,21 @@ export class DashboardStore {
       events: [],
       error,
       phases,
-      stepTypes
+      stepTypes,
     };
 
     this.views.set(jobId, view);
-    try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'bootstrap.done', jobId, artifacts: artifacts.length })); } catch {}
+    try {
+      console.log(
+        '[WF]',
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          type: 'bootstrap.done',
+          jobId,
+          artifacts: artifacts.length,
+        })
+      );
+    } catch {}
     this.notify(jobId);
     // If events arrived while bootstrapping, flush them now that view exists
     this.scheduleFlush();
@@ -223,7 +302,9 @@ export class DashboardStore {
           if (!prev) {
             view.metrics.stepCounts[curStatus] = (view.metrics.stepCounts[curStatus] || 0) + 1;
             if (!phases.has(newPhase)) phases.set(newPhase, { done: 0, total: 0 });
-            const pc = phases.get(newPhase)!; pc.total += 1; if (curStatus === 'done') pc.done += 1;
+            const pc = phases.get(newPhase)!;
+            pc.total += 1;
+            if (curStatus === 'done') pc.done += 1;
             view.metrics.totalTokens += ev.llmTokens || 0;
           } else {
             if (prevStatus !== curStatus) {
@@ -231,27 +312,62 @@ export class DashboardStore {
               view.metrics.stepCounts[curStatus] = (view.metrics.stepCounts[curStatus] || 0) + 1;
               const oldPc = phases.get(prev.phase)!;
               if (prevStatus === 'done') oldPc.done = Math.max(0, oldPc.done - 1);
-              let newPc = phases.get(newPhase); if (!newPc) { newPc = { done: 0, total: 0 }; phases.set(newPhase, newPc); }
+              let newPc = phases.get(newPhase);
+              if (!newPc) {
+                newPc = { done: 0, total: 0 };
+                phases.set(newPhase, newPc);
+              }
               if (curStatus === 'done') newPc.done += 1;
-              if (prev.phase !== newPhase) { oldPc.total = Math.max(0, oldPc.total - 1); newPc.total += 1; }
+              if (prev.phase !== newPhase) {
+                oldPc.total = Math.max(0, oldPc.total - 1);
+                newPc.total += 1;
+              }
             } else if (prev.phase !== newPhase) {
-              const oldPc = phases.get(prev.phase)!; oldPc.total = Math.max(0, oldPc.total - 1);
-              let newPc = phases.get(newPhase); if (!newPc) { newPc = { done: 0, total: 0 }; phases.set(newPhase, newPc); }
-              newPc.total += 1; if (curStatus === 'done') { oldPc.done = Math.max(0, oldPc.done - 1); newPc.done += 1; }
+              const oldPc = phases.get(prev.phase)!;
+              oldPc.total = Math.max(0, oldPc.total - 1);
+              let newPc = phases.get(newPhase);
+              if (!newPc) {
+                newPc = { done: 0, total: 0 };
+                phases.set(newPhase, newPc);
+              }
+              newPc.total += 1;
+              if (curStatus === 'done') {
+                oldPc.done = Math.max(0, oldPc.done - 1);
+                newPc.done += 1;
+              }
             }
-            const prevTok = prev.llmTokens || 0; const curTok = ev.llmTokens || 0; if (curTok > prevTok) view.metrics.totalTokens += (curTok - prevTok);
+            const prevTok = prev.llmTokens || 0;
+            const curTok = ev.llmTokens || 0;
+            if (curTok > prevTok) view.metrics.totalTokens += curTok - prevTok;
           }
-          stepsByPk.set(pk, { status: curStatus, phase: newPhase, llmTokens: ev.llmTokens || 0, ts: ev.ts });
-          const t = ev.ts ? new Date(ev.ts).getTime() : 0; if (t >= latestTs) { latestTs = t; view.currentPhase = newPhase; }
+          stepsByPk.set(pk, {
+            status: curStatus,
+            phase: newPhase,
+            llmTokens: ev.llmTokens || 0,
+            ts: ev.ts,
+          });
+          const t = ev.ts ? new Date(ev.ts).getTime() : 0;
+          if (t >= latestTs) {
+            latestTs = t;
+            view.currentPhase = newPhase;
+          }
         }
 
         if (ev.type === 'artifact_saved') {
           try {
             const a: Artifact | undefined = await this.stores.artifacts.get(ev.id);
             if (a) {
-              const idx = view.artifacts.findIndex(x => x.id === a.id);
-              const next = { id: a.id, name: a.title || `${a.kind} v${a.version}`, kind: guessKind(a.kind), status: 'done' as const, createdAt: a.updatedAt, phase: a.tags?.phase };
-              if (idx >= 0) view.artifacts[idx] = next; else view.artifacts.push(next);
+              const idx = view.artifacts.findIndex((x) => x.id === a.id);
+              const next = {
+                id: a.id,
+                name: a.title || `${a.kind} v${a.version}`,
+                kind: guessKind(a.kind),
+                status: 'done' as const,
+                createdAt: a.updatedAt,
+                phase: a.tags?.phase,
+              };
+              if (idx >= 0) view.artifacts[idx] = next;
+              else view.artifacts.push(next);
             }
           } catch {}
         }
@@ -259,26 +375,40 @@ export class DashboardStore {
         if (ev.type === 'artifacts_cleared' || ev.type === 'links_cleared') {
           try {
             const arts = await this.stores.artifacts.listByJob(docId);
-            view.artifacts = arts.map(a => ({
+            view.artifacts = arts.map((a) => ({
               id: a.id,
               name: a.title || `${a.kind} v${a.version}`,
               kind: guessKind(a.kind),
               status: 'done' as const,
               createdAt: a.updatedAt,
-              phase: a.tags?.phase
+              phase: a.tags?.phase,
             }));
-            try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'artifacts.cleared.applied', jobId: docId, count: view.artifacts.length })); } catch {}
+            try {
+              console.log(
+                '[WF]',
+                JSON.stringify({
+                  ts: new Date().toISOString(),
+                  type: 'artifacts.cleared.applied',
+                  jobId: docId,
+                  count: view.artifacts.length,
+                })
+              );
+            } catch {}
           } catch {}
         }
 
         if (ev.type === 'job_status') {
-          view.status = ev.status === 'done' ? 'done' : ev.status === 'blocked' ? 'error' : 'running';
+          view.status =
+            ev.status === 'done' ? 'done'
+            : ev.status === 'blocked' ? 'error'
+            : 'running';
           if (ev.status === 'running') shouldClearError = true;
         }
         // document_status removed in job-centric design
 
         const nowTs = ev.ts ? new Date(ev.ts).getTime() : Date.now();
-        if (view.jobStartTime) view.metrics.elapsedMs = Math.max(view.metrics.elapsedMs, nowTs - new Date(view.jobStartTime).getTime());
+        if (view.jobStartTime)
+          view.metrics.elapsedMs = Math.max(view.metrics.elapsedMs, nowTs - new Date(view.jobStartTime).getTime());
       }
 
       // Update error banner: clear on resume signals, otherwise reflect latest failed step if any
@@ -291,11 +421,25 @@ export class DashboardStore {
         } else {
           try {
             const steps = await this.stores.steps.listByJob(docId);
-            const failed = steps.filter(s => s.status === 'failed').sort((a, b) => b.ts.localeCompare(a.ts))[0];
+            const failed = steps.filter((s) => s.status === 'failed').sort((a, b) => b.ts.localeCompare(a.ts))[0];
             if (failed) {
-              const details = failed.resultJson ? (() => { try { return JSON.parse(failed.resultJson); } catch { return null; } })() : null;
-              const rawSnippet = details?.raw ? String(details.raw).slice(0, 200).replace(/\s+/g, ' ') + (String(details.raw).length > 200 ? '…' : '') : '';
-              view.error = `${failed.title || failed.key} — ${failed.error || 'failed'}` + (rawSnippet ? ` — Raw: ${rawSnippet}` : '');
+              const details =
+                failed.resultJson ?
+                  (() => {
+                    try {
+                      return JSON.parse(failed.resultJson);
+                    } catch {
+                      return null;
+                    }
+                  })()
+                : null;
+              const rawSnippet =
+                details?.raw ?
+                  String(details.raw).slice(0, 200).replace(/\s+/g, ' ') + (String(details.raw).length > 200 ? '…' : '')
+                : '';
+              view.error =
+                `${failed.title || failed.key} — ${failed.error || 'failed'}` +
+                (rawSnippet ? ` — Raw: ${rawSnippet}` : '');
             } else {
               view.error = undefined;
             }
@@ -305,9 +449,25 @@ export class DashboardStore {
         }
       }
 
-      view.phases = Array.from(phases.entries()).map(([id, v]) => ({ id, label: id, done: v.done, total: v.total, pct: v.total ? v.done / v.total : 0 }));
+      view.phases = Array.from(phases.entries()).map(([id, v]) => ({
+        id,
+        label: id,
+        done: v.done,
+        total: v.total,
+        pct: v.total ? v.done / v.total : 0,
+      }));
       this.views.set(docId, { ...view });
-      try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'flush.view.updated', jobId: docId, artifacts: view.artifacts.length })); } catch {}
+      try {
+        console.log(
+          '[WF]',
+          JSON.stringify({
+            ts: new Date().toISOString(),
+            type: 'flush.view.updated',
+            jobId: docId,
+            artifacts: view.artifacts.length,
+          })
+        );
+      } catch {}
       this.notify(docId);
     }
   }
@@ -315,7 +475,11 @@ export class DashboardStore {
   private notify(jobId: ID) {
     const set = this.listeners.get(jobId);
     if (!set) return;
-    for (const cb of set) { try { cb(); } catch {} }
+    for (const cb of set) {
+      try {
+        cb();
+      } catch {}
+    }
   }
 
   // ===== Global jobs list (sidebar) =====
@@ -324,22 +488,40 @@ export class DashboardStore {
       const all = await this.stores.jobs.all();
       const next = all.slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
       // Shallow equality check to avoid redundant notifications
-      const same = this.jobs.length === next.length && this.jobs.every((j, i) => j.id === next[i].id && j.status === next[i].status && j.updatedAt === next[i].updatedAt && j.title === next[i].title);
+      const same =
+        this.jobs.length === next.length &&
+        this.jobs.every(
+          (j, i) =>
+            j.id === next[i].id &&
+            j.status === next[i].status &&
+            j.updatedAt === next[i].updatedAt &&
+            j.title === next[i].title
+        );
       if (!same) {
         this.jobs = next;
         this.notifyGlobalJobs();
       }
-    } catch (e) { console.warn('updateJobsList failed', e); }
+    } catch (e) {
+      console.warn('updateJobsList failed', e);
+    }
   }
 
   subscribeToJobs(cb: () => void): () => void {
     this.jobsListeners.add(cb);
-    return () => { this.jobsListeners.delete(cb); };
+    return () => {
+      this.jobsListeners.delete(cb);
+    };
   }
 
-  getJobs(): Job[] { return this.jobs; }
+  getJobs(): Job[] {
+    return this.jobs;
+  }
 
   private notifyGlobalJobs() {
-    for (const cb of this.jobsListeners) { try { cb(); } catch {} }
+    for (const cb of this.jobsListeners) {
+      try {
+        cb();
+      } catch {}
+    }
   }
 }

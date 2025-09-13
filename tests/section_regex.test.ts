@@ -1,5 +1,10 @@
-import { describe, expect, test } from "bun:test";
-import { H2_SECTION_REGEX as SECTION_REGEX, extractSections, renderSectionNarrative, canonicalizeHeader } from "../src/sections";
+import { describe, expect, test } from 'bun:test';
+import {
+  H2_SECTION_REGEX as SECTION_REGEX,
+  extractSections,
+  renderSectionNarrative,
+  canonicalizeHeader,
+} from '../src/sections';
 
 function stitchPlaceholder(sectionTitle: string, noteText: string): string {
   return renderSectionNarrative(noteText, sectionTitle) || '';

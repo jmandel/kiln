@@ -1295,18 +1295,14 @@
         "name": [
           {
             "family": "Doe",
-            "given": [
-              "John"
-            ]
+            "given": ["John"]
           }
         ],
         "gender": "male",
         "birthDate": "1972-01-01",
         "address": [
           {
-            "line": [
-              "123 Mime Lane"
-            ],
+            "line": ["123 Mime Lane"],
             "city": "Suburbia",
             "state": "CA",
             "postalCode": "12345",
@@ -1376,12 +1372,8 @@
         "name": [
           {
             "family": "Smith",
-            "given": [
-              "John"
-            ],
-            "prefix": [
-              "Dr."
-            ]
+            "given": ["John"],
+            "prefix": ["Dr."]
           }
         ],
         "gender": "male",
