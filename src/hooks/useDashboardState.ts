@@ -12,7 +12,7 @@ const EMPTY_STATE: DashboardView = {
   phases: []
 };
 
-export function useDashboardState(stores: Stores | null, documentId: ID | null): DashboardView {
+export function useDashboardState(stores: Stores | null, jobId: ID | null): DashboardView {
   const storeRef = React.useRef<DashboardStore | null>(null);
 
   if (stores && !storeRef.current) {
@@ -20,14 +20,13 @@ export function useDashboardState(stores: Stores | null, documentId: ID | null):
   }
 
   React.useEffect(() => {
-    if (!storeRef.current || !documentId) return;
-    storeRef.current.select(documentId);
-  }, [documentId]);
+    if (!storeRef.current || !jobId) return;
+    storeRef.current.select(jobId);
+  }, [jobId]);
 
   return React.useSyncExternalStore(
-    (cb) => (storeRef.current && documentId) ? storeRef.current.subscribe(documentId, cb) : () => {},
-    () => (storeRef.current && documentId) ? storeRef.current.getState(documentId) : EMPTY_STATE,
+    (cb) => (storeRef.current && jobId) ? storeRef.current.subscribe(jobId, cb) : () => {},
+    () => (storeRef.current && jobId) ? storeRef.current.getState(jobId) : EMPTY_STATE,
     () => EMPTY_STATE
   );
 }
-

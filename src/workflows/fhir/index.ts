@@ -75,7 +75,7 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
     const ips_example = typeof ipsComp?.example === 'string' ? ipsComp.example : undefined;
     const { result: planResult, meta: planMeta } = await runLLMTask<any>(ctx, 'fhir_composition_plan', 'fhir_composition_plan', { note_text, section_titles: sectionTitles, ips_notes, ips_example }, { expect: 'json', tags: { phase: 'fhir' } });
     let compositionPlan = stitchSectionNarratives(planResult, note_text);
-    await emitJsonArtifact(ctx, { kind: 'FhirCompositionPlan', title: 'FHIR Composition Plan', content: compositionPlan, tags: { phase: 'fhir', prompt: planMeta.prompt, raw: planMeta.raw }, links: [ { dir: 'to', role: 'produced', ref: { type: 'step', id: planMeta.stepKey } } ] });
+    await emitJsonArtifact(ctx, { kind: 'FhirCompositionPlan', title: 'FHIR Composition Plan', content: compositionPlan, tags: { phase: 'fhir', prompt: planMeta.prompt, raw: planMeta.raw }, links: [ { dir: 'from', role: 'produced', ref: { type: 'step', id: planMeta.stepKey } } ] });
 
     const references: { reference: string, display: string }[] = [];
     if (Array.isArray(compositionPlan.section)) {
@@ -141,7 +141,7 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
     const finalComposition = { ...compositionPlan } as any;
     if (typeof finalComposition.subject === 'string') finalComposition.subject = { reference: finalComposition.subject };
     if (typeof finalComposition.encounter === 'string') finalComposition.encounter = { reference: finalComposition.encounter };
-    if (!finalComposition.id) finalComposition.id = `composition-${await shortHash((ctx as any).documentId + ':' + Date.now())}`;
+    if (!finalComposition.id) finalComposition.id = `composition-${await shortHash((ctx as any).jobId + ':' + Date.now())}`;
     else if (typeof finalComposition.id === 'string' && finalComposition.id.length > 64) finalComposition.id = String(finalComposition.id).slice(0, 64);
     if (Array.isArray(finalComposition.section)) for (const section of finalComposition.section) if (Array.isArray(section.entry)) for (const entry of section.entry) delete entry.display;
 
@@ -154,7 +154,7 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
         if (!/fhir\.example\.org$/i.test(base)) finalComposition.identifier.system = `${base}/Composition`; else delete finalComposition.identifier.system;
       }
     } catch {}
-    const bundleId = `bundle-${await shortHash((ctx as any).documentId)}`;
+    const bundleId = `bundle-${await shortHash((ctx as any).jobId)}`;
     const bundle = {
       resourceType: 'Bundle', type: 'document', id: bundleId, timestamp: nowIso(),
       identifier: (function(){ const value = (finalComposition?.identifier && typeof finalComposition.identifier === 'object' && !Array.isArray(finalComposition.identifier) && finalComposition.identifier.value) ? finalComposition.identifier.value : finalComposition.id; return { value, system: `${base}/Bundle` } as any; })(),
@@ -166,7 +166,7 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
     const bundleHash = await sha256(JSON.stringify(bundle));
     const validateStepKey = `validate_bundle:${bundleHash}`;
     const validationResult = await (ctx as any).step?.(validateStepKey, async () => validateResource(bundle), { title: 'Validate FHIR Bundle', tags: { phase: 'fhir', bundleHash } });
-    await emitJsonArtifact(ctx, { kind: 'ValidationReport', title: 'FHIR Bundle Validation Report', content: validationResult, tags: { phase: 'fhir', valid: validationResult?.valid, bundleHash }, links: [ { dir: 'to', role: 'produced', ref: { type: 'step', id: validateStepKey } } ] });
+    await emitJsonArtifact(ctx, { kind: 'ValidationReport', title: 'FHIR Bundle Validation Report', content: validationResult, tags: { phase: 'fhir', valid: validationResult?.valid, bundleHash }, links: [ { dir: 'from', role: 'produced', ref: { type: 'step', id: validateStepKey } } ] });
     if (!validationResult.valid) { try { console.warn('FHIR Bundle is not valid', validationResult.issues); } catch {} }
   };
 }
@@ -177,7 +177,7 @@ export function buildFhirWorkflow(inputs: FhirInputs): DocumentWorkflow<FhirInpu
     const fhirEncodingPhase = definePhase('FHIR Encoding', { phase: 'fhir' }, [ makeFhirEncodingPhase(inputs.noteText) ]);
     return [fhirEncodingPhase];
   }
-  if ((inputs as any).source && (inputs as any).source.documentId) {
+  if ((inputs as any).source && (inputs as any).source.jobId) {
     const chained = definePhase('FHIR Encoding', { phase: 'fhir' }, [ makeChainedFhirPhase() ]);
     return [chained];
   }
@@ -191,8 +191,8 @@ export function makeChainedFhirPhase(): (ctx: Context) => Promise<void> {
   return async (ctx: Context) => {
     // Prefer parent Narrative document artifacts when chaining
     const src: any = (ctx as any).inputs?.source || {};
-    const parentDocId: string | undefined = src?.documentId;
-    const searchDocId: string = parentDocId || ctx.documentId;
+    const parentJobId: string | undefined = src?.jobId;
+    const searchJobId: string = parentJobId || (ctx as any).jobId;
 
     // If an explicit artifactId is provided, use it directly; otherwise pick the latest ReleaseCandidate
     let rc: any | undefined;
@@ -203,22 +203,18 @@ export function makeChainedFhirPhase(): (ctx: Context) => Promise<void> {
       } catch {}
     }
     if (!rc) {
-      const releaseCandidateArtifacts = await ctx.stores.artifacts.listByDocument(searchDocId as any, (a) => a.kind === 'ReleaseCandidate');
+      const releaseCandidateArtifacts = await ctx.stores.artifacts.listByJob(searchJobId as any, (a) => a.kind === 'ReleaseCandidate');
       rc = releaseCandidateArtifacts.sort((a,b) => b.version - a.version)[0];
     }
     if (!rc?.content) {
-      const msg = parentDocId
-        ? `ReleaseCandidate note not found in parent document '${parentDocId}' to start FHIR encoding.`
+      const msg = parentJobId
+        ? `ReleaseCandidate note not found in parent job '${parentJobId}' to start FHIR encoding.`
         : 'ReleaseCandidate note not found to start FHIR encoding.';
       throw new Error(msg);
     }
 
     // Traceability: link this workflow to the source artifact when available
-    try {
-      if (rc?.id) {
-        await ctx.link({ type: 'workflow', id: ctx.workflowId }, 'uses', { type: 'artifact', id: rc.id }, { phase: 'fhir' });
-      }
-    } catch {}
+    // (workflow links removed in job-centric context)
 
     const note_text = rc.content as string;
     await makeFhirEncodingPhase(note_text)(ctx);

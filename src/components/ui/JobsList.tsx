@@ -6,7 +6,7 @@ interface Job {
   status?: string;
   createdAt?: string;
   type?: 'narrative' | 'fhir' | string;
-  tags?: { blockedOn?: string[] };
+  dependsOn?: string[];
 }
 
 interface JobsListProps {
@@ -87,9 +87,9 @@ export function JobsList({ jobs, selected, onSelect, onDelete }: JobsListProps) 
               <div className="text-xs text-gray-500 mt-1">
                 {job.id.slice(0, 12)}...
               </div>
-              {job.tags?.blockedOn && job.tags.blockedOn.length > 0 && (
+              {job.dependsOn && job.dependsOn.length > 0 && (
                 <div className="text-[11px] text-amber-700 mt-1">
-                  Blocked on: {job.tags.blockedOn.map(id => id.slice(0, 8)).join(', ')}
+                  Blocked on: {job.dependsOn.map(id => id.slice(0, 8)).join(', ')}
                 </div>
               )}
             </div>

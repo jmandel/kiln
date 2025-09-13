@@ -4,32 +4,32 @@ import { runLLMTask } from '../../llmTask';
 import { registry } from '../../documentTypes/registry';
 
 async function readBrief(ctx: Context, section: string): Promise<Artifact | undefined> {
-  const list = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'SectionBrief' && a.tags?.section === section);
+  const list = await ctx.stores.artifacts.listByJob(ctx.jobId, (a: Artifact) => a.kind === 'SectionBrief' && a.tags?.section === section);
   return list.at(-1);
 }
 
 async function latestDraftVersion(ctx: Context, section: string): Promise<number> {
-  const list = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'SectionDraft' && a.tags?.section === section);
+  const list = await ctx.stores.artifacts.listByJob(ctx.jobId, (a: Artifact) => a.kind === 'SectionDraft' && a.tags?.section === section);
   if (!list.length) return 1;
   return Math.max(...list.map((a: Artifact) => Number(a.version)));
 }
 
 async function readDraft(ctx: Context, section: string, version: number): Promise<Artifact | undefined> {
-  const list = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) =>
+  const list = await ctx.stores.artifacts.listByJob(ctx.jobId, (a: Artifact) =>
     a.kind === 'SectionDraft' && a.tags?.section === section && Number(a.version) === version
   );
   return list[0];
 }
 
 async function readNote(ctx: Context, version?: number): Promise<Artifact | undefined> {
-  const list = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NoteDraft');
+  const list = await ctx.stores.artifacts.listByJob(ctx.jobId, (a: Artifact) => a.kind === 'NoteDraft');
   const arr = list.sort((a: Artifact, b: Artifact) => Number(b.version) - Number(a.version));
   if (version != null) return arr.find((a: Artifact) => Number(a.version) === version);
   return arr[0];
 }
 
 async function getPriorSectionsSummary(ctx: Context, currentSectionIndex: number, outline: any): Promise<string> {
-  const approvedList = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) =>
+  const approvedList = await ctx.stores.artifacts.listByJob(ctx.jobId, (a: Artifact) =>
     a.kind === 'SectionDraft' && a.tags?.action === 'approve'
   ) || [];
   const approvedSections = approvedList.sort((a: any, b: any) =>
@@ -44,7 +44,7 @@ async function getPriorSectionsSummary(ctx: Context, currentSectionIndex: number
 }
 
 async function getOutlineFromSteps(ctx: Context): Promise<any> {
-  const outlines = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NarrativeOutline');
+  const outlines = await ctx.stores.artifacts.listByJob(ctx.jobId, (a: Artifact) => a.kind === 'NarrativeOutline');
   const last = outlines.at(-1);
   if (last?.content) {
     try { return JSON.parse(last.content); } catch { /* ignore */ }
@@ -94,11 +94,11 @@ function createPlanOutlineTask(sketch: string) {
 function createRealizeOutlineTask() {
   return async (ctx: Context) => {
     const outline = await getOutlineFromSteps(ctx);
-    const outlineArtifacts = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: any) => a.kind === 'NarrativeOutline');
+    const outlineArtifacts = await ctx.stores.artifacts.listByJob(ctx.jobId, (a: any) => a.kind === 'NarrativeOutline');
     const outlineArt = outlineArtifacts.at(-1);
     const oTags = outlineArt?.tags || {};
     for (const s of outline.sections) {
-      await ctx.stores.artifacts.upsert({ id: `artifact:${ctx.documentId}:SectionBrief:${s.title}:v1`, documentId: ctx.documentId, kind: 'SectionBrief', version: 1, title: `Brief: ${s.title}`, content: s.brief, tags: { section: s.title, phase: 'planning', prompt: oTags.prompt, raw: oTags.raw }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as any);
+      await ctx.stores.artifacts.upsert({ id: `artifact:${ctx.jobId}:SectionBrief:${s.title}:v1`, jobId: ctx.jobId, kind: 'SectionBrief', version: 1, title: `Brief: ${s.title}`, content: s.brief, tags: { section: s.title, phase: 'planning', prompt: oTags.prompt, raw: oTags.raw }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as any);
     }
   };
 }
@@ -130,9 +130,9 @@ function createSectionDecideTask(section: string) {
   return async (ctx: Context, version: number, score: number, { section: sec }: any) => {
     const approved = score >= TARGETS.SECTION;
     const draft = await readDraft(ctx, sec, version);
-    const critList = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'SectionCritique' && a.tags?.draftVersion === version);
+    const critList = await ctx.stores.artifacts.listByJob(ctx.jobId, (a: Artifact) => a.kind === 'SectionCritique' && a.tags?.draftVersion === version);
     const crit = critList.at(-1);
-    await ctx.stores.artifacts.upsert({ id: `artifact:${ctx.documentId}:Decision:${sec}:v${version}`, documentId: ctx.documentId, kind: 'Decision', version: 1, title: `${approved ? 'Approve' : 'Rewrite'} ${sec} v${version}`, content: `${approved ? 'approve' : 'rewrite'} ${sec} v${version}`, tags: { section: sec, draftVersion: version, action: approved ? 'approve' : 'rewrite', score }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as any);
+    await ctx.stores.artifacts.upsert({ id: `artifact:${ctx.jobId}:Decision:${sec}:v${version}`, jobId: ctx.jobId, kind: 'Decision', version: 1, title: `${approved ? 'Approve' : 'Rewrite'} ${sec} v${version}`, content: `${approved ? 'approve' : 'rewrite'} ${sec} v${version}`, tags: { section: sec, draftVersion: version, action: approved ? 'approve' : 'rewrite', score }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as any);
     if (approved && draft) await ctx.stores.artifacts.upsert({ ...draft, tags: { ...draft.tags, action: 'approve' } });
   };
 }
@@ -161,9 +161,9 @@ function createNoteDecideTask(_initial: number) {
   return async (ctx: Context, ver: number, score: number, _params: any) => {
     const approved = score >= TARGETS.NOTE;
     const note = await readNote(ctx, ver);
-    const critList = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NoteCritique' && a.tags?.noteVersion === ver);
+    const critList = await ctx.stores.artifacts.listByJob(ctx.jobId, (a: Artifact) => a.kind === 'NoteCritique' && a.tags?.noteVersion === ver);
     const crit = critList.at(-1);
-    await ctx.stores.artifacts.upsert({ id: `artifact:${ctx.documentId}:NoteDecision:v${ver}`, documentId: ctx.documentId, kind: 'NoteDecision', version: 1, title: `${approved ? 'Approve' : 'Rewrite'} Note v${ver}`, content: `${approved ? 'approve' : 'rewrite'} Note v${ver}`, tags: { noteVersion: ver, action: approved ? 'approve' : 'rewrite', score }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as any);
+    await ctx.stores.artifacts.upsert({ id: `artifact:${ctx.jobId}:NoteDecision:v${ver}`, jobId: ctx.jobId, kind: 'NoteDecision', version: 1, title: `${approved ? 'Approve' : 'Rewrite'} Note v${ver}`, content: `${approved ? 'approve' : 'rewrite'} Note v${ver}`, tags: { noteVersion: ver, action: approved ? 'approve' : 'rewrite', score }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as any);
     if (approved && note) await ctx.stores.artifacts.upsert({ ...note, tags: { ...note.tags, action: 'approve' } });
   };
 }
@@ -195,11 +195,9 @@ export function buildNarrativeWorkflow(inputs: NarrativeInputs): DocumentWorkflo
     }
   } ]);
   const assemblyPhase = definePhase('Assembly', { phase: 'assembly' }, [ async (ctx) => { const outline = await getOutlineFromSteps(ctx); const guidance = outline?.guidance || ''; const sectionSummaries = outline ? await getSectionSummaries(ctx, outline) : '<sectionSummaries />'; await runLLMTask<string>(ctx, 'assemble_note', 'assemble_note', { sketch: inputs.sketch, guidance, sectionSummaries }, { expect: 'text', tags: { phase: 'assembly' }, artifact: { kind: 'NoteDraft', version: 1, title: 'Note v1', tags: { phase: 'assembly' }, contentType: 'text' } }); } ]);
-  const noteReviewPhase = definePhase('Note Review', { phase: 'note_review' }, [ async (ctx) => { const outline = await getOutlineFromSteps(ctx); const noteLoop = revisionLoop({ target: TARGETS.NOTE, maxRevs: TARGETS.NOTE_MAX_REVS, approvalThreshold: TARGETS.NOTE * 0.8, getLatestVersion: async (ctx: Context) => { const list = await ctx.stores.artifacts.listByDocument(ctx.documentId, (a: Artifact) => a.kind === 'NoteDraft'); if (!list.length) return 1; return Math.max(...list.map((a: Artifact) => Number(a.version))); }, draftTask: createNoteDraftTask(1), critiqueTask: createNoteCritiqueTask(1), decideTask: createNoteDecideTask(1), title: 'Note Revision' }); await noteLoop(ctx, { outline, sketch: inputs.sketch }); } ]);
+  const noteReviewPhase = definePhase('Note Review', { phase: 'note_review' }, [ async (ctx) => { const outline = await getOutlineFromSteps(ctx); const noteLoop = revisionLoop({ target: TARGETS.NOTE, maxRevs: TARGETS.NOTE_MAX_REVS, approvalThreshold: TARGETS.NOTE * 0.8, getLatestVersion: async (ctx: Context) => { const list = await ctx.stores.artifacts.listByJob((ctx as any).jobId, (a: Artifact) => a.kind === 'NoteDraft'); if (!list.length) return 1; return Math.max(...list.map((a: Artifact) => Number(a.version))); }, draftTask: createNoteDraftTask(1), critiqueTask: createNoteCritiqueTask(1), decideTask: createNoteDecideTask(1), title: 'Note Revision' }); await noteLoop(ctx, { outline, sketch: inputs.sketch }); } ]);
   const finalizedPhase = definePhase('Finalized', { phase: 'finalized' }, [ async (ctx) => { const latest = await readNote(ctx); const outline = await getOutlineFromSteps(ctx); const guidance = outline?.guidance || ''; await runLLMTask<string>(ctx, 'finalize_note', 'finalize_note', { noteDraft: latest?.content || '', sketch: inputs.sketch, guidance }, { expect: 'text', tags: { phase: 'finalized' }, artifact: { kind: 'ReleaseCandidate', version: 1, title: 'RC v1', tags: { phase: 'finalized' }, contentType: 'text' } }); } ]);
   return [planningPhase, sectionsPhase, assemblyPhase, noteReviewPhase, finalizedPhase];
 }
 
 registry.register('narrative', { inputsShape: { sketch: '' }, buildWorkflow: buildNarrativeWorkflow });
-
-

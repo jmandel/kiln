@@ -1,10 +1,10 @@
 export type ID = string;
 
-export type EntityType = "artifact" | "step" | "document" | "workflow";
+export type EntityType = "artifact" | "step" | "job";
 
 export interface Artifact {
   id: ID;
-  documentId: ID;
+  jobId: ID;
   kind: string;
   version: number;
   title?: string;
@@ -15,7 +15,7 @@ export interface Artifact {
 }
 
 export interface Step {
-  workflowId: ID;
+  jobId: ID;
   key: string;
   title?: string;
   status: "running" | "pending" | "done" | "failed";
@@ -41,7 +41,7 @@ export interface NarrativeInputs {
 }
 
 export interface Source {
-  documentId: ID;
+  jobId: ID;
   artifactId?: ID;
 }
 
@@ -51,6 +51,24 @@ export interface FhirInputs {
 }
 
 export type InputsUnion = NarrativeInputs | FhirInputs;
+
+// =============================
+// Jobs (new top-level entity)
+// =============================
+
+export interface Job {
+  id: ID;
+  title: string;
+  type: DocumentType;
+  inputs: InputsUnion;
+  status: 'queued' | 'running' | 'done' | 'failed' | 'blocked';
+  dependsOn?: ID[];
+  lastError?: string | null;
+  cacheVersion?: number;
+  createdAt: string;
+  updatedAt: string;
+  lastRunAt?: string;
+}
 
 export interface DocumentTags {
   blockedOn?: ID[];
@@ -82,7 +100,7 @@ export function isFhirInputs(inputs: unknown): inputs is FhirInputs {
   const noteTextOk = typeof (inputs as any).noteText === 'string';
   const src = (inputs as any).source;
   const srcOk = src == null || (
-    src && typeof src === 'object' && typeof (src as any).documentId === 'string' && (
+    src && typeof src === 'object' && typeof (src as any).jobId === 'string' && (
       (src as any).artifactId == null || typeof (src as any).artifactId === 'string'
     )
   );
@@ -110,8 +128,7 @@ export interface ContextOpts {
 }
 
 export interface Context {
-  workflowId: ID;
-  documentId: ID;
+  jobId: ID;
   stores: Stores;
   step: (key: string, fn: () => Promise<any>, opts?: ContextOpts) => Promise<any>;
   getStepResult: (stepKey: string) => Promise<any>;
@@ -156,19 +173,11 @@ export interface DocumentTypeRegistry {
 // Workflows (legacy names)
 // =============================
 
-export interface Workflow {
-  id: ID;
-  documentId: ID;
-  name: string;
-  status: "running" | "pending" | "done" | "failed";
-  lastError?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+// Legacy Workflow type removed in job‑first model
 
 export interface Link {
   id: ID;
-  documentId: ID;
+  jobId: ID;
   fromType: EntityType;
   fromId: ID;
   toType: EntityType;
@@ -212,48 +221,33 @@ export interface Targets {
 // =============================
 
 export interface Stores {
-  documents: {
-    create: <T extends InputsUnion>(id: ID, title: string, type: DocumentType, inputs: T) => Promise<void>;
-    // Overloads: list all or list by expected type (narrowed)
-    all: {
-      (): Promise<KnownDocument[]>;
-      <T extends InputsUnion>(type: DocumentType): Promise<Document<T>[]>;
-    };
-    // Overloads: get by id (union) or by id with expected type (narrowed)
-    get: {
-      (id: ID): Promise<KnownDocument | undefined>;
-      <T extends InputsUnion>(id: ID, expectedType: DocumentType): Promise<Document<T> | undefined>;
-    };
-    put: (doc: KnownDocument) => Promise<void>;
-    updateStatus: (id: ID, status: BaseDocument["status"]) => Promise<void>;
+  jobs: {
+    create: (id: ID, title: string, type: DocumentType, inputs: InputsUnion, dependsOn?: ID[]) => Promise<void>;
+    all: () => Promise<Job[]>;
+    get: (id: ID) => Promise<Job | undefined>;
+    updateStatus: (id: ID, status: Job['status'], lastError?: string | null) => Promise<void>;
     delete: (id: ID) => Promise<void>;
-  };
-  workflows: {
-    create: (id: ID, documentId: ID, name: string) => Promise<void>;
-    setStatus: (id: ID, status: Workflow["status"], lastError?: string | null) => Promise<void>;
-    listResumable: () => Promise<Array<{ id: ID; documentId: ID; name: string }>>;
-    deleteByDocument: (documentId: ID) => Promise<void>;
+    listByDependsOn: (parentId: ID) => Promise<Job[]>;
   };
   artifacts: {
     get: (id: ID) => Promise<Artifact | undefined>;
     upsert: (a: Artifact) => Promise<void>;
-    listByDocument: (documentId: ID, pred?: (a: Artifact) => boolean) => Promise<Artifact[]>;
-    latestVersion: (documentId: ID, kind: string, tagsKey?: string, tagsValue?: any) => Promise<number | null>;
-    deleteByDocument: (documentId: ID) => Promise<void>;
+    listByJob: (jobId: ID, pred?: (a: Artifact) => boolean) => Promise<Artifact[]>;
+    latestVersion: (jobId: ID, kind: string, tagsKey?: string, tagsValue?: any) => Promise<number | null>;
+    deleteByJob: (jobId: ID) => Promise<void>;
   };
   steps: {
-    get: (workflowId: ID, key: string) => Promise<Step | undefined>;
+    get: (jobId: ID, key: string) => Promise<Step | undefined>;
     put: (rec: Partial<Step>) => Promise<void>;
-    listByDocument: (documentId: ID) => Promise<Step[]>;
-    listByWorkflow: (workflowId: ID) => Promise<Step[]>;
+    listByJob: (jobId: ID) => Promise<Step[]>;
     listRunning: () => Promise<Step[]>;
-    deleteByDocument: (documentId: ID) => Promise<void>;
+    deleteByJob: (jobId: ID) => Promise<void>;
   };
   links: {
     get: (id: ID) => Promise<Link | undefined>;
     upsert: (l: Link) => Promise<void>;
-    listByDocument: (documentId: ID) => Promise<Link[]>;
-    deleteByDocument: (documentId: ID) => Promise<void>;
+    listByJob: (jobId: ID) => Promise<Link[]>;
+    deleteByJob: (jobId: ID) => Promise<void>;
   };
   events: EventHub;
 }

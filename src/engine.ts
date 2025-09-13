@@ -83,17 +83,17 @@ class LLMCallError extends Error {
   }
 }
 
-export function makeContext(stores: Stores, workflowId: ID, documentId: ID, extras?: { type?: string; inputs?: any }): Context {
+export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string; inputs?: any }): Context {
   currentStepStack = [];
 
   async function step(key: string, fn: () => Promise<any>, opts: { title?: string; tags?: Record<string, any>; parentKey?: string; forceRecompute?: boolean; prompt?: string; } = {}): Promise<any> {
     const fullKey = opts.parentKey ? `${opts.parentKey}:${key}` : key;
     const reqT0 = Date.now();
-    const existing = await stores.steps.get(workflowId, fullKey);
+    const existing = await stores.steps.get(jobId, fullKey);
     // Initial request log
     dbg('step.request', { key: fullKey, title: opts.title, parent: opts.parentKey, cachedCandidate: !!(existing && existing.status === 'done' && !opts.forceRecompute) });
     if (existing && existing.status === "done" && !opts.forceRecompute) {
-      stores.events.emit({ type: "step_replayed", workflowId, key: fullKey, title: opts.title, tags: opts.tags || {} });
+      stores.events.emit({ type: "step_replayed", jobId, key: fullKey, title: opts.title, tags: opts.tags || {} });
       const r0 = Date.now();
       const val = JSON.parse(existing.resultJson);
       const replayMs = Date.now() - r0;
@@ -102,7 +102,7 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID, extr
       return val;
     }
     const rec: Partial<Step> = {
-      workflowId, key: fullKey, title: opts.title, status: "running", resultJson: "", tagsJson: opts.tags ? JSON.stringify(opts.tags) : null,
+      jobId, key: fullKey, title: opts.title, status: "running", resultJson: "", tagsJson: opts.tags ? JSON.stringify(opts.tags) : null,
       parentKey: opts.parentKey ?? currentStepStack.at(-1) ?? null, error: null, progress: 0, durationMs: null, llmTokens: null, prompt: opts.prompt ?? null, ts: nowIso()
     };
     await stores.steps.put(rec);
@@ -113,7 +113,7 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID, extr
     try {
       const out = await fn();
       // Refetch the record to ensure we have the latest tags from sub-steps (e.g. llmRaw from callLLM)
-      const finalRec = await stores.steps.get(workflowId, fullKey);
+      const finalRec = await stores.steps.get(jobId, fullKey);
       const updatedRec = { ...(finalRec || rec) };
 
       updatedRec.status = "done";
@@ -121,7 +121,6 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID, extr
       updatedRec.durationMs = Date.now() - t0;
       updatedRec.resultJson = JSON.stringify(out);
       await stores.steps.put(updatedRec);
-      stores.events.emit({ type: "step_saved", ...updatedRec, tags: opts.tags || {}, documentId });
       dbg('step.end', { key: fullKey, ok: true, durationMs: updatedRec.durationMs });
       dbg('step.response', { key: fullKey, title: opts.title, fromCache: false, responseMs: Date.now() - reqT0 });
       return out;
@@ -137,7 +136,6 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID, extr
         rec.resultJson = JSON.stringify({ error: rec.error, ...(raw != null ? { raw } : {}), status, stack });
       } catch {}
       await stores.steps.put(rec);
-      stores.events.emit({ type: "step_saved", ...rec, tags: opts.tags || {}, documentId });
       dbg('step.end', { key: fullKey, ok: false, durationMs: rec.durationMs, error: rec.error });
       dbg('step.response', { key: fullKey, title: opts.title, fromCache: false, responseMs: Date.now() - reqT0, error: rec.error });
       throw e;
@@ -148,20 +146,20 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID, extr
 
 
   async function getStepResult(stepKey: string): Promise<any> {
-    const rec = await stores.steps.get(workflowId, stepKey);
+    const rec = await stores.steps.get(jobId, stepKey);
     return rec && rec.status === "done" ? JSON.parse(rec.resultJson) : undefined;
   }
 
   async function isPhaseComplete(phaseName: string): Promise<boolean> {
-    const phaseSteps = await stores.steps.listByWorkflow(workflowId);
+    const phaseSteps = await stores.steps.listByJob(jobId);
     const phaseKeys = phaseSteps.filter(s => s.key.startsWith(`phase:${phaseName}:`));
     return phaseKeys.length > 0 && phaseKeys.every(s => s.status === "done");
   }
 
   async function link(from: { type: string; id: ID }, role: string, to: { type: string; id: ID }, tags?: Record<string, any>): Promise<Link> {
-    const id = `link:${await sha256(`${documentId}:${from.type}:${from.id}:${role}:${to.type}:${to.id}`)}`;
+    const id = `link:${await sha256(`${jobId}:${from.type}:${from.id}:${role}:${to.type}:${to.id}`)}`;
     const rec: Link = {
-      id, documentId,
+      id, jobId: jobId as any,
       fromType: from.type as any, fromId: from.id,
       toType: to.type as any, toId: to.id,
       role, tags, createdAt: nowIso()
@@ -171,9 +169,9 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID, extr
   }
 
   async function createArtifact(spec: { id?: ID; kind: string; version: number; title?: string; content?: string; tags?: Record<string, any>; links?: Array<{ dir: "from"; role: string; ref: { type: string; id: ID }; tags?: Record<string, any>; }>; autoProduced?: boolean; }): Promise<Artifact> {
-    const id = spec.id ?? `artifact:${await sha256(`${documentId}:${spec.kind}:${spec.version}:${spec.title || ""}:${JSON.stringify(spec.tags || {})}`)}`;
+    const id = spec.id ?? `artifact:${await sha256(`${jobId}:${spec.kind}:${spec.version}:${spec.title || ""}:${JSON.stringify(spec.tags || {})}`)}`;
     const base: Artifact = {
-      id, documentId, kind: spec.kind, version: spec.version,
+      id, jobId: jobId as any, kind: spec.kind, version: spec.version,
       title: spec.title, content: spec.content, tags: spec.tags,
       createdAt: nowIso(), updatedAt: nowIso()
     };
@@ -198,14 +196,18 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID, extr
     opts?: { expect?: "text" | "json"; temperature?: number; tags?: Record<string, any>; }
   ): Promise<{ result: any; meta: { stepKey: string; tokensUsed: number; raw: string; attempts: number; status?: number; prompt: string } }> {
     const fullKey = `llm:${modelTask}:${await sha256(prompt)}`;
-    let metaLocal: { tokensUsed: number; raw: string; attempts: number; status?: number } | null = null;
+    let metaLocal: any = null;
+    // Resolve effective config for provenance tagging (does not affect key)
+    const cfg = resolveTaskConfig(modelTask);
+    const usedTemperature = opts?.temperature ?? cfg.temperature ?? 0.2;
     const result = await step(fullKey, async () => {
       const { result, tokensUsed, raw, attempts, status } = await llmCall(modelTask, prompt, opts ?? {});
       metaLocal = { tokensUsed, raw, attempts, status };
-      const stepRec = await stores.steps.get(workflowId, fullKey);
+      const stepRec = await stores.steps.get(jobId, fullKey);
       if (stepRec) {
         const tags = stepRec.tagsJson ? JSON.parse(stepRec.tagsJson) : {};
-        const newTags = { ...tags, modelTask, attempts, llmRaw: raw };
+        const llmProv = { model: cfg.model, temperature: usedTemperature, baseURL: cfg.baseURL };
+        const newTags = { ...tags, modelTask, llm: llmProv, attempts, llmRaw: raw };
         await stores.steps.put({ ...stepRec, llmTokens: tokensUsed, prompt, tagsJson: JSON.stringify(newTags) });
       }
       return result;
@@ -223,7 +225,7 @@ export function makeContext(stores: Stores, workflowId: ID, documentId: ID, extr
   }
 
   const base: Context = {
-    workflowId, documentId, stores,
+    jobId, stores,
     step, getStepResult, isPhaseComplete,
     createArtifact, link,
     callLLMEx
@@ -345,35 +347,25 @@ async function llmCall(task: string, prompt: string, { expect = "text", temperat
   throw new LLMCallError(`LLM call failed (exhausted ${retries} attempts)`, { rawContent: lastRaw });
 }
 
-export async function runWorkflow(
+// Removed legacy runWorkflow; runPipeline is the job-centric entrypoint
+
+// Phase 3 (initial): job-centric entrypoint that wraps existing runWorkflow
+export async function runPipeline(
   stores: Stores,
-  workflowId: ID,
-  documentId: ID,
+  jobId: ID,
   pipeline: Array<(ctx: Context) => Promise<void>>,
   extras?: { type?: string; inputs?: any }
 ): Promise<void> {
-  const ctx = makeContext(stores, workflowId, documentId, extras);
-  const wfStart = Date.now();
-  try { dbg('workflow.run.begin', { workflowId, documentId, phases: pipeline.length }); } catch {}
-  await stores.workflows.setStatus(workflowId, "running");
-  // Reflect running state at the document level for accurate UI/error clearing
-  await stores.documents.updateStatus(documentId, "running");
+  const ctx = makeContext(stores, jobId, extras);
+  try { await stores.jobs.updateStatus(jobId, 'running'); } catch {}
   try {
     for (const phaseFn of pipeline) {
       await phaseFn(ctx);
     }
-    await stores.workflows.setStatus(workflowId, "done");
-    await stores.documents.updateStatus(documentId, "done");
-    dbg('workflow.run.end', { workflowId, documentId, status: 'done', durationMs: Date.now() - wfStart });
+    try { await stores.jobs.updateStatus(jobId, 'done'); } catch {}
   } catch (e: any) {
-    if (e instanceof PauseForApprovalError) {
-      await stores.workflows.setStatus(workflowId, "pending", e.reason);
-      dbg('workflow.run.end', { workflowId, documentId, status: 'pending', reason: e.reason, durationMs: Date.now() - wfStart });
-      return;
-    }
-    await stores.workflows.setStatus(workflowId, "failed", String(e?.message || e));
-    await stores.documents.updateStatus(documentId, "blocked");
-    dbg('workflow.run.end', { workflowId, documentId, status: 'failed', error: String(e?.message || e), durationMs: Date.now() - wfStart });
-    throw e;
+    const msg = typeof e?.message === 'string' ? e.message : String(e);
+    try { await stores.jobs.updateStatus(jobId, 'failed' as any, msg); } catch {}
+    try { console.warn('[job.failed]', { jobId, error: msg }); } catch {}
   }
 }

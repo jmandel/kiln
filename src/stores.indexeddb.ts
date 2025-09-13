@@ -1,44 +1,49 @@
-import type { ID, Workflow, Artifact, Step, Link, Event, Stores, KnownDocument, DocumentType, InputsUnion, Document } from './types';
-import { EventHub, isNarrativeInputs, isFhirInputs } from './types';
+import type { ID, Artifact, Step, Link, Event, Stores } from './types';
+import { EventHub } from './types';
 import { nowIso } from './helpers';
 import { emitArtifactSaved, emitLinkSaved, emitStepSaved } from './stores.base';
 
-const DB_NAME = 'narrative_db_v2';
-const DB_VERSION = 2;
+const DB_NAME = 'narrative_db_v3';
+const DB_VERSION = 5;
 
 async function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains('documents')) {
-        const s = db.createObjectStore('documents', { keyPath: 'id' });
-        s.createIndex('type', 'type', { unique: false });
-        s.createIndex('updatedAt', 'updatedAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains('workflows')) {
-        const s = db.createObjectStore('workflows', { keyPath: 'id' });
-        s.createIndex('documentId', 'documentId', { unique: false });
-        s.createIndex('status', 'status', { unique: false });
-      }
-      if (!db.objectStoreNames.contains('artifacts')) {
-        const s = db.createObjectStore('artifacts', { keyPath: 'id' });
-        s.createIndex('documentId', 'documentId', { unique: false });
-        s.createIndex('kind', 'kind', { unique: false });
-        s.createIndex('updatedAt', 'updatedAt', { unique: false });
-      }
-      if (!db.objectStoreNames.contains('steps')) {
-        const s = db.createObjectStore('steps', { keyPath: 'pk' });
-        s.createIndex('workflowId', 'workflowId', { unique: false });
-        s.createIndex('ts', 'ts', { unique: false });
-        s.createIndex('status', 'status', { unique: false });
-      }
-      if (!db.objectStoreNames.contains('links')) {
-        const s = db.createObjectStore('links', { keyPath: 'id' });
-        s.createIndex('documentId', 'documentId', { unique: false });
-        s.createIndex('createdAt', 'createdAt', { unique: false });
-      }
-    };
+  req.onupgradeneeded = () => {
+    const db = req.result;
+    // Reset stores to job-first schema (drops old data)
+    for (const name of Array.from(db.objectStoreNames)) {
+      try { db.deleteObjectStore(name); } catch {}
+    }
+    // jobs
+    {
+      const s = db.createObjectStore('jobs', { keyPath: 'id' });
+      s.createIndex('type', 'type', { unique: false });
+      s.createIndex('status', 'status', { unique: false });
+      s.createIndex('updatedAt', 'updatedAt', { unique: false });
+      try { (s as any).createIndex('dependsOn', 'dependsOn', { unique: false, multiEntry: true }); } catch {}
+    }
+    // artifacts
+    {
+      const s = db.createObjectStore('artifacts', { keyPath: 'id' });
+      s.createIndex('jobId', 'jobId', { unique: false });
+      s.createIndex('kind', 'kind', { unique: false });
+      s.createIndex('updatedAt', 'updatedAt', { unique: false });
+    }
+    // steps
+    {
+      const s = db.createObjectStore('steps', { keyPath: 'pk' });
+      s.createIndex('jobId', 'jobId', { unique: false });
+      s.createIndex('ts', 'ts', { unique: false });
+      s.createIndex('status', 'status', { unique: false });
+    }
+    // links
+    {
+      const s = db.createObjectStore('links', { keyPath: 'id' });
+      s.createIndex('jobId', 'jobId', { unique: false });
+      s.createIndex('createdAt', 'createdAt', { unique: false });
+    }
+  };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -52,140 +57,77 @@ export async function createIndexedDbStores(): Promise<Stores> {
   const db = await openDb();
   const events = new EventHub();
 
-  // Function overloads for typed document access
-  async function docsAll(): Promise<KnownDocument[]>;
-  async function docsAll<T extends InputsUnion>(type: DocumentType): Promise<Document<T>[]>;
-  async function docsAll(type?: DocumentType): Promise<any[]> {
-    const t0 = tx(db, ['documents']);
-    const s0 = t0.objectStore('documents');
-    const req0 = s0.getAll();
-    const list: any[] = await new Promise(res => { req0.onsuccess = () => res(req0.result as any[]); });
-    const sorted = list.slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-    if (!type) return sorted as KnownDocument[];
-    const filtered = sorted.filter(d => d.type === type);
-    const guarded = filtered.filter((d) => {
-      return (type === 'narrative' && isNarrativeInputs(d.inputs)) || (type === 'fhir' && isFhirInputs(d.inputs));
-    });
-    return guarded as any;
-  }
-
-  async function docsGet(id: ID): Promise<KnownDocument | undefined>;
-  async function docsGet<T extends InputsUnion>(id: ID, expectedType: DocumentType): Promise<Document<T> | undefined>;
-  async function docsGet(id: ID, expectedType?: DocumentType): Promise<any | undefined> {
-    const t0 = tx(db, ['documents']);
-    const s0 = t0.objectStore('documents');
-    const req0 = s0.get(id);
-    const rec = await new Promise<any>(res => { req0.onsuccess = () => res(req0.result as any | undefined); });
-    if (!rec) return undefined;
-    if (!expectedType) return rec as KnownDocument;
-    if (rec.type !== expectedType) return undefined;
-    const ok = (expectedType === 'narrative' && isNarrativeInputs(rec.inputs)) || (expectedType === 'fhir' && isFhirInputs(rec.inputs));
-    if (!ok) return undefined;
-    return rec as any;
-  }
+  // documents store removed; jobs are the source of truth
 
   const stores: Stores = {
-    documents: {
-      async create<T extends InputsUnion>(id: ID, title: string, type: DocumentType, inputs: T): Promise<void> {
-        const t = tx(db, ['documents'], 'readwrite');
-        const s = t.objectStore('documents');
+    jobs: {
+      async create(id, title, type, inputs, dependsOn) {
+        const t = tx(db, ['jobs'], 'readwrite');
+        const s = t.objectStore('jobs');
         const getReq = s.get(id);
         await new Promise(res => { getReq.onsuccess = () => res(null); });
-        const existing = getReq.result as KnownDocument | undefined;
+        const existing = getReq.result as any | undefined;
         if (!existing) {
-          // Basic guard before insert
-          const ok = (type === 'narrative' && isNarrativeInputs(inputs)) || (type === 'fhir' && isFhirInputs(inputs));
-          if (!ok) throw new Error(`Invalid inputs for type '${type}'`);
-          const rec: KnownDocument = { id, title, type, inputs, status: 'running', createdAt: nowIso(), updatedAt: nowIso() } as KnownDocument;
-          s.put(rec as any);
+          const now = nowIso();
+          const rec = { id, title, type, inputs, status: (dependsOn && dependsOn.length ? 'blocked' : 'queued'), dependsOn: dependsOn || [], lastError: null, cacheVersion: 0, createdAt: now, updatedAt: now };
+          s.put(rec);
           await new Promise(res => { t.oncomplete = () => res(null); });
-          events.emit({ type: 'document_created', id, title, documentId: id, documentType: type } as Event);
+          events.emit({ type: 'job_created', jobId: id, title, jobType: type } as any);
         }
       },
-      all: docsAll as any,
-      get: docsGet as any,
-      async put(doc: KnownDocument): Promise<void> {
-        const t = tx(db, ['documents'], 'readwrite');
-        const s = t.objectStore('documents');
-        // Guard before upsert
-        const ok = (doc.type === 'narrative' && isNarrativeInputs((doc as any).inputs)) || (doc.type === 'fhir' && isFhirInputs((doc as any).inputs));
-        if (!ok) throw new Error(`Invalid inputs for type '${(doc as any).type}'`);
-        s.put(doc as any);
-        await new Promise(res => { t.oncomplete = () => res(null); });
-        events.emit({ type: 'document_created', id: doc.id, title: doc.title, documentId: doc.id, documentType: doc.type } as Event);
+      async all() {
+        const t = tx(db, ['jobs']);
+        const s = t.objectStore('jobs');
+        const req = s.getAll();
+        const list: any[] = await new Promise(res => { req.onsuccess = () => res(req.result as any[]); });
+        return list.slice().sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
       },
-      async updateStatus(id: ID, status: KnownDocument['status']): Promise<void> {
-        const t = tx(db, ['documents'], 'readwrite');
-        const s = t.objectStore('documents');
+      async get(id) {
+        const t = tx(db, ['jobs']);
+        const s = t.objectStore('jobs');
+        const req = s.get(id);
+        return await new Promise(res => { req.onsuccess = () => res(req.result as any | undefined); });
+      },
+      async updateStatus(id, status, lastError) {
+        const t = tx(db, ['jobs'], 'readwrite');
+        const s = t.objectStore('jobs');
         const getReq = s.get(id);
         await new Promise(res => { getReq.onsuccess = () => res(null); });
-        const doc = getReq.result as KnownDocument | undefined;
-        if (doc) {
-          const prev = (doc as any).status;
-          (doc as any).status = status;
-          (doc as any).updatedAt = nowIso();
-          s.put(doc as any);
+        const job = getReq.result as any | undefined;
+        if (job) {
+          const prev = job.status;
+          job.status = status;
+          job.lastError = lastError ?? null;
+          job.updatedAt = nowIso();
+          s.put(job);
           await new Promise(res => { t.oncomplete = () => res(null); });
-          try { console.log('[doc.status]', { id, from: prev, to: status }); } catch {}
-          events.emit({ type: 'document_status', id, status, documentId: id, documentType: (doc as any).type } as Event);
+          try { console.log('[job.status]', { id, from: prev, to: status }); } catch {}
+          events.emit({ type: 'job_status', jobId: id, status, lastError: job.lastError } as any);
         }
       },
-      async delete(id: ID): Promise<void> {
-        const t = tx(db, ['documents'], 'readwrite');
-        const s = t.objectStore('documents');
+      async delete(id) {
+        const t = tx(db, ['jobs'], 'readwrite');
+        const s = t.objectStore('jobs');
         s.delete(id);
         await new Promise(res => { t.oncomplete = () => res(null); });
-        events.emit({ type: 'document_deleted', id } as Event);
+      },
+      async listByDependsOn(parentId) {
+        const t = tx(db, ['jobs']);
+        const s = t.objectStore('jobs');
+        try {
+          const idx = (s as any).index('dependsOn');
+          const req = idx.getAll(IDBKeyRange.only(parentId));
+          const list: any[] = await new Promise(res => { req.onsuccess = () => res(req.result as any[]); });
+          return list;
+        } catch {
+          const reqAll = s.getAll();
+          const list: any[] = await new Promise(res => { reqAll.onsuccess = () => res(reqAll.result as any[]); });
+          return list.filter(j => Array.isArray(j.dependsOn) && j.dependsOn.includes(parentId));
+        }
       }
     },
 
-    workflows: {
-      async create(id: ID, documentId: ID, name: string): Promise<void> {
-        const t = tx(db, ['workflows'], 'readwrite');
-        const s = t.objectStore('workflows');
-        const getReq = s.get(id);
-        await new Promise(res => { getReq.onsuccess = () => res(null); });
-        const existing = getReq.result as Workflow | undefined;
-        if (!existing) {
-          const rec: Workflow = { id, documentId, name, status: 'running', lastError: null, createdAt: nowIso(), updatedAt: nowIso() };
-          s.put(rec);
-          await new Promise(res => { t.oncomplete = () => res(null); });
-          events.emit({ type: 'workflow_created', id, documentId, name } as Event);
-        }
-      },
-      async setStatus(id: ID, status: Workflow['status'], lastError?: string | null): Promise<void> {
-        const t = tx(db, ['workflows'], 'readwrite');
-        const s = t.objectStore('workflows');
-        const getReq = s.get(id);
-        await new Promise(res => { getReq.onsuccess = () => res(null); });
-        const wf = getReq.result as Workflow | undefined;
-        if (wf) {
-          wf.status = status;
-          wf.lastError = lastError ?? null;
-          wf.updatedAt = nowIso();
-          s.put(wf);
-          await new Promise(res => { t.oncomplete = () => res(null); });
-          events.emit({ type: 'workflow_status', id, documentId: wf.documentId, status, lastError: wf.lastError } as Event);
-        }
-      },
-      async listResumable(): Promise<Array<{ id: ID; documentId: ID; name: string }>> {
-        const t = tx(db, ['workflows']);
-        const s = t.objectStore('workflows');
-        const req = s.getAll();
-        const list: Workflow[] = await new Promise(res => { req.onsuccess = () => res(req.result as Workflow[]); });
-        return list
-          .filter(w => w.status === 'running' || w.status === 'pending' || w.status === 'failed')
-          .map(w => ({ id: w.id, documentId: w.documentId, name: w.name }));
-      },
-      async deleteByDocument(documentId: ID): Promise<void> {
-        const t = tx(db, ['workflows'], 'readwrite');
-        const s = t.objectStore('workflows');
-        const req = s.index('documentId').getAll(IDBKeyRange.only(documentId));
-        const list: Workflow[] = await new Promise(res => { req.onsuccess = () => res(req.result as Workflow[]); });
-        for (const wf of list) s.delete(wf.id);
-        await new Promise(res => { t.oncomplete = () => res(null); });
-      }
-    },
+    // workflows removed
 
     artifacts: {
       async get(id: ID): Promise<Artifact | undefined> {
@@ -201,34 +143,34 @@ export async function createIndexedDbStores(): Promise<Stores> {
         await new Promise(res => { t.oncomplete = () => res(null); });
         emitArtifactSaved(events, a);
       },
-      async listByDocument(documentId: ID, pred?: (a: Artifact) => boolean): Promise<Artifact[]> {
+      async listByJob(jobId: ID, pred?: (a: Artifact) => boolean): Promise<Artifact[]> {
         const t = tx(db, ['artifacts']);
         const s = t.objectStore('artifacts');
-        const req = s.index('documentId').getAll(IDBKeyRange.only(documentId));
-        let list: Artifact[] = await new Promise(res => { req.onsuccess = () => res(req.result as Artifact[]); });
+        const req = s.index('jobId').getAll(IDBKeyRange.only(jobId));
+        let list: Artifact[] = await new Promise(res => { (req as any).onsuccess = () => res((req as any).result as Artifact[]); });
         list = list.sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
         if (pred) list = list.filter(pred);
         return list;
       },
-      async latestVersion(documentId: ID, kind: string, tagsKey?: string, tagsValue?: any): Promise<number | null> {
-        const list = await this.listByDocument(documentId, (a: Artifact) => a.kind === kind && (!tagsKey || a.tags?.[tagsKey] === tagsValue));
+      async latestVersion(jobId: ID, kind: string, tagsKey?: string, tagsValue?: any): Promise<number | null> {
+        const list = await this.listByJob(jobId, (a: Artifact) => a.kind === kind && (!tagsKey || a.tags?.[tagsKey] === tagsValue));
         const sorted = list.sort((a, b) => b.version - a.version);
         return sorted.length > 0 ? sorted[0].version : null;
       },
-      async deleteByDocument(documentId: ID): Promise<void> {
+      async deleteByJob(jobId: ID): Promise<void> {
         const t = tx(db, ['artifacts'], 'readwrite');
         const s = t.objectStore('artifacts');
-        const req = s.index('documentId').getAll(IDBKeyRange.only(documentId));
+        const req = s.index('jobId').getAll(IDBKeyRange.only(jobId));
         const list: Artifact[] = await new Promise(res => { req.onsuccess = () => res(req.result as Artifact[]); });
         for (const a of list) s.delete(a.id);
         await new Promise(res => { t.oncomplete = () => res(null); });
-        events.emit({ type: 'artifacts_cleared', documentId } as Event);
+        events.emit({ type: 'artifacts_cleared', jobId } as Event);
       }
     },
 
     steps: {
-      async get(workflowId: ID, key: string): Promise<Step | undefined> {
-        const pk = `${workflowId}:${key}`;
+      async get(jobId: ID, key: string): Promise<Step | undefined> {
+        const pk = `${jobId}:${key}`;
         const t = tx(db, ['steps']);
         const s = t.objectStore('steps');
         const req = s.get(pk);
@@ -238,35 +180,18 @@ export async function createIndexedDbStores(): Promise<Stores> {
         return rest as Step;
       },
       async put(rec: Partial<Step>): Promise<void> {
-        const pk = `${rec.workflowId}:${rec.key}`;
+        const pk = `${rec.jobId}:${rec.key}`;
         const t = tx(db, ['steps'], 'readwrite');
         const s = t.objectStore('steps');
         s.put({ ...rec, pk });
         await new Promise(res => { t.oncomplete = () => res(null); });
-        const wfTx = tx(db, ['workflows']);
-        const wfStore = wfTx.objectStore('workflows');
-        const wfReq = wfStore.get(rec.workflowId as ID);
-        const wf = await new Promise<Workflow | undefined>(res => { wfReq.onsuccess = () => res(wfReq.result as Workflow | undefined); });
-        emitStepSaved(events, rec as any, wf?.documentId);
+        emitStepSaved(events, rec as any);
       },
-      async listByDocument(documentId: ID): Promise<Step[]> {
-        const wfTx = tx(db, ['workflows']);
-        const wfStore = wfTx.objectStore('workflows');
-        const wfReq = wfStore.index('documentId').getAll(IDBKeyRange.only(documentId));
-        const wfs: Workflow[] = await new Promise(res => { wfReq.onsuccess = () => res(wfReq.result as Workflow[]); });
-        const ids = new Set(wfs.map(w => w.id));
+      async listByJob(jobId: ID): Promise<Step[]> {
         const t = tx(db, ['steps']);
         const s = t.objectStore('steps');
-        const req = s.getAll();
-        const all: any[] = await new Promise(res => { req.onsuccess = () => res(req.result as any[]); });
-        const steps = all.filter(r => ids.has(r.workflowId)).map(r => { const { pk: _pk, ...rest } = r; return rest as Step; });
-        return steps.sort((a, b) => (a.ts || '').localeCompare(b.ts || ''));
-      },
-      async listByWorkflow(workflowId: ID): Promise<Step[]> {
-        const t = tx(db, ['steps']);
-        const s = t.objectStore('steps');
-        const req = s.index('workflowId').getAll(IDBKeyRange.only(workflowId));
-        const all: any[] = await new Promise(res => { req.onsuccess = () => res(req.result as any[]); });
+        const req = s.index('jobId').getAll(IDBKeyRange.only(jobId));
+        const all: any[] = await new Promise(res => { (req as any).onsuccess = () => res((req as any).result as any[]); });
         const steps = all.map(r => { const { pk: _pk, ...rest } = r; return rest as Step; });
         return steps.sort((a, b) => (a.ts || '').localeCompare(b.ts || ''));
       },
@@ -280,17 +205,12 @@ export async function createIndexedDbStores(): Promise<Stores> {
           .filter(s => s.status === 'running' || s.status === 'pending')
           .sort((a, b) => (a.ts || '').localeCompare(b.ts || ''));
       },
-      async deleteByDocument(documentId: ID): Promise<void> {
-        const wfTx = tx(db, ['workflows']);
-        const wfStore = wfTx.objectStore('workflows');
-        const wfReq = wfStore.index('documentId').getAll(IDBKeyRange.only(documentId));
-        const wfs: Workflow[] = await new Promise(res => { wfReq.onsuccess = () => res(wfReq.result as Workflow[]); });
-        const ids = new Set(wfs.map(w => w.id));
+      async deleteByJob(jobId: ID): Promise<void> {
         const t = tx(db, ['steps'], 'readwrite');
         const s = t.objectStore('steps');
-        const req = s.getAll();
-        const all: any[] = await new Promise(res => { req.onsuccess = () => res(req.result as any[]); });
-        for (const r of all) if (ids.has(r.workflowId)) s.delete(r.pk);
+        const req = s.index('jobId').getAll(IDBKeyRange.only(jobId));
+        const all: any[] = await new Promise(res => { (req as any).onsuccess = () => res((req as any).result as any[]); });
+        for (const r of all) s.delete(r.pk);
         await new Promise(res => { t.oncomplete = () => res(null); });
       }
     },
@@ -305,30 +225,31 @@ export async function createIndexedDbStores(): Promise<Stores> {
       async upsert(l: Link): Promise<void> {
         const t = tx(db, ['links'], 'readwrite');
         const s = t.objectStore('links');
-        const reqAll = s.index('documentId').getAll(IDBKeyRange.only(l.documentId));
+        const rec = { ...l } as any;
+        const reqAll = s.index('jobId').getAll(IDBKeyRange.only(rec.jobId));
         const list: Link[] = await new Promise(res => { reqAll.onsuccess = () => res(reqAll.result as Link[]); });
-        const composite = `${l.documentId}-${l.fromType}-${l.fromId}-${l.toType}-${l.toId}-${l.role}`;
-        const dup = list.find(li => `${li.documentId}-${li.fromType}-${li.fromId}-${li.toType}-${li.toId}-${li.role}` === composite && li.id !== l.id);
+        const composite = `${rec.jobId}-${rec.fromType}-${rec.fromId}-${rec.toType}-${rec.toId}-${rec.role}`;
+        const dup = list.find(li => `${li.jobId}-${li.fromType}-${li.fromId}-${li.toType}-${li.toId}-${li.role}` === composite && li.id !== rec.id);
         if (dup) s.delete(dup.id);
-        s.put(l);
+        s.put(rec);
         await new Promise(res => { t.oncomplete = () => res(null); });
-        emitLinkSaved(events, l);
+        emitLinkSaved(events, rec as any);
       },
-      async listByDocument(documentId: ID): Promise<Link[]> {
+      async listByJob(jobId: ID): Promise<Link[]> {
         const t = tx(db, ['links']);
         const s = t.objectStore('links');
-        const req = s.index('documentId').getAll(IDBKeyRange.only(documentId));
-        const list: Link[] = await new Promise(res => { req.onsuccess = () => res(req.result as Link[]); });
+        const req = s.index('jobId').getAll(IDBKeyRange.only(jobId));
+        const list: Link[] = await new Promise(res => { (req as any).onsuccess = () => res((req as any).result as Link[]); });
         return list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
       },
-      async deleteByDocument(documentId: ID): Promise<void> {
+      async deleteByJob(jobId: ID): Promise<void> {
         const t = tx(db, ['links'], 'readwrite');
         const s = t.objectStore('links');
-        const req = s.index('documentId').getAll(IDBKeyRange.only(documentId));
+        const req = s.index('jobId').getAll(IDBKeyRange.only(jobId));
         const list: Link[] = await new Promise(res => { req.onsuccess = () => res(req.result as Link[]); });
         for (const l of list) s.delete(l.id);
         await new Promise(res => { t.oncomplete = () => res(null); });
-        events.emit({ type: 'links_cleared', documentId } as Event);
+        events.emit({ type: 'links_cleared', jobId } as Event);
       }
     },
 

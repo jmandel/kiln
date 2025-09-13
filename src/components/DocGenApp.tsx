@@ -1,19 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createStores } from '../stores.adapter';
-import type { Stores, ID, Step, KnownDocument } from '../types';
+import type { Stores, ID, Step, Job } from '../types';
 import { isNarrativeInputs, isFhirInputs } from '../types';
 import DocGenDashboard from './DocGenDashboard';
 import ArtifactDetails from './ArtifactDetails';
 import StepDetails from './StepDetails';
 import { pretty, tryJson } from './ui';
-import { createAndRunDocument, resumeDocument, triggerReadyDependents } from '../workflows';
+// New jobs-first API (no runs in UI)
+import { createJob, startJob as startJobApi, rerunJob, clearJobCache as clearJobCacheAPI, resumeJob, triggerReadyJobs } from '../jobs';
 import { sha256 } from '../helpers';
 import { useDashboardState } from '../hooks/useDashboardState';
 import { JobsList } from './ui/JobsList';
 import { registry } from '../documentTypes/registry';
 import type { DocumentType, InputsUnion, FhirInputs, NarrativeInputs } from '../types';
 
-function mapDocStatus(s: KnownDocument['status']): 'queued' | 'running' | 'done' | 'error' {
+function mapDocStatus(s: Job['status']): 'queued' | 'running' | 'done' | 'error' {
   if (s === 'running') return 'running';
   if (s === 'done') return 'done';
   if (s === 'blocked') return 'queued';
@@ -138,7 +139,7 @@ function ConfigModal({ config, onSave, onClose }: {
 
 export default function DocGenApp(): React.ReactElement {
   const [stores, setStores] = useState<Stores | null>(null);
-  const [docs, setDocs] = useState<KnownDocument[]>([]);
+  const [docs, setDocs] = useState<Job[]>([]);
   const [selected, setSelected] = useState<ID | null>(null);
   const [input, setInput] = useState({ title: '', sketch: '' });
   const [modalOpen, setModalOpen] = useState(false);
@@ -166,7 +167,7 @@ export default function DocGenApp(): React.ReactElement {
       const s = await createStores();
       if (!mounted) return;
       setStores(s);
-      setDocs(await s.documents.all());
+      setDocs(await s.jobs.all());
     })();
     return () => { mounted = false; };
   }, []);
@@ -174,57 +175,26 @@ export default function DocGenApp(): React.ReactElement {
   
   useEffect(() => {
     if (!stores) return;
-    // One-time migration/repair for legacy documents
     (async () => {
-      const list = await stores.documents.all();
-      let changed = 0;
-      for (const rec of list as any[]) {
-        const d: any = rec;
-        // If document type missing, attempt to infer Narrative from top-level sketch or stringified inputs
-        if (!d.type) {
-          let inferredInputs: any = null;
-          if (typeof d.inputs === 'string') {
-            try { inferredInputs = JSON.parse(d.inputs); } catch {}
-          }
-          if (!inferredInputs && typeof d.sketch === 'string') {
-            inferredInputs = { sketch: d.sketch };
-          }
-          if (inferredInputs && isNarrativeInputs(inferredInputs)) {
-            await stores.documents.put({ ...(d as any), type: 'narrative', inputs: inferredInputs });
-            changed++;
-          }
-          continue;
-        }
-        // If typed but inputs are stringified JSON, parse and validate
-        if (typeof d.inputs === 'string') {
-          try {
-            const parsed = JSON.parse(d.inputs);
-            if (d.type === 'narrative' && isNarrativeInputs(parsed)) {
-              await stores.documents.put({ ...d, inputs: parsed });
-              changed++;
-            }
-            if (d.type === 'fhir' && isFhirInputs(parsed)) {
-              await stores.documents.put({ ...d, inputs: parsed });
-              changed++;
-            }
-          } catch {}
-        }
-      }
-      if (changed > 0) setDocs(await stores.documents.all());
-    })();
-    (async () => {
-      setDocs(await stores.documents.all());
+      setDocs(await stores.jobs.all());
       // On initial mount, scan to trigger any ready dependents
-      try { await triggerReadyDependents(stores); } catch {}
+      try { await triggerReadyJobs(stores); } catch {}
+      // Auto-resume stalled jobs (running/failed) on app load
+      try {
+        const all = await stores.jobs.all();
+        const stalled = all.filter(j => j.status === 'running' || j.status === 'failed');
+        for (const j of stalled) {
+          try { await resumeJob(stores, j.id as ID); } catch (e) { console.warn('auto-resume failed', j.id, e); }
+        }
+      } catch (e) { console.warn('auto-resume scan failed', e); }
     })();
     const unsub = stores.events.subscribe(async (ev: any) => {
       try { console.log('[ui.event]', ev.type, ev); } catch {}
-      if (ev.type === 'document_created' || ev.type === 'document_deleted' || ev.type === 'document_status') {
-        const all = await stores.documents.all();
-        try { console.log('[ui.docs.refresh]', all.map(d => ({ id: d.id, status: d.status, type: (d as any).type, blockedOn: (d as any).tags?.blockedOn || [] }))); } catch {}
-        setDocs(all);
-        if ((ev.type === 'document_status' && ev.status === 'done') || ev.type === 'document_created') {
-          try { await triggerReadyDependents(stores); } catch {}
+      if (ev.type === 'job_created' || ev.type === 'job_status') {
+        const allJobs = await stores.jobs.all();
+        setDocs(allJobs);
+        if (ev.type === 'job_status' && ev.status === 'done') {
+          try { await triggerReadyJobs(stores); } catch {}
         }
       }
     });
@@ -244,20 +214,21 @@ export default function DocGenApp(): React.ReactElement {
   const startJob = async () => {
     if (!stores || !input.sketch) return alert('Enter a patient sketch');
     const title = input.title || `Patient: ${input.sketch.slice(0, 30)}...`;
-    const docId = await createAndRunDocument(stores, 'narrative', { sketch: input.sketch } as NarrativeInputs, title);
-    setSelected(docId);
+    const jobId = await createJob(stores, 'narrative', { sketch: input.sketch } as NarrativeInputs, title);
+    await startJobApi(stores, jobId);
+    setSelected(jobId);
     setInput({ title: '', sketch: '' });
   };
 
   const handleDeleteJob = async (docId: ID) => {
     if (!stores) return;
-    if (!confirm('Delete this document and all associated data?')) return;
-    await stores.documents.delete(docId);
-    await stores.workflows.deleteByDocument(docId);
-    await stores.artifacts.deleteByDocument(docId);
-    await stores.steps.deleteByDocument(docId);
-    await stores.links.deleteByDocument(docId);
-    const remaining = await stores.documents.all();
+    if (!confirm('Delete this job and all associated data?')) return;
+    await stores.jobs.delete(docId);
+    // workflows store removed in job-centric design
+    await stores.artifacts.deleteByJob(docId);
+    await stores.steps.deleteByJob(docId);
+    await stores.links.deleteByJob(docId);
+    const remaining = await stores.jobs.all();
     setDocs(remaining);
     if (selected === docId) {
       setSelected(remaining[0]?.id || null);
@@ -287,42 +258,7 @@ export default function DocGenApp(): React.ReactElement {
 
   const handleRerun = async () => {
     if (!stores || !selected) return;
-    // Rerun semantics: clear artifacts/links, preserve cached steps (replay),
-    // and only reset failed steps to pending for recovery.
-    const steps = await stores.steps.listByDocument(selected);
-    const wfIds = Array.from(new Set(steps.map(s => s.workflowId)));
-
-    // Clear outputs so they get regenerated from cached step results
-    await stores.artifacts.deleteByDocument(selected);
-    await stores.links.deleteByDocument(selected);
-
-    // Clear error banner immediately
-    await stores.documents.updateStatus(selected, 'running');
-
-    // Reset only failed steps to pending; preserve resultJson for all
-    for (const s of steps) {
-      if (s.status === 'failed') {
-        await stores.steps.put({
-          ...s,
-          status: 'pending',
-          error: null,
-          progress: 0,
-          ts: new Date().toISOString()
-        });
-      }
-    }
-
-    // Mark workflows running to kick off resumption
-    for (const wfId of wfIds) {
-      await stores.workflows.setStatus(wfId as any, 'running');
-    }
-
-    try {
-      await resumeDocument(stores, selected);
-    } catch (e) {
-      console.error('Resume failed', e);
-      await stores.documents.updateStatus(selected, 'blocked');
-    }
+    await rerunJob(stores, selected);
   };
 
   const selectedDoc = useMemo(() => docs.find(d => d.id === selected), [docs, selected]);
@@ -342,41 +278,22 @@ export default function DocGenApp(): React.ReactElement {
   const openChainingModal = async () => {
     if (!stores || !selected) return;
     // Prefill from latest ReleaseCandidate of the selected Narrative doc
-    const arts = await stores.artifacts.listByDocument(selected, a => a.kind === 'ReleaseCandidate');
+    const arts = await stores.artifacts.listByJob(selected, a => a.kind === 'ReleaseCandidate');
     const latest = arts.sort((a, b) => b.version - a.version)[0];
-    const init: Partial<FhirInputs> = latest?.content ? { noteText: latest.content as string, source: { documentId: selected, artifactId: latest.id } } : {};
+    const init: Partial<FhirInputs> = latest?.content ? { noteText: latest.content as string, source: { jobId: selected, artifactId: latest.id } } : {};
     openCreateModal('fhir', init);
   };
 
-  // Generic: clear ALL step cache for this document, then resume (no workflow-specific knowledge)
+  // Generic: clear ALL step cache for this job, then resume (no workflow-specific knowledge)
   const clearAllStepCache = async () => {
     if (!stores || !selected) return alert('Select a job first');
-    const steps = await stores.steps.listByDocument(selected);
-    const targets = steps.filter(s => s.status !== 'pending');
-    if (targets.length === 0) {
-      alert('No cached steps found for this job.');
-      return;
-    }
-    for (const s of targets) {
-      await stores.steps.put({
-        ...s,
-        status: 'pending',
-        error: null,
-        resultJson: '',
-        progress: 0,
-        ts: new Date().toISOString()
-      });
-    }
-    const wfIds = Array.from(new Set(targets.map(s => s.workflowId)));
-    for (const wfId of wfIds) await stores.workflows.setStatus(wfId as any, 'pending');
-    await stores.artifacts.deleteByDocument(selected);
-    await stores.links.deleteByDocument(selected);
-    await resumeDocument(stores, selected);
+    await clearJobCacheAPI(stores, selected);
+    await startJobApi(stores, selected);
   };
 
   const openLatestFailedStep = async () => {
     if (!stores || !selected) return;
-    const list = await stores.steps.listByDocument(selected);
+    const list = await stores.steps.listByJob(selected);
     const failed = list.filter(s => s.status === 'failed').sort((a,b) => b.ts.localeCompare(a.ts))[0];
     if (failed) setFailedStep(failed);
     else alert('No failed step found for this job.');
@@ -414,7 +331,7 @@ export default function DocGenApp(): React.ReactElement {
     const artId = sp.get('artifact') as ID;
     if (!docId || !artId) return <div className="p-6">Loading…</div>;
     return (
-      <ArtifactDetails stores={stores} documentId={docId} artifactId={artId} onClose={()=>{ if (window.history.length>1) history.back(); else window.close(); }} onOpenArtifact={(id)=>{
+      <ArtifactDetails stores={stores} jobId={docId} artifactId={artId} onClose={()=>{ if (window.history.length>1) history.back(); else window.close(); }} onOpenArtifact={(id)=>{
         const q = new URLSearchParams(window.location.search);
         if (docId) q.set('doc', docId);
         q.set('artifact', id);
@@ -436,9 +353,10 @@ export default function DocGenApp(): React.ReactElement {
       const sketch = (input.sketch || '').trim();
       if (!sketch) { alert('Enter a patient sketch'); return; }
       const title = input.title || `Patient: ${sketch.slice(0, 30)}...`;
-      const narrId = await createAndRunDocument(stores, 'narrative', { sketch } as NarrativeInputs, title);
+      const narrId = await createJob(stores, 'narrative', { sketch } as NarrativeInputs, title);
+      await startJobApi(stores, narrId);
       if (alsoFhir) {
-        await createAndRunDocument(stores, 'fhir', { noteText: '', source: { documentId: narrId } } as any, 'FHIR Bundle', { blockedOn: [narrId], run: false });
+        await createJob(stores, 'fhir', { noteText: '', source: { jobId: narrId } } as any, 'FHIR Bundle', { dependsOn: [narrId] });
       }
       setSelected(narrId);
       setInput({ title: '', sketch: '' });
@@ -447,12 +365,12 @@ export default function DocGenApp(): React.ReactElement {
     // FHIR branch (from Narrative)
     const srcId = fhirSourceId;
     if (!srcId) { alert('Select a Narrative to convert, or use Paste Text'); return; }
-    const arts = await stores.artifacts.listByDocument(srcId, a => a.kind === 'ReleaseCandidate');
+    const arts = await stores.artifacts.listByJob(srcId, a => a.kind === 'ReleaseCandidate');
     const latest = arts.sort((a, b) => b.version - a.version)[0];
     if (!latest?.content) { alert('Selected Narrative has no ReleaseCandidate'); return; }
-    const inputs: FhirInputs = { noteText: latest.content as string, source: { documentId: srcId as ID, artifactId: latest.id as ID } };
-    const docId = await createAndRunDocument(stores, 'fhir', inputs, 'FHIR Bundle', { blockedOn: [srcId as ID], run: false });
-    try { await triggerReadyDependents(stores); } catch {}
+    const inputs: FhirInputs = { noteText: latest.content as string, source: { jobId: srcId as ID, artifactId: latest.id as ID } };
+    const docId = await createJob(stores, 'fhir', inputs, 'FHIR Bundle', { dependsOn: [srcId as ID] });
+    try { await triggerReadyJobs(stores); } catch {}
     setSelected(docId);
     setFhirSourceId('');
   };
@@ -540,35 +458,27 @@ export default function DocGenApp(): React.ReactElement {
           <DocGenDashboard 
             state={dashboardState}
             onOpenArtifact={openArtifact}
-            onRerun={handleRerun}
-            canConvertToFhir={!!canConvertToFhir}
-            onConvertToFhir={() => openChainingModal()}
-            onClearCache={async (phaseId?: string) => {
-              if (!stores || !selected) return;
-              const steps = await stores.steps.listByDocument(selected);
-              const targets = steps.filter(s => {
-                if (s.status === 'pending') return false;
+          onRerun={async () => { if (!stores || !selected) return; await rerunJob(stores, selected); }}
+          canConvertToFhir={!!canConvertToFhir}
+          onConvertToFhir={() => openChainingModal()}
+          onClearCache={async (phaseId?: string) => {
+            if (!stores || !selected) return;
+              // Phase-specific cache clear without clearing artifacts
+            const cleared = await clearJobCacheAPI(
+              stores, 
+              selected, 
+              (s: any) => {
                 if (!phaseId) return true;
                 try { const t = s.tagsJson ? JSON.parse(s.tagsJson) : {}; return String(t.phase || '') === String(phaseId); } catch { return false; }
-              });
-              if (targets.length === 0) { alert('No cached steps found for this selection.'); return; }
-              for (const s of targets) {
-                await stores.steps.put({ ...s, status: 'pending', error: null, resultJson: '', progress: 0, ts: new Date().toISOString() });
               }
-              const wfIds = Array.from(new Set(targets.map(s => s.workflowId)));
-              for (const wfId of wfIds) await stores.workflows.setStatus(wfId as any, 'pending');
-              await stores.artifacts.deleteByDocument(selected);
-              await stores.links.deleteByDocument(selected);
-              try {
-                await resumeDocument(stores, selected);
-              } catch (e) {
-                console.error('Resume failed', e);
-              }
-            }}
-            onOpenFailed={openLatestFailedStep}
-          />
-          </div>
+            );
+            if (!cleared) { alert('No cached steps found for this selection.'); return; }
+            try { await startJobApi(stores, selected); } catch (e) { console.error('Start after clear failed', e); }
+          }}
+          onOpenFailed={openLatestFailedStep}
+        />
         </div>
+      </div>
       </div>
 
       {/* Modals */}
@@ -583,7 +493,7 @@ export default function DocGenApp(): React.ReactElement {
       {viewArtifactId && stores && selected && (
         <ArtifactDetails 
           stores={stores} 
-          documentId={selected} 
+          jobId={selected} 
           artifactId={viewArtifactId} 
           onClose={() => setViewArtifactId(null)} 
           onOpenArtifact={openArtifact} 
@@ -597,7 +507,7 @@ export default function DocGenApp(): React.ReactElement {
       {modalOpen && stores && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
-            <h2 className="text-lg font-semibold mb-3">Create New Document</h2>
+            <h2 className="text-lg font-semibold mb-3">Create New Job</h2>
             <div className="mb-3">
               <label className="block text-sm font-medium mb-1">Type</label>
               <select className="input-kiln w-full" value={docType} onChange={e => setDocType(e.target.value as DocumentType)}>
@@ -616,11 +526,10 @@ export default function DocGenApp(): React.ReactElement {
                   onCancel={() => { setModalOpen(false); setInitialInputs({}); }}
                   onSubmit={async (typedInputs: any) => {
                     try {
-                      const title = (docType === 'narrative')
-                        ? `Patient: ${(typedInputs.sketch || '').slice(0, 30)}...`
-                        : 'FHIR Bundle';
-                      const newId = await createAndRunDocument(stores, docType, typedInputs, title);
-                      setSelected(newId);
+                      const title = (docType === 'narrative') ? `Patient: ${(typedInputs.sketch || '').slice(0, 30)}...` : 'FHIR Bundle';
+                      const jobId = await createJob(stores, docType as any, typedInputs as any, title);
+                      await startJobApi(stores, jobId);
+                      setSelected(jobId);
                     } catch (e) { console.error(e); }
                     setModalOpen(false);
                     setInitialInputs({});

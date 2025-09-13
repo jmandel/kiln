@@ -56,7 +56,6 @@ export function resolveTaskConfig(taskKind: string | undefined): Config {
 
 export const STORAGE_KEYS = {
   documents: 'narrative_documents',
-  workflows: 'narrative_workflows',
   artifacts: 'narrative_artifacts',
   steps: 'narrative_steps',
   links: 'narrative_links'

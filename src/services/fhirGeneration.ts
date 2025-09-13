@@ -52,7 +52,7 @@ export async function generateAndRefineResources(
           title: `${ref.reference} (generated)`,
           content: resource,
           tags: { phase: 'fhir', stage: 'generated', resourceType: resource?.resourceType, from: ref?.display, prompt: genMeta?.prompt, raw: genMeta?.raw },
-          links: genMeta?.stepKey ? [ { dir: 'to', role: 'produced', ref: { type: 'step', id: genMeta.stepKey } } ] : undefined
+          links: genMeta?.stepKey ? [ { dir: 'from', role: 'produced', ref: { type: 'step', id: genMeta.stepKey } } ] : undefined
         });
       } catch {}
 
@@ -497,7 +497,7 @@ export async function generateAndRefineResources(
             trace.push({ iter: INITIAL_BUDGET - budget + 1, action: 'update', result: 'filtered_patch', removedInvalidCodings: invalidCodings });
             try {
               if (localMeta?.stepKey) {
-                const rec = await ctx.stores.steps.get(ctx.workflowId, localMeta.stepKey);
+        const rec = await ctx.stores.steps.get((ctx as any).jobId, localMeta.stepKey);
                 if (rec) {
                   const t = rec.tagsJson ? JSON.parse(rec.tagsJson) : {};
                   t.refineDecision = t.refineDecision || 'filtered';
@@ -564,7 +564,7 @@ export async function generateAndRefineResources(
           if (localMeta?.stepKey) {
             acceptedSteps.push({ stepKey: localMeta.stepKey, prompt: localMeta?.prompt, raw: localMeta?.raw });
             try {
-              const rec = await ctx.stores.steps.get(ctx.workflowId, localMeta.stepKey);
+              const rec = await ctx.stores.steps.get((ctx as any).jobId, localMeta.stepKey);
               if (rec) {
                 const t = rec.tagsJson ? JSON.parse(rec.tagsJson) : {};
                 t.refineDecision = 'accepted'; t.refineDetails = { changedPointers: changedPtrs };
@@ -654,12 +654,12 @@ export async function generateAndRefineResources(
 
         // Build links: produced = accepted steps (or fallback to last step); contributed = all refine steps
         const producedLinks = acceptedSteps.length
-          ? acceptedSteps.map(s => ({ dir: 'to' as const, role: 'produced', ref: { type: 'step' as const, id: s.stepKey } }))
-          : (lastLLMMeta?.stepKey ? [ { dir: 'to' as const, role: 'produced', ref: { type: 'step' as const, id: lastLLMMeta.stepKey } } ] : []);
+          ? acceptedSteps.map(s => ({ dir: 'from' as const, role: 'produced', ref: { type: 'step' as const, id: s.stepKey } }))
+          : (lastLLMMeta?.stepKey ? [ { dir: 'from' as const, role: 'produced', ref: { type: 'step' as const, id: lastLLMMeta.stepKey } } ] : []);
         const producedIds = new Set(producedLinks.map(l => l.ref.id));
         const contributedLinks = Array.from(contributedStepKeys)
           .filter(id => !producedIds.has(id))
-          .map(id => ({ dir: 'to' as const, role: 'contributed', ref: { type: 'step' as const, id } }));
+          .map(id => ({ dir: 'from' as const, role: 'contributed', ref: { type: 'step' as const, id } }));
 
         await emitJsonArtifact(ctx, {
           kind: 'FhirResource',

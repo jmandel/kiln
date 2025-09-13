@@ -48,7 +48,7 @@ export async function runLLMTask<T = any>(
       content,
       tags: { ...(opts.artifact.tags || {}), prompt: meta.prompt, raw: meta.raw },
       links
-    } as Artifact);
+    } as any);
     return { result, meta, artifactId: art.id };
   }
 

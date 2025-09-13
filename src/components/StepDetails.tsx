@@ -15,7 +15,7 @@ export default function StepDetails({ step, onClose }: { step: Step; onClose: ()
         </div>
         <div className="border rounded p-2 mb-3 text-sm">
           <div><strong>Key:</strong> {step.key}</div>
-          <div><strong>Workflow:</strong> {step.workflowId}</div>
+          <div><strong>Job:</strong> {step.jobId}</div>
           {step.durationMs != null && (<div><strong>Duration:</strong> {step.durationMs} ms</div>)}
           {step.llmTokens != null && (<div><strong>Tokens:</strong> {step.llmTokens}</div>)}
           {tags?.refineDecision && (

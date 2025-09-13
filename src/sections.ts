@@ -27,7 +27,8 @@ export function renderSectionNarrative(noteText: string, sectionTitle: string): 
   const content = sections.get(canonicalizeHeader(sectionTitle));
   if (content == null) return undefined;
 
-  marked.setOptions({ gfm: true, breaks: false, headerIds: false, mangle: false });
+  // Keep options minimal to satisfy current marked typings
+  marked.setOptions({ gfm: true, breaks: false } as any);
   const html = marked.parse(content) as string;
 
   const xhtml = simpleSanitize(html)

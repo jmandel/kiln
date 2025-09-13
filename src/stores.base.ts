@@ -1,4 +1,4 @@
-import type { ID, Artifact, Event, Link, Step, Workflow } from './types';
+import type { ID, Artifact, Event, Link, Step } from './types';
 import { EventHub } from './types';
 
 export function sortByUpdatedAtAsc<T extends { updatedAt?: string }>(arr: T[]): T[] {
@@ -12,7 +12,7 @@ export function sortByTsAsc<T extends { ts?: string }>(arr: T[]): T[] {
 export function emitArtifactSaved(events: EventHub, a: Artifact): void {
   events.emit({
     type: 'artifact_saved',
-    documentId: a.documentId,
+    jobId: a.jobId,
     id: a.id,
     kind: a.kind,
     version: a.version,
@@ -23,7 +23,7 @@ export function emitArtifactSaved(events: EventHub, a: Artifact): void {
 export function emitLinkSaved(events: EventHub, l: Link): void {
   events.emit({
     type: 'link_saved',
-    documentId: l.documentId,
+    jobId: l.jobId,
     id: l.id,
     role: l.role,
     fromType: l.fromType,
@@ -36,12 +36,11 @@ export function emitLinkSaved(events: EventHub, l: Link): void {
 
 export function emitStepSaved(
   events: EventHub,
-  rec: Partial<Step> & { workflowId: ID; key: string; status: Step['status']; ts: string },
-  documentId?: ID
+  rec: Partial<Step> & { jobId: ID; key: string; status: Step['status']; ts: string }
 ): void {
   events.emit({
     type: 'step_saved',
-    workflowId: rec.workflowId,
+    jobId: rec.jobId,
     key: rec.key,
     title: rec.title,
     status: rec.status,
@@ -50,8 +49,6 @@ export function emitStepSaved(
     durationMs: rec.durationMs,
     llmTokens: rec.llmTokens,
     prompt: rec.prompt,
-    ts: rec.ts,
-    documentId
+    ts: rec.ts
   } as Event);
 }
-

@@ -179,8 +179,8 @@ export default function DocGenDashboard({
                 value={`${(state.metrics.totalTokens / 1000).toFixed(1)}k`}
                 icon="💬" 
               />
-              {state.jobId && (
-                <button className="btn-kiln-secondary whitespace-nowrap" onClick={onRerun || onResume}>Rerun</button>
+              {state.jobId && onRerun && (
+                <button className="btn-kiln-secondary whitespace-nowrap" onClick={onRerun}>Rerun</button>
               )}
               {state.jobId && canConvertToFhir && state.status === 'done' && (
                 <button className="btn-kiln whitespace-nowrap" onClick={onConvertToFhir}>Convert to FHIR</button>
@@ -214,7 +214,7 @@ export default function DocGenDashboard({
       {/* Error Banner (if present) */}
       {state.error && (
         <div className="max-w-7xl mx-auto px-4 mt-4">
-          <ErrorBanner error={state.error} onResume={onRerun || onResume} onOpenFailed={onOpenFailed} />
+          <ErrorBanner error={state.error} onResume={onRerun} onOpenFailed={onOpenFailed} />
         </div>
       )}
 
@@ -236,7 +236,7 @@ export default function DocGenDashboard({
                     <ViewToggle 
                       views={['table', 'cards', 'timeline']} 
                       active={artifactView}
-                      onChange={setArtifactView}
+                      onChange={(v) => setArtifactView(v as any)}
                     />
                   </div>
                 </div>

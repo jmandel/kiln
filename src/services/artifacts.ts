@@ -8,7 +8,7 @@ export async function emitJsonArtifact(
     version?: number;
     content: any;
     tags?: Record<string, any>;
-    links?: Array<{ dir: 'from' | 'to'; role: string; ref: { type: 'artifact' | 'step' | 'document' | 'workflow'; id: string } }>;
+    links?: Array<{ dir: 'from'; role: string; ref: { type: 'artifact' | 'step'; id: string } }>;
     autoProduced?: boolean; // default false to avoid accidental linking to whatever step is active
   }
 ) {

@@ -1,4 +1,4 @@
-import type { Targets, Prompts, PromptParams } from './types';
+import type { Targets, Prompts } from './types';
 
 export function getTargets(): Targets {
   return {

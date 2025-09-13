@@ -39,8 +39,8 @@ function toMsg(ev: any): { level: Level; msg: string } | null {
   switch (ev.type) {
     case 'step_saved':     return { level: ev.status === 'failed' ? 'error' : ev.status === 'pending' ? 'warn' : 'info', msg: `Step ${ev.title || ev.key} → ${ev.status}` };
     case 'artifact_saved': return { level: 'info', msg: `Artifact ${ev.kind} v${ev.version} saved` };
-    case 'workflow_status':return { level: ev.status === 'failed' ? 'error' : 'info', msg: `Workflow → ${ev.status}` };
-    case 'document_status':return { level: ev.status === 'blocked' ? 'error' : 'info', msg: `Document → ${ev.status}` };
+    case 'job_created':     return { level: 'info', msg: `Job created` };
+    case 'job_status':      return { level: ev.status === 'failed' ? 'error' : 'info', msg: `Job → ${ev.status}` };
     default: return null;
   }
 }
@@ -63,8 +63,8 @@ export class DashboardStore {
 
   constructor(private stores: Stores) {
     this.stores.events.subscribe((ev: Event) => {
-      try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'event.recv', evType: (ev as any)?.type, documentId: (ev as any)?.documentId })); } catch {}
-      const docId: ID | undefined = (ev as any).documentId;
+      try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'event.recv', evType: (ev as any)?.type, jobId: (ev as any)?.jobId })); } catch {}
+      const docId: ID | undefined = (ev as any).jobId;
       if (!docId) return;
       if (this.selectedDoc && docId !== this.selectedDoc) return;
       const q = this.pendingEvents.get(docId) || [];
@@ -74,31 +74,31 @@ export class DashboardStore {
     });
   }
 
-  select(documentId: ID) {
-    if (this.selectedDoc === documentId) return;
-    this.selectedDoc = documentId;
-    if (!this.views.has(documentId)) {
-      void this.bootstrap(documentId);
+  select(jobId: ID) {
+    if (this.selectedDoc === jobId) return;
+    this.selectedDoc = jobId;
+    if (!this.views.has(jobId)) {
+      void this.bootstrap(jobId);
     } else {
-      this.notify(documentId);
+      this.notify(jobId);
     }
   }
 
-  subscribe(documentId: ID, cb: () => void): () => void {
-    let set = this.listeners.get(documentId);
-    if (!set) { set = new Set(); this.listeners.set(documentId, set); }
+  subscribe(jobId: ID, cb: () => void): () => void {
+    let set = this.listeners.get(jobId);
+    if (!set) { set = new Set(); this.listeners.set(jobId, set); }
     set.add(cb);
     return () => { set!.delete(cb); };
   }
 
-  getState(documentId: ID): DashboardView {
-    return this.views.get(documentId) || defaultView;
+  getState(jobId: ID): DashboardView {
+    return this.views.get(jobId) || defaultView;
   }
 
-  private async bootstrap(documentId: ID): Promise<void> {
-    const doc = await this.stores.documents.get(documentId);
-    const steps = await this.stores.steps.listByDocument(documentId);
-    const arts  = await this.stores.artifacts.listByDocument(documentId);
+  private async bootstrap(jobId: ID): Promise<void> {
+    const doc = await this.stores.jobs.get(jobId);
+    const steps = await this.stores.steps.listByJob(jobId);
+    const arts  = await this.stores.artifacts.listByJob(jobId);
 
     const sIndex = new Map<string, StepMeta>();
     const pCounts: PhaseCounts = new Map();
@@ -108,15 +108,15 @@ export class DashboardStore {
     for (const s of steps) {
       const ph = safePhase(s.tagsJson);
       const meta: StepMeta = { status: s.status, phase: ph, llmTokens: s.llmTokens || 0, ts: s.ts };
-      sIndex.set(`${s.workflowId}:${s.key}`, meta);
+      sIndex.set(`${s.jobId}:${s.key}`, meta);
       if (!pCounts.has(ph)) pCounts.set(ph, { done: 0, total: 0 });
       const pc = pCounts.get(ph)!; pc.total += 1; if (s.status === 'done') pc.done += 1;
       stepCounts[s.status] = (stepCounts[s.status] || 0) + 1;
       tokens += s.llmTokens || 0;
     }
 
-    this.stepIndex.set(documentId, sIndex);
-    this.phaseCounts.set(documentId, pCounts);
+    this.stepIndex.set(jobId, sIndex);
+    this.phaseCounts.set(jobId, pCounts);
 
     const jobStartTime = doc?.createdAt || steps[0]?.ts || undefined;
     const lastTs = steps.length ? steps[steps.length - 1].ts : jobStartTime;
@@ -142,7 +142,7 @@ export class DashboardStore {
     }
 
     const view: DashboardView = {
-      jobId: documentId,
+      jobId,
       title: doc?.title || 'Document',
       status: doc?.status === 'done' ? 'done' : doc?.status === 'blocked' ? 'error' : 'running',
       currentPhase: (() => {
@@ -157,9 +157,9 @@ export class DashboardStore {
       phases
     };
 
-    this.views.set(documentId, view);
-    try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'bootstrap.done', documentId, artifacts: artifacts.length })); } catch {}
-    this.notify(documentId);
+    this.views.set(jobId, view);
+    try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'bootstrap.done', jobId, artifacts: artifacts.length })); } catch {}
+    this.notify(jobId);
   }
 
   private scheduleFlush() {
@@ -189,7 +189,7 @@ export class DashboardStore {
         }
 
         if (ev.type === 'step_saved') {
-          const pk = `${ev.workflowId}:${ev.key}`;
+          const pk = `${ev.jobId}:${ev.key}`;
           const prev = stepsByPk.get(pk);
           const newPhase = safePhase(JSON.stringify(ev.tags || (ev.tagsJson ? JSON.parse(ev.tagsJson) : {})));
           const curStatus = ev.status as Step['status'];
@@ -233,7 +233,7 @@ export class DashboardStore {
 
         if (ev.type === 'artifacts_cleared' || ev.type === 'links_cleared') {
           try {
-            const arts = await this.stores.artifacts.listByDocument(docId);
+            const arts = await this.stores.artifacts.listByJob(docId);
             view.artifacts = arts.map(a => ({
               id: a.id,
               name: a.title || `${a.kind} v${a.version}`,
@@ -242,17 +242,15 @@ export class DashboardStore {
               createdAt: a.updatedAt,
               phase: a.tags?.phase
             }));
-            try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'artifacts.cleared.applied', documentId: docId, count: view.artifacts.length })); } catch {}
+            try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'artifacts.cleared.applied', jobId: docId, count: view.artifacts.length })); } catch {}
           } catch {}
         }
 
-        if (ev.type === 'document_status') {
+        if (ev.type === 'job_status') {
           view.status = ev.status === 'done' ? 'done' : ev.status === 'blocked' ? 'error' : 'running';
           if (ev.status === 'running') shouldClearError = true;
         }
-        if (ev.type === 'workflow_status' && ev.status === 'running') {
-          shouldClearError = true;
-        }
+        // document_status removed in job-centric design
 
         const nowTs = ev.ts ? new Date(ev.ts).getTime() : Date.now();
         if (view.jobStartTime) view.metrics.elapsedMs = Math.max(view.metrics.elapsedMs, nowTs - new Date(view.jobStartTime).getTime());
@@ -267,7 +265,7 @@ export class DashboardStore {
           view.error = undefined;
         } else {
           try {
-            const steps = await this.stores.steps.listByDocument(docId);
+            const steps = await this.stores.steps.listByJob(docId);
             const failed = steps.filter(s => s.status === 'failed').sort((a, b) => b.ts.localeCompare(a.ts))[0];
             if (failed) {
               const details = failed.resultJson ? (() => { try { return JSON.parse(failed.resultJson); } catch { return null; } })() : null;
@@ -284,13 +282,13 @@ export class DashboardStore {
 
       view.phases = Array.from(phases.entries()).map(([id, v]) => ({ id, label: id, done: v.done, total: v.total, pct: v.total ? v.done / v.total : 0 }));
       this.views.set(docId, { ...view });
-      try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'flush.view.updated', documentId: docId, artifacts: view.artifacts.length })); } catch {}
+      try { console.log('[WF]', JSON.stringify({ ts: new Date().toISOString(), type: 'flush.view.updated', jobId: docId, artifacts: view.artifacts.length })); } catch {}
       this.notify(docId);
     }
   }
 
-  private notify(documentId: ID) {
-    const set = this.listeners.get(documentId);
+  private notify(jobId: ID) {
+    const set = this.listeners.get(jobId);
     if (!set) return;
     for (const cb of set) { try { cb(); } catch {} }
   }

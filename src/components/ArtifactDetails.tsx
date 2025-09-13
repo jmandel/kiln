@@ -2,7 +2,7 @@ import React from 'react';
 import type { Stores, Artifact, Step, Link, ID } from '../types';
 import { tryJson, pretty } from './ui';
 
-export default function ArtifactDetails({ stores, documentId, artifactId, onClose, onOpenArtifact, fullPage = false }: { stores: Stores; documentId: ID; artifactId: ID; onClose: () => void; onOpenArtifact?: (id: ID) => void; fullPage?: boolean }): React.ReactElement {
+export default function ArtifactDetails({ stores, jobId, artifactId, onClose, onOpenArtifact, fullPage = false }: { stores: Stores; jobId: ID; artifactId: ID; onClose: () => void; onOpenArtifact?: (id: ID) => void; fullPage?: boolean }): React.ReactElement {
   const [artifact, setArtifact] = React.useState<Artifact | null>(null);
   const [links, setLinks] = React.useState<Link[]>([]);
   const [steps, setSteps] = React.useState<Step[]>([]);
@@ -12,12 +12,12 @@ export default function ArtifactDetails({ stores, documentId, artifactId, onClos
     (async () => {
       const art = await stores.artifacts.get(artifactId);
       setArtifact(art || null);
-      const allLinks = await stores.links.listByDocument(documentId);
+      const allLinks = await stores.links.listByJob(jobId);
       setLinks(allLinks);
-      const allSteps = await stores.steps.listByDocument(documentId);
+      const allSteps = await stores.steps.listByJob(jobId);
       setSteps(allSteps);
     })();
-  }, [stores, documentId, artifactId]);
+  }, [stores, jobId, artifactId]);
 
   if (!artifact) return (<div className="p-4">Loading…</div>);
 
