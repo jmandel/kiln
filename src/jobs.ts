@@ -44,6 +44,8 @@ export async function startJob(stores: Stores, jobId: ID): Promise<void> {
   const job = await stores.jobs.get(jobId);
   if (!job) throw new Error(`Job not found: ${jobId}`);
   if (job.status === 'blocked') throw new Error('Job is blocked on dependencies');
+  // Avoid double-start if already running or completed
+  if (job.status === 'running' || job.status === 'done') return;
   const def = registry.get<any>(job.type as any);
   if (!def) throw new Error(`Unknown job type: ${job.type}`);
   const pipeline = def.buildWorkflow(job.inputs as any);
@@ -68,27 +70,17 @@ export async function rerunJob(stores: Stores, jobId: ID): Promise<void> {
   } as any;
   await stores.jobs.upsert(updated);
 
-  // Clear outputs (artifacts + links)
+  // Clear outputs (artifacts + links) so pipeline recreates them
   await stores.artifacts.deleteByJob(jobId);
   await stores.links.deleteByJob(jobId);
 
-  // Reset only failed/pending steps
-  const steps = await stores.steps.listByJob(jobId);
-  for (const s of steps) {
-    if (s.status === 'failed' || s.status === 'pending') {
-      await stores.steps.put({
-        ...s,
-        status: 'pending',
-        error: null,
-        progress: 0,
-        ts: new Date().toISOString(),
-      });
-    }
-  }
+  // Do not reset step statuses: keep 'done' for instant replays; failed/pending will recompute naturally
+
+  // Set queued so startJob will actually run the pipeline
   try {
-    await stores.jobs.updateStatus(jobId, 'running' as any);
+    await stores.jobs.updateStatus(jobId, 'queued' as any);
   } catch {}
-  // Start fresh pipeline from the beginning (cached steps will replay)
+  // Start pipeline: done steps replay instantly; others recompute
   await startJob(stores, jobId);
 }
 
@@ -125,12 +117,30 @@ export async function triggerReadyJobs(stores: Stores): Promise<void> {
     const parents = await Promise.all(deps.map((id) => stores.jobs.get(id)));
     const allDone = parents.every((p) => p && p.status === 'done');
     if (!allDone) continue;
+    // Skip if already running to prevent duplicate pipelines
+    const latest = await stores.jobs.get(job.id);
+    if (latest && latest.status === 'running') {
+      try {
+        console.log(`[deps] Skipping ${job.type} job ${job.id}: already running`);
+      } catch {}
+      continue;
+    }
     try {
-      await stores.jobs.updateStatus(job.id, 'running');
-      await startJob(stores, job.id);
+      // Build and start the pipeline once deps are satisfied
+      const def = registry.get<any>(job.type as any);
+      if (!def) continue;
+      const pipeline = def.buildWorkflow(job.inputs as any);
+      try {
+        await stores.jobs.updateStatus(job.id, 'running');
+        await runPipeline(stores, job.id, pipeline, { type: job.type as any, inputs: job.inputs as any });
+      } catch (e) {
+        try {
+          console.error('[deps] triggerReadyJobs error', e);
+        } catch {}
+      }
     } catch (e) {
       try {
-        console.error('[deps] triggerReadyJobs error', e);
+        console.error('triggerReadyJobs error', e);
       } catch {}
     }
   }

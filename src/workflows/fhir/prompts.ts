@@ -36,7 +36,7 @@ High-level goals:
    - Set \`Composition.author\` (array) with a Practitioner Reference, e.g., \`{"reference":"Practitioner/<some-id>"}\`. Include a concise \`display\` (name and role/title) derived from the note if available.
 2) For each entity mentioned in the note, add a placeholder \`Reference\` in the appropriate section's \`entry\` array.
    - Diagnoses/conditions → \`Condition\`.
-   - Medications (orders) → \`MedicationRequest\`; currently taking → \`MedicationStatement\` (or Administration if explicitly given during encounter).
+   - Med prescriptions → \`MedicationRequest\`; currently taking → \`MedicationStatement\` (or Administration if explicitly given during encounter).
    - Orders for tests/imaging/procedures → \`ServiceRequest\` (these are "orders", not results).
    - Performed procedures/interventions → \`Procedure\`.
    - Result reports (laboratory/imaging/other diagnostics) → \`DiagnosticReport\`.
@@ -214,14 +214,17 @@ ${warnings
     if (w.invalid && w.invalid.length) {
       const items = w.invalid
         .map((i: any) => {
-          const base = `${i.system || ''}|${i.code || ''}`;
+          const sysStr = typeof i.system === 'object' ? JSON.stringify(i.system) : String(i.system || '');
+          const codeStr = typeof i.code === 'object' ? JSON.stringify(i.code) : String(i.code || '');
+          const base = `${sysStr}|${codeStr}`;
           return i.canonicalDisplay ? `${base} (canonical display: "${i.canonicalDisplay}")` : base;
         })
         .join(', ');
-      return `- Invalid codes at ${w.pointer || '(unspecified)'}: ${items}`;
+      const reason = w.message || 'code not present in Search Notebook or policy violation';
+      return `- YOU PREVIOUSLY SUBMITTED AN INVALID PATCH. You attempted to insert code(s) ${items} at ${w.pointer || '(unspecified)'}; reason: ${reason}.`;
     }
     if (w.partials && w.partials.length) {
-      return `- Partial update at ${w.pointer || '(unspecified)'}: when changing a Coding's code, also set system and display in the same replacement.`;
+      return `- YOU PREVIOUSLY SUBMITTED AN INVALID PATCH. Partial update at ${w.pointer || '(unspecified)'}: you changed 'code' without also setting 'system' and 'display' in the same replacement.`;
     }
     return w.message ? `- ${w.message}` : '';
   })
@@ -245,7 +248,18 @@ Budget remaining (turns): ${budgetRemaining}
 Current Resource (JSON):
 ${JSON.stringify(resource, null, 2)}
 
-${warnings && warnings.length ? `Warnings (filtered, not applied in the previous step):\n${warnings.map((w) => `- pointer: ${w.pointer}${w.invalid && w.invalid.length ? ` — removed: ${w.invalid.map((i) => `${i.system}|${i.code}`).join(', ')}` : ''}${w.partials && w.partials.length ? ` — dropped partial property edits` : ''}${w.message ? ` — ${w.message}` : ''}`).join('\n')}` : ''}
+${warnings && warnings.length ? `Warnings (filtered, not applied in the previous step):\n${warnings.map((w) => {
+  const removed = (w.invalid && w.invalid.length)
+    ? ` — removed: ${w.invalid.map((i) => {
+        const sysStr = typeof i.system === 'object' ? JSON.stringify(i.system) : String(i.system || '');
+        const codeStr = typeof i.code === 'object' ? JSON.stringify(i.code) : String(i.code || '');
+        return `${sysStr}|${codeStr}`;
+      }).join(', ')}`
+    : '';
+  const partialMsg = w.partials && w.partials.length ? ' — dropped partial property edits' : '';
+  const msg = w.message ? ` — ${w.message}` : '';
+  return `- pointer: ${w.pointer}${removed}${partialMsg}${msg}`;
+}).join('\n')}` : ''}
 
 Unresolved Codings:
 ${JSON.stringify(unresolvedCodings, null, 2)}

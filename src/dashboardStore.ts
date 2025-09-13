@@ -111,13 +111,8 @@ export class DashboardStore {
         (ev as any).type === 'job_deleted'
       ) {
         void this.updateJobsList();
-        // Start dependent jobs when parents complete, and also when a dependent job is created
-        if (
-          (ev as any).type === 'job_created' ||
-          ((ev as any).type === 'job_status' && (ev as any).status === 'done')
-        ) {
-          void triggerReadyJobs(this.stores).catch(() => {});
-        }
+        // Viewer should not mutate scheduling; job creation already triggers readiness checks.
+        // Avoid double-starting dependents by not calling triggerReadyJobs from the dashboard.
       }
       if (!docId) return;
       // Queue events for all jobs; we'll flush for the selected job when its view exists

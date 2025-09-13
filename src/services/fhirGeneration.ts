@@ -545,6 +545,61 @@ export async function generateAndRefineResources(
             } catch {}
           };
           for (const bad of stillBad) redactAtPointer(resource, bad.pointer);
+          // Surface explicit feedback for the next prompt and tag the step
+          try {
+            // Update step tags so UI shows what was filtered
+            if (localMeta?.stepKey) {
+              const rec = await ctx.stores.steps.get((ctx as any).jobId, localMeta.stepKey);
+              if (rec) {
+                const t = rec.tagsJson ? JSON.parse(rec.tagsJson) : {};
+                // Normalize invalid entries for human-readable display
+                const normalized = stillBad.map((i) => ({
+                  pointer: i.pointer,
+                  system: i.system != null && typeof i.system !== 'object' ? String(i.system) : undefined,
+                  code:
+                    i.code == null
+                      ? undefined
+                      : typeof i.code === 'object'
+                        ? JSON.stringify(i.code)
+                        : String(i.code),
+                }));
+                t.refineDecision = t.refineDecision || 'filtered';
+                t.refineDetails = { ...(t.refineDetails || {}), invalid: normalized };
+                await ctx.stores.steps.put({ ...rec, tagsJson: JSON.stringify(t) });
+              }
+            }
+          } catch {}
+          try {
+            // Group invalids by pointer and enrich with canonical displays when available
+            const byPtr = new Map<string, Array<{ system?: string; code?: string }>>();
+            for (const it of stillBad) {
+              const arr = byPtr.get(it.pointer) || [];
+              arr.push({ system: it.system, code: it.code });
+              byPtr.set(it.pointer, arr);
+            }
+            const allPairs = stillBad.map((ic) => ({ system: ic.system, code: ic.code }));
+            let existsResults: Array<{ system?: string; code?: string; exists?: boolean; display?: string }> = [];
+            try {
+              existsResults = await batchExists(ctx, allPairs);
+            } catch {}
+            const lookupCanonical = (sys?: string, code?: string): string | undefined => {
+              const hit = existsResults.find(
+                (r) => String(r.system || '') === String(sys || '') && String(r.code || '') === String(code || '')
+              );
+              return hit && hit.exists && hit.display ? String(hit.display) : undefined;
+            };
+            for (const [ptr, arr] of byPtr.entries()) {
+              const enriched = arr.map((i) => ({
+                ...i,
+                canonicalDisplay: lookupCanonical(i.system, i.code),
+              }));
+              refineWarnings.push({
+                pointer: ptr,
+                invalid: enriched,
+                message: 'Proposed coding not present in Search Notebook; perform search_for_coding for this pointer or pick from the listed hits.',
+              });
+            }
+          } catch {}
           trace.push({
             iter: INITIAL_BUDGET - budget + 1,
             action: 'update',
@@ -556,9 +611,46 @@ export async function generateAndRefineResources(
           budget -= 1;
           continue;
         }
+        // Prepare patch array before analyzing partial-code updates
+        const patch = Array.isArray(localDecision?.patch) ? localDecision.patch : [];
+        // Detect partial-code updates (changed 'code' without also setting 'system' and 'display')
+        const partialIssues = detectPartialCodeUpdates(patch);
+        if (partialIssues.length > 0) {
+          // Tag current step for UI visibility
+          try {
+            if (localMeta?.stepKey) {
+              const rec = await ctx.stores.steps.get((ctx as any).jobId, localMeta.stepKey);
+              if (rec) {
+                const t = rec.tagsJson ? JSON.parse(rec.tagsJson) : {};
+                const existing = Array.isArray(t.refineDetails?.partials) ? t.refineDetails.partials : [];
+                const partialPayload = partialIssues.map((p) => ({ pointer: p.pointer, missing: p.missing }));
+                t.refineDecision = t.refineDecision || 'filtered';
+                t.refineDetails = { ...(t.refineDetails || {}), partials: [...existing, ...partialPayload] };
+                await ctx.stores.steps.put({ ...rec, tagsJson: JSON.stringify(t) });
+              }
+            }
+          } catch {}
+          // Prepare concise warnings for next prompt
+          try {
+            // Group by pointer
+            const byPtr = new Map<string, Array<{ missing: Array<'system' | 'display'> }>>();
+            for (const it of partialIssues) {
+              const arr = byPtr.get(it.pointer) || [];
+              arr.push({ missing: it.missing });
+              byPtr.set(it.pointer, arr);
+            }
+            for (const [ptr, arr] of byPtr.entries()) {
+              refineWarnings.push({
+                pointer: ptr,
+                partials: arr.map((a) => ({ path: ptr, ...(a as any) })),
+                message:
+                  "Partial Coding update is invalid: when changing 'code', also set 'system' and 'display' in the same replacement.",
+              });
+            }
+          } catch {}
+        }
         // Partial-code update redaction not applied (policy opts for rejection rather than partial redaction)
 
-        const patch = Array.isArray(localDecision?.patch) ? localDecision.patch : [];
         if (!patch.length) {
           trace.push({
             iter: INITIAL_BUDGET - budget + 1,
@@ -691,8 +783,19 @@ export async function generateAndRefineResources(
               const rec = await ctx.stores.steps.get((ctx as any).jobId, localMeta.stepKey);
               if (rec) {
                 const t = rec.tagsJson ? JSON.parse(rec.tagsJson) : {};
+                // Normalize for display
+                const normalized = invalidCodings.map((i) => ({
+                  pointer: i.pointer,
+                  system: i.system != null && typeof i.system !== 'object' ? String(i.system) : undefined,
+                  code:
+                    i.code == null
+                      ? undefined
+                      : typeof i.code === 'object'
+                        ? JSON.stringify(i.code)
+                        : String(i.code),
+                }));
                 t.refineDecision = t.refineDecision || 'filtered';
-                t.refineDetails = { ...(t.refineDetails || {}), invalid: invalidCodings };
+                t.refineDetails = { ...(t.refineDetails || {}), invalid: normalized };
                 await ctx.stores.steps.put({ ...rec, tagsJson: JSON.stringify(t) });
               }
             }
@@ -977,6 +1080,7 @@ export async function generateAndRefineResources(
         content: valAfter,
         tags: { phase: 'fhir', stage: 'refined', reference: ref.reference, valid: isValid },
       });
+      resource = initialCopy;
     } catch {}
 
     // Fail loudly if we expected refine calls but captured no LLM trace

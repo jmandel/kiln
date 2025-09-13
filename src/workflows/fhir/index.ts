@@ -3,7 +3,7 @@ import { extractSections, renderSectionNarrative } from '../../sections';
 import { runLLMTask } from '../../llmTask';
 import { IPS_NOTES } from '../../ips-notes';
 import { emitJsonArtifact } from '../../services/artifacts';
-import { analyzeCodings, finalizeUnresolved } from '../../codingAnalysis';
+import { analyzeCodings } from '../../codingAnalysis';
 import { generateAndRefineResources } from '../../services/fhirGeneration';
 import { sha256, nowIso } from '../../helpers';
 import { validateResource } from '../../validator';
@@ -197,9 +197,8 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
       content: { items: postReport },
       tags: { phase: 'fhir', stage: 'post' },
     });
-    const unresolvedPointers = postReport.filter((i: any) => i.status !== 'ok').map((i: any) => i.pointer);
-    const finalResources =
-      unresolvedPointers.length ? finalizeUnresolved(recodedResources, unresolvedPointers, {}) : recodedResources;
+    // Rely on refined resources being self-annotated; do not add downstream extensions here.
+    const finalResources = recodedResources;
 
     for (let i = 0; i < finalResources.length; i++) {
       const r: any = finalResources[i];
