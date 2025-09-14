@@ -262,7 +262,7 @@ async function main() {
     await $`rm -rf dist`.catch(() => {});
     console.error('\n🔧 Troubleshooting:');
     console.error('   1. Check PUBLIC_KILN_* environment variables');
-    console.error('   2. Ensure PUBLIC_KILN_BASE_URL and PUBLIC_KILN_FHIR_BASE_URL are valid URLs');
+    console.error('   2. Ensure PUBLIC_KILN_LLM_URL and PUBLIC_KILN_FHIR_BASE_URL are valid URLs');
     console.error('   3. Run `bun run config:check` for validation');
     process.exit(1);
   }

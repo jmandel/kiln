@@ -1,923 +1,744 @@
-# Kiln: Clinical Narrative From Raw Clay
+# 0. Kiln: Clinical Narrative From Raw Clay
 
-## 1. Overview
+This project implements a browser-based authoring environment for clinical notes, with server-side validation for FHIR structure and terminology. The system uses Bun.ts for the runtime (no Node.js dependency) and Java 17+ for the FHIR validator. Core mental model: authors start with a "sketch" (brief patient description) or raw text; the system generates structured narrative or FHIR resources via LLM prompts, then validates against FHIR R4 and canonical terminologies (LOINC, SNOMED CT, RxNorm).
 
-Kiln is a browser-based clinical authoring tool that transforms free-text sketches into structured Markdown notes, with built-in LLM assistance for realism and integrated FHIR validation for interoperability. Designed for clinicians and developers, it emphasizes privacy (local-first, no server storage) while enabling rapid creation of high-quality, standards-compliant documents. Built with Bun.js and React, it runs entirely in the browser with optional server-side APIs for terminology and validation.
+Key points:
+- Single codebase: UI, APIs, and validators integrated.
+- No persistent storage: everything runs in-browser or ephemeral server; data is local or in-memory.
+- Focus: rapid iteration from free-text input to FHIR-compliant output, emphasizing terminology accuracy and structural validity.
 
-### Core Mental Model
-Kiln treats note creation as a "kiln-firing" process: start with raw clay (a sketch like "52F with chest pain, onset 2 weeks ago"), shape it through iterative refinement (outline → sections → full note), and validate the final form (FHIR Bundle). The workflow is linear yet cyclical—LLM generates drafts, critiques for clinical accuracy (scoring 0-1), and refines until approval. Output is a self-contained FHIR document (Bundle with Composition + discrete resources like Condition, Observation), annotated for unresolved issues. No EHR integration; focus on exportable, valid artifacts.
+Built by Josh Mandel, MD.
 
-```mermaid
-flowchart TD
-    A[Clinical Sketch] --> B[LLM: Outline + Briefs]
-    B --> C[Section Drafts<br/>(Iterate: Draft → Critique → Approve)]
-    C --> D[Assemble Full Note<br/>(Markdown with H2 sections)]
-    D --> E[LLM: FHIR Composition Plan]
-    E --> F[Generate Resources<br/>(e.g., Condition, Observation)]
-    F --> G[Refine + Validate<br/>(Coding, Structure)]
-    G --> H[FHIR Bundle<br/>(Document + Entries)]
-    H --> I[Export/Validate]
-```
+## 1. Architecture
 
-### Use Cases
-- **Rapid Drafting**: Turn a quick sketch into a polished SOAP note with AI-guided sections (e.g., HPI, Assessment, Plan).
-- **FHIR Export**: Generate validated IPS-compliant Bundles for HIE, registries, or clinical systems.
-- **Terminology Assistance**: Search LOINC/SNOMED/RxNorm during authoring; auto-refine codings via LLM + validation.
-- **Education/Prototyping**: Explore FHIR modeling from narrative; test validation without full EHR setup.
-- **Offline Authoring**: Works without internet (localStorage for notes, optional offline validator via Java).
-
-### Non-Goals
-- Persistent storage or multi-user collaboration (use localStorage or export to EHR).
-- Full EHR features (e.g., no scheduling, messaging, or user auth).
-- Real-time collaboration or server-side note processing (client-only for privacy).
-- Support for pre-FHIR4 versions or non-IPS profiles (focus on R4/IPS).
-
-## 2. Architecture
-
-Kiln's architecture is client-centric, prioritizing privacy and offline capability. The browser handles core authoring and LLM interactions, while the optional server provides stateless utilities (search/validation). No note data is stored server-side—everything persists in localStorage or exported files. The system scales horizontally for APIs but remains lightweight for single-user workflows.
+Kiln's architecture separates concerns into a modular client-server model, enabling flexible deployment from fully static (browser-only) to full-stack with server-side validation. The system emphasizes stateless processing: the client handles interactive authoring and LLM calls, while the server provides on-demand validation services. This design supports rapid prototyping and scales to production without requiring a persistent database for user data.
 
 ### Components
 
-- **Client (Browser)**: A React 19 single-page application (SPA) built with Bun.js for bundling. Manages the note editor (Markdown rendering via marked), LLM API calls (e.g., to OpenAI or OpenRouter), and localStorage for configuration (API keys, FHIR endpoints, user preferences). Handles export to FHIR Bundles (JSON/Markdown) and offline mode (caches recent notes). No build tools like Webpack—uses Bun's native ESM bundling for fast iteration.
-  
-- **Server (Bun.ts)**: A minimal API server (port 3500) for terminology search and FHIR validation. Uses SQLite with FTS5 for fast full-text search across LOINC, SNOMED CT, and RxNorm (pre-loaded from NDJSON). FHIR validation runs HAPI FHIR validator as a Java subprocess (JDK 17+). No authentication or sessions; CORS allows all origins by default. Serves as a drop-in for production or dev; optional for offline use.
+- **Client (Bun.ts + React)**: The browser-based interface for note authoring, using React for UI components and Bun.ts for bundling. It manages local state for sketches, outlines, and drafts, integrating directly with LLM providers (e.g., OpenAI via OpenRouter) for generation tasks. Configuration is handled via localStorage—no server-side env files are needed for API keys or model selection. The client can operate standalone for basic authoring, generating Markdown narratives or FHIR drafts locally, with optional server calls for validation.
 
-- **External Services**:
-  - **LLM Provider**: Configurable via UI (e.g., OpenAI GPT-4o-mini, Anthropic Claude, or OpenRouter proxy). Handles narrative generation, critique, and FHIR mapping. Client manages auth (API keys in localStorage).
-  - **FHIR Validator**: Points to a remote server (e.g., HAPI FHIR at `https://r4.ontoserver.csiro.au/fhir`) or runs locally via Java. Validates structure, profiles (IPS), and codings.
-  - **Terminology Server**: Local SQLite for primary search (no network needed). Fallback to remote (e.g., HL7 Terminology Server) if configured. Supports SNOMED CT, LOINC, RxNorm, and FHIR built-ins.
+- **Server (Bun.ts)**: A lightweight API server built with Bun.ts, serving the client UI in development mode (port 3000) and providing dedicated endpoints for validation (port 3500 in API-only mode). It runs the FHIR validator (a Java process) for structural conformance checks and maintains an SQLite database with FTS5 indexing for terminology search (LOINC, SNOMED CT, RxNorm, and FHIR code systems). The server is stateless, processing requests on-the-fly without user sessions.
 
-Tech stack: Bun.js (runtime/server), React 19 (UI), Tailwind CSS (styling), SQLite (FTS5 for search), Java 17+ (validator). Total bundle ~500KB minified; no Node.js dependencies.
+- **External Dependencies**: 
+  - Java 17+ is required for the HAPI FHIR validator JAR, which handles R4 conformance testing.
+  - An LLM provider (e.g., OpenAI or OpenRouter) is called client-side for content generation.
+  - Optional: A live FHIR server (e.g., HAPI or Azure) for advanced validation or storage; Kiln uses a configurable base URL (PUBLIC_KILN_FHIR_BASE_URL) for generating fullUrl references in bundles, but no runtime FHIR calls are made unless explicitly configured.
 
-### Data Flow Mental Model
-The client orchestrates the entire workflow: user inputs drive LLM calls, which generate/refine content locally. Server APIs are "fire-and-forget"—queries return immediately (search <50ms, validation <5s). No shared state or user sessions; all configuration and temporary data live in localStorage. FHIR output is a complete, self-contained Bundle (no external refs), making it portable for import into EHRs or registries. For high-load, scale the server horizontally (SQLite read replicas) while keeping the client static.
+### Data Flow
 
-### Diagram
+The core workflow transforms unstructured input into validated outputs through iterative LLM calls and validation steps. It supports two primary paths: narrative generation (Markdown output) and FHIR conversion (Bundle output), with a refinement loop for the latter to ensure compliance.
+
+- **Input**: A user provides a "sketch" (e.g., "52F with chest pain, onset 2 weeks ago") or raw clinical text. The client uses LLM prompts to generate an outline, then sections or a Composition plan.
+- **Processing**: For narratives, sections are assembled into Markdown. For FHIR, the plan drives resource generation (e.g., Condition, Observation), followed by validation against FHIR R4 schemas and terminology canonicalization (e.g., mapping to LOINC/SNOMED).
+- **Validation**: 
+  - **Terminology**: Checks code existence and suggests canonical terms via SQLite FTS5 search.
+  - **Structure**: Uses the HAPI validator for conformance, filtering noise (e.g., reference resolution warnings) and surfacing actionable issues.
+- **Output**: 
+  - Markdown narrative for human-readable notes.
+  - FHIR Bundle (document type) with Composition as the root, including fullUrl entries pointing to a configurable FHIR base (e.g., kiln.fhir.me for static bundles or a live server for dynamic ones).
+
+The refinement loop is key for FHIR: if validation fails, the LLM is prompted to patch issues (e.g., replace invalid codes), iterating until compliant or budget exhausted.
 
 ```mermaid
-graph TB
-    subgraph Client ["Browser Client (React/Bun)"]
-        UI[Note Editor + Markdown]
-        LLM[LLM Calls (OpenAI/OpenRouter)]
-        LS[localStorage (Config + Notes)]
-        UI --> LLM
-        UI --> LS
-        UI --> EXP[FHIR Export]
-    end
-
-    subgraph Server ["Bun.ts Server (Port 3500)"]
-        TX[Terminology Search<br/>(SQLite FTS5)]
-        VAL[FHIR Validator<br/>(Java Subprocess)]
-    end
-
-    subgraph External ["External Services"]
-        EXTLLM[LLM Provider<br/>(e.g., OpenAI)]
-        EXTFHIR[FHIR Server<br/>(e.g., HAPI)]
-    end
-
-    UI --> EXTLLM
-    UI --> TX
-    UI --> VAL
-    VAL --> EXTFHIR
-    EXP --> EXTFHIR
+graph TD
+    A[User Sketch/Text] --> B[LLM: Generate Outline/Sections]
+    B --> C[Assemble Narrative]
+    C --> D[Optional: Convert to FHIR]
+    D --> E[Generate Resources]
+    E --> F[Validate Structure & Terminology]
+    F --> G[FHIR Bundle or Markdown Note]
+    F --> H{Valid?}
+    H -->|No| I[Refine via LLM]
+    I --> E
+    H -->|Yes| G
 ```
 
-## 3. Prerequisites
+This diagram illustrates the pipeline's modularity: the client can skip server validation for quick authoring, while the server handles heavy lifting for production use. Bundles follow FHIR document standards, with Composition sections linking to resources via relative references resolved to fullUrl using the configured base (ensuring portability across servers).
 
-Kiln requires minimal setup but depends on specific tools for its full functionality. Ensure you have the following installed before proceeding.
+## 2. Quick Start
 
-- **Bun.js (1.0+)**: The JavaScript runtime and package manager. Install via the official script:
-  ```
-  curl -fsSL https://bun.sh/install | bash
-  ```
-  Verify: `bun --version`. No Node.js is needed—Kiln uses Bun exclusively for its speed and native SQLite support.
+### Prerequisites
 
-- **Java JDK 17+**: Required for the FHIR validator (HAPI FHIR runs as a Java subprocess). Install OpenJDK 17 or later:
-  - macOS: `brew install openjdk@17`
-  - Ubuntu/Debian: `sudo apt update && sudo apt install openjdk-17-jdk`
-  - Windows: Download from [Oracle](https://www.oracle.com/java/technologies/downloads/#java17) or [Adoptium](https://adoptium.net/).
-  Verify: `java -version` (should show 17+). Set `JAVA_HOME` if needed.
+Before getting started, ensure you have the following installed:
 
-- **Git**: For cloning the repository and optional vocabulary submodule. Most systems have it pre-installed; verify with `git --version`. If missing:
-  - macOS: `brew install git`
-  - Ubuntu/Debian: `sudo apt install git`
-  - Windows: Download from [git-scm.com](https://git-scm.com/).
+- **Bun 1.0+**: The JavaScript runtime and package manager used for this project. Install via [bun.sh](https://bun.sh/docs/installation).
+- **Java 17+**: Required for the HAPI FHIR validator. Verify with `java -version`. If not installed, download from [Oracle](https://www.oracle.com/java/technologies/downloads/) or use a package manager like Homebrew (`brew install openjdk@17`).
 
-- **Operating System**: macOS, Linux, or Windows (via WSL recommended for native performance). Native Windows is supported but may require adjustments for Java paths.
+No Node.js or other runtimes are needed—Bun handles everything.
 
-- **Hardware**: At least 4GB RAM (validator defaults to 4g heap; adjust via `VALIDATOR_HEAP` env var). Disk space: ~2GB for vocabularies (SQLite + JAR).
+### Steps
 
-- **No Additional Dependencies**: Bun handles all JavaScript/TypeScript compilation. No npm, Yarn, or build tools like Webpack are required.
-
-### Verify Setup
-Run these commands to confirm everything works:
-```
-bun --version  # Should show 1.0+
-java -version  # Should show 17+
-git --version  # Should show 2.0+
-```
-
-If any fail, install the missing tool and retry. For Docker users, see section 8 for a self-contained alternative.
-
-**Notes**: Initial vocabulary loading (Step 3 below) takes 5-10 minutes on first run due to SQLite population. Subsequent starts are instant. If using WSL on Windows, ensure Java is accessible from the WSL environment.
-
-```
-git clone <repo-url> kiln && cd kiln
-          |
-          v
-bun install  (client + server deps)
-          |
-          v
-cd server && bun run scripts/setup.ts  (validator JAR + vocabularies)
-          |
-          v
-bun run scripts/load-terminology.ts  (SQLite: LOINC/SNOMED/RxNorm)
-          |
-          v
-bun run dev  (UI + APIs on port 3000)
-```
-
-## 4. Installation
-
-Follow these steps to get Kiln running locally. The process sets up both the client (browser app) and server (APIs for terminology and validation). Initial vocabulary loading takes 5-10 minutes due to SQLite population (LOINC, SNOMED CT, RxNorm); subsequent runs are near-instant.
-
-### Step 1: Clone and Install
-Clone the repository and install dependencies with Bun (no Node.js required).
-
-```
-git clone https://github.com/jmandel/kiln.git
-cd kiln
-bun install
-```
-
-This installs client deps (React, Tailwind) at root and server deps (SQLite, Java subprocess) in `/server`. Verify: `bun --version` (should be 1.0+).
-
-### Step 2: Setup Server
-Navigate to the server directory and run the setup script. This downloads the FHIR validator JAR and configures the large-vocabularies submodule (pre-built NDJSON for LOINC/SNOMED/RxNorm).
-
-```
-cd server
-bun run scripts/setup.ts
-```
-
-Expected output:
-```
-📥 Downloading FHIR validator...
-✅ Downloaded validator JAR (X MB)
-📥 Adding large vocabularies as git submodule...
-✅ Large vocabularies submodule configured
-```
-
-If Java is not found, ensure JDK 17+ is installed (`java -version`). The script handles JAR download and git setup automatically.
-
-### Step 3: Load Vocabularies
-Populate the local SQLite database with terminology (LOINC, SNOMED CT, RxNorm). This step is required for offline terminology search and is the longest part of setup.
-
-```
-bun run scripts/load-terminology.ts
-```
-
-Expected output:
-```
-📦 Loading latest loinc: large-vocabularies/CodeSystem-loinc-*.ndjson.gz
-✅ Loaded 12345 concepts from http://loinc.org
-📦 Loading latest snomed: large-vocabularies/CodeSystem-snomed-*.ndjson.gz
-✅ Loaded 67890 concepts from http://snomed.info/sct
-📦 Loading latest rxnorm: large-vocabularies/CodeSystem-rxnorm-*.ndjson.gz
-✅ Loaded 23456 concepts from http://www.nlm.nih.gov/research/umls/rxnorm
-📦 Step 5: Optimizing database...
-  • Creating FTS index for designations...
-  • Building FTS index...
-📊 Summary:
-  • Code Systems: 3
-  • Total Concepts: 103891
-  • Total Designations: 456789
-```
-
-The database is saved to `./server/db/terminology.sqlite`. If it fails, check Java availability and disk space (~2GB needed).
-
-### Step 4: Configure (Optional)
-Server configuration uses environment variables in `.env.local` (create if missing; see `.env.example`).
-
-- **Server Env Vars** (in `/server/.env.local`):
-  - `VALIDATOR_HEAP=4g` (Java heap; adjust for low RAM, e.g., 2g).
-  - `TERMINOLOGY_DB_PATH=./server/db/terminology.sqlite` (SQLite location; default).
-
-- **Client Config** (via UI, saved to localStorage):
-  - LLM API key (e.g., OpenAI/OpenRouter).
-  - LLM base URL (e.g., `https://openrouter.ai/api/v1`).
-  - Model (e.g., `openai/gpt-4o-mini`).
-  - FHIR base URL (e.g., `https://r4.ontoserver.csiro.au/fhir`).
-  - Validation services URL (e.g., `http://localhost:3500` for local; auto-detects same-origin otherwise).
-
-Restart the server after env changes. Client settings persist across sessions.
-
-### Verify
-- **Config Check**: `bun run config:check` (validates env vars and config.json).
-- **Tests**: `bun test` (server APIs: terminology search + validator; ~2 min).
-- **Health**: Start dev server (`bun run dev`), visit http://localhost:3000, and check Settings → Status.
-
-If vocabulary loading fails, run `bun run clean` and retry setup/load. For Docker, see section 8.
-
-```
-git clone + bun install
-          |
-          v
-cd server + bun run scripts/setup.ts
-          |
-          v
-bun run scripts/load-terminology.ts  (SQLite populated)
-          |
-          v
-bun run dev  (Client + Server on port 3000)
-```
-
-## 5. Running Kiln
-
-Kiln can be run in several modes, from local development to production deployment. The dev server combines the client and server for convenience, while production builds generate static files for hosting. All modes support the full workflow (authoring, LLM integration, validation). Ports are configurable via the `PORT` environment variable (default: 3000 for client/server combo, 3500 for server-only).
-
-### Development Server (Recommended)
-For local development, use the combined server that starts both the React client (port 3000) and Bun APIs (port 3500). Hot-reload works for client changes; server restarts on file changes.
-
-```
-bun run dev
-```
-
-This launches:
-- **Client UI**: http://localhost:3000 (opens automatically in your default browser).
-- **APIs**: http://localhost:3500 (e.g., `/health`, `/tx/search`).
-
-Expected output:
-```
-🚀 Kiln Server v1.0
-📱 Client: http://localhost:3000
-🔧 APIs: http://localhost:3500
-```
-
-To start fresh (clears caches and rebuilds):
-```
-bun run dev:clean
-```
-
-Hot-reload: Edit TypeScript/React files in `/src` for instant UI updates. Server changes (e.g., in `/server`) require a manual restart. Use `Ctrl+C` to stop.
-
-### Server Only (APIs + Validator)
-Run the server standalone for API testing or headless use (no UI). This exposes terminology search and validation endpoints.
-
-```
-cd server
-bun run dev
-```
-
-Server runs on http://localhost:3500. Test with:
-```
-curl http://localhost:3500/health
-```
-
-Expected response:
-```json
-{
-  "status": "ok",
-  "services": {
-    "terminology": true,
-    "validator": { "ready": true }
-  }
-}
-```
-
-Use this mode for integration testing or when embedding in another app. No client bundling occurs.
-
-### Production Build
-For deployment, generate a static build with embedded configuration. This creates a self-contained `/dist` directory (HTML/JS/CSS) that can be served by any static host.
-
-```
-bun run build
-```
-
-This produces:
-- `dist/config.json`: Complete, validated configuration (no secrets).
-- `dist/index.html`: Main app.
-- `dist/viewer.html`: Standalone viewer for FHIR bundles.
-- `dist/public/`: Assets (CSS, images).
-- `dist/examples/`: Sample notes and bundles.
-- `dist/build-manifest.json`: Build metadata.
-
-Serve the build:
-```
-npx serve dist -l 3001 --cors
-```
-
-Access at http://localhost:3001. The build is optimized (minified, no source maps) and includes `STATIC_CONFIG` injection for offline config. For subpath deployment (e.g., `/kiln/`), set `PUBLIC_KILN_BASE_PATH=/kiln` before building.
-
-Validate the build:
-```
-bun run build:validate
-```
-
-### Docker (Self-Contained)
-Docker provides a containerized version with SQLite, validator, and vocabularies pre-loaded. No local Java or Bun install needed.
-
-1. Build the image:
+1. **Clone and Install Dependencies**:
    ```
-   docker build -t kiln .
+   git clone <repo-url> kiln
+   cd kiln
+   bun install
    ```
+   This installs all JavaScript dependencies for the client and server.
 
-2. Run (maps port 3000 for UI, 3500 for APIs):
+2. **Setup the Server**:
    ```
-   docker run -p 3000:3500 -e PUBLIC_KILN_BASE_URL=... kiln
+   cd server
+   bun run scripts/setup.ts
    ```
+   This script:
+   - Downloads the latest HAPI FHIR validator JAR (~50MB).
+   - Clones the `fhir-concept-publication-demo` repository as a submodule for vocabulary files (LOINC, SNOMED CT, RxNorm).
+   - Creates necessary directories (`db/`, `tests/`).
 
-   - Replace `...` with your LLM base (e.g., `https://openrouter.ai/api/v1`).
-   - Add other `PUBLIC_KILN_*` env vars as needed (see section 6).
-   - For persistence, mount a volume: `-v $(pwd)/data:/app/server/db`.
+   Troubleshooting: If Java is missing, you'll see an error like "java: command not found". Install Java and retry. For git issues, ensure git is installed (`git --version`).
 
-Expected output:
+3. **Load Terminology Database**:
+   ```
+   bun run scripts/load-terminology.ts
+   ```
+   This imports the large vocabulary files into an optimized SQLite database (`server/db/terminology.sqlite`, ~1-2GB). The process may take 5-10 minutes on first run as it processes NDJSON files. It's a one-time setup—future runs reuse the database.
+
+   Notes: The database includes LOINC (lab/observations), SNOMED CT (clinical terms), RxNorm (medications), and FHIR code systems. If you add new vocabularies to `server/large-vocabularies/`, re-run this script. For troubleshooting, check console output for import errors (e.g., missing files).
+
+4. **Run the Development Server**:
+   ```
+   bun run dev
+   ```
+   This starts the full-stack server at http://localhost:3000. The UI is available immediately, with APIs on the same port. Hot reload is enabled for rapid development.
+
+   - Open http://localhost:3000 in your browser.
+   - Author a note: Enter a patient sketch (e.g., "52F with chest pain, onset 2 weeks ago") and generate narrative or FHIR.
+   - Validate: Click to generate and validate—watch console for LLM calls and errors.
+
+   Troubleshooting: 
+   - If port 3000 is in use, set `PORT=3001` and run again.
+   - Java validator startup takes ~30 seconds; check logs for "Validator server ready".
+   - For API-only mode: `cd server && bun run dev` (runs on port 3500; access UI separately).
+
+5. **Test the Setup**:
+   - Run tests: `bun test` (unit + integration for client/server).
+   - Validate config: `bun run scripts/validate-env.ts` (checks PUBLIC_KILN_* vars).
+   - Health check: `curl http://localhost:3000/health` (should return `{status: 'ok'}`).
+
+### Notes
+
+- **Terminology Loading**: This is a one-time step after setup or vocabulary updates. The SQLite database is self-contained and optimized with FTS5 for fast searches. Back it up if needed (`cp server/db/terminology.sqlite backup.sqlite`).
+- **Docker for Development**: No Docker required for local dev, but a Dockerfile is provided for containerized runs (e.g., `docker build -t kiln . && docker run -p 3000:3500 kiln`). Use `-e` flags for env vars.
+- **Production Builds**: For deployment, run `bun run build` to generate a static site in `dist/` (includes injected config). Serve with any static server (e.g., `npx serve dist -l 3001 --cors`).
+
+## 3. Configuration
+
+All configuration for Kiln is handled via environment variables prefixed with `PUBLIC_KILN_`. These are used at build time to generate a static `config.json` file injected into the HTML. Client-side settings (e.g., API keys) are managed per-browser via localStorage—no server-side storage is involved. This approach keeps the app lightweight and secure, with no need for `.env` files in production (except for server deployment).
+
+### Key Variables
+
+- **PUBLIC_KILN_LLM_URL** (required): The endpoint for your LLM provider. For example, `https://openrouter.ai/api/v1` (OpenRouter) or `https://api.openai.com/v1` (direct OpenAI). This must be a valid HTTPS URL. The client will append paths like `/chat/completions` for LLM calls.
+
+- **PUBLIC_KILN_MODEL** (required): The model identifier in "provider/model" format. Examples: `openai/gpt-4o-mini` (OpenAI via OpenRouter), `meta-llama/llama-3.1-8b-instruct:free` (Llama via OpenRouter). Must match your provider's naming convention.
+
+- **PUBLIC_KILN_TEMPERATURE** (optional, default 0.8): Controls LLM creativity. Range: 0.0 (deterministic) to 2.0 (more varied). Values outside 0-2 are clamped. Useful for narrative generation (higher for creative sketches) vs. FHIR (lower for precision).
+
+- **PUBLIC_KILN_FHIR_BASE_URL** (required): The base URL for generating `fullUrl` in FHIR Bundles (e.g., `https://kiln.fhir.me` or your live FHIR server). This ensures valid references in static bundles; no runtime calls are made unless configured. Must start with `http://` or `https://`.
+
+- **PUBLIC_KILN_VALIDATION_SERVICES_URL** (optional, default empty): URL for a remote FHIR validator (e.g., `https://your-fhir-server/validate`). If empty, the app auto-detects same-origin (e.g., `/validate` on the server). Use for advanced profiles or live server validation.
+
+- **PUBLIC_KILN_FHIR_GEN_CONCURRENCY** (optional, default 1): Number of parallel threads for generating/refining FHIR resources (1-8). Higher values speed up batch processing but increase LLM load. Set to 1 for low-resource environments.
+
+- **PUBLIC_KILN_MAX_RETRIES** (optional, default 3): Maximum retries for LLM calls (1-10). Useful for handling rate limits or transient errors.
+
+- **PUBLIC_KILN_LLM_MAX_CONCURRENCY** (optional, default auto): Maximum concurrent LLM requests (auto-scales based on `PUBLIC_KILN_FHIR_GEN_CONCURRENCY`). Adjust for your provider's limits.
+
+- **PUBLIC_KILN_DEBUG_MODE** (optional, default false): Enables verbose logging in browser console and server. Set to `true` for development.
+
+### Validation Script
+
+Run `bun run scripts/validate-env.ts` to check your environment. It generates a preview config and flags issues:
+
 ```
-🚀 Kiln Server v1.0
-📱 Client: http://localhost:3000
-🔧 APIs: http://localhost:3500
+🔍 Validating environment for Kiln...
+
+📋 Generated Configuration Preview:
+==================================================
+Environment: development
+Source: runtime
+Version: 1.0
+
+LLM Base URL: https://openrouter.ai/api/v1
+Model: openai/gpt-4o-mini
+Temperature: 0.8
+
+FHIR Base URL: https://kiln.fhir.me
+Validation Services: [auto-detect]
+FHIR Concurrency: 1
+
+Debug Mode: false
+Max Retries: 3
+LLM Max Concurrency: 4
+
+Generated: 10/15/2024, 3:45:00 PM
+
+==================================================
+✅ All validations passed!
+
+🚀 Ready to build or deploy
+
+💡 Commands:
+   bun run dev              # Development server
+   bun run build            # Production static build
+   bun run preview          # Production server
+   bun run serve:static     # Serve static build
 ```
 
-Access UI at http://localhost:3000. The image is ~500MB (includes JAR, SQLite). For custom configs, extend the Dockerfile or use env vars.
+If issues are found (e.g., missing URLs), it will list them and suggest fixes.
 
-### Ports
-- **Client**: 3000 (UI + static assets).
-- **Server**: 3500 (APIs: `/tx/*` for terminology, `/validate` for FHIR).
-- **Customization**: Set `PORT=8080` to change (affects both in dev mode). For separate ports, use server-only mode.
+### Notes
 
-### Diagram
-```
-Client (3000) ──► LLM (External) ──► Note → FHIR
-    │
-    └──► Server (3500) ──► SQLite (Terminology)
-               │
-               └──► Java Validator ──► FHIR Validation
-```
+- **Client vs. Server Config**: Environment variables configure the server and build process (e.g., base URLs for bundles). API keys and model selection are set in-browser via localStorage—each user configures independently. This avoids exposing sensitive data in builds.
+- **Build-Time Injection**: On `bun run build`, all `PUBLIC_KILN_*` vars are baked into `dist/config.json` and injected as `window.STATIC_CONFIG` for offline use. No runtime env vars are needed post-build.
+- **Model Naming**: Use full paths like `openai/gpt-4o-mini` for OpenRouter or `gpt-4o-mini` for direct OpenAI. Check your provider's docs for exact formats.
+- **Example .env File**: Create `.env.local` (git-ignored) with your settings:
 
-**Notes**: Hot-reload in dev mode supports client changes (React/TSX); server requires restart. For clean starts, use `bun run dev:clean` (removes `dist/`, node_modules/.cache, bun.lockb). In production, the static build serves everything from one port (no separate server needed). Docker is ideal for testing or air-gapped environments—ensure ports don't conflict.
-
-## 6. Configuration
-
-Kiln's configuration is split between server-side environment variables (for infrastructure) and client-side settings (for user-specific secrets and endpoints). Server vars control the runtime environment (e.g., Java heap, database path), while client settings (stored in localStorage) handle API keys and service URLs. This separation ensures the server remains stateless and portable, with no shared secrets or user data. Changes to server env vars require a restart; client settings update instantly via the UI.
-
-### Server-Side Environment Variables
-Place these in `/server/.env.local` (create if missing; see `.env.example` for format). These affect the server process (APIs, validator) and are baked into static builds.
-
-- **`PUBLIC_KILN_BASE_URL`**: Base URL for the LLM provider API. Required for LLM calls (e.g., generation, refinement).
-  - Example: `https://openrouter.ai/api/v1`
-  - Default: None (build fails without it).
-  - Purpose: Endpoint for OpenAI-compatible APIs; must support `/chat/completions`.
-
-- **`PUBLIC_KILN_MODEL`**: Name of the LLM model to use. Required; specify in "provider/model" format.
-  - Example: `openai/gpt-4o-mini` or `meta/llama-3.1-8b-instruct:free`
-  - Default: None (build fails without it).
-  - Purpose: Controls creativity vs. precision (e.g., 0.8 temperature balances clinical tone).
-
-- **`PUBLIC_KILN_TEMPERATURE`**: Sampling temperature for LLM calls (0.0 = deterministic, 2.0 = creative).
-  - Example: `0.8`
-  - Default: 0.8.
-  - Purpose: Lower for precise FHIR generation; higher for narrative variety.
-
-- **`PUBLIC_KILN_FHIR_BASE_URL`**: Base URL for the FHIR server (e.g., for validation or external resources).
-  - Example: `https://r4.ontoserver.csiro.au/fhir`
-  - Default: None (build fails without it).
-  - Purpose: Used for Bundle resolution and external validation (if not local).
-
-- **`PUBLIC_KILN_VALIDATION_SERVICES_URL`**: Endpoint for FHIR validation (e.g., `/validate`).
-  - Example: `http://localhost:3500` (local server) or `https://your-validator.com/validate`
-  - Default: Auto-detect (same-origin as client).
-  - Purpose: Points to the Bun server or remote validator; empty string uses local Java subprocess.
-
-- **`PUBLIC_KILN_FHIR_GEN_CONCURRENCY`**: Parallel resource generation (1 = sequential, 8 = max).
-  - Example: `4`
-  - Default: 1.
-  - Purpose: Speeds up FHIR bundle creation (e.g., multiple Observations); balance with LLM rate limits.
-
-- **`VALIDATOR_HEAP`**: Java heap size for the FHIR validator (adjust for low RAM).
-  - Example: `2g`
-  - Default: 4g.
-  - Purpose: Handles large Bundles; increase if validation OOMs.
-
-- **`TERMINOLOGY_DB_PATH`**: Path to the SQLite terminology database.
-  - Example: `./server/db/terminology.sqlite`
-  - Default: `./server/db/terminology.sqlite`.
-  - Purpose: Local storage for LOINC/SNOMED/RxNorm; mount as volume in Docker.
-
-After editing, restart the server (`bun run dev`). For static builds, re-run `bun run build` to regenerate `dist/config.json`.
-
-### Client-Side Settings (UI)
-These are configured via the Settings panel in the browser UI and persist in localStorage (per-browser, not shared). They override server defaults for flexibility (e.g., per-user API keys).
-
-- **API Key**: LLM provider key (e.g., OpenAI or OpenRouter). Enter in Settings → LLM. Stored encrypted in localStorage.
-  - Purpose: Authenticates LLM calls; required for generation/refinement. Clear localStorage to reset.
-
-- **FHIR Base URL**: Overrides `PUBLIC_KILN_FHIR_BASE_URL` for this browser session.
-  - Example: `https://your-fhir-server/fhir`
-  - Purpose: Allows testing different FHIR endpoints without rebuild.
-
-- **Validation Services URL**: Overrides `PUBLIC_KILN_VALIDATION_SERVICES_URL`.
-  - Example: `https://your-validator.com/validate`
-  - Purpose: Switch between local server and remote validators.
-
-- **Model and Temperature**: Per-session overrides for the LLM (stored in localStorage).
-  - Purpose: Experiment with models without server restart.
-
-Access Settings via the gear icon. Changes apply immediately—no restart needed. To reset all client settings, clear browser localStorage (DevTools → Application → Storage → Clear).
-
-### Mental Model
-Think of server env vars as "infrastructure plumbing" (fixed at build/runtime, affect all users) and client settings as "user preferences" (dynamic, per-browser). The server provides defaults via `config.json` (injected into static builds), but localStorage takes precedence for secrets (API keys) and endpoints (LLM/FHIR URLs). No data flows between users—each browser is isolated. For production, set server vars securely (e.g., via Docker env or cloud secrets); client keys stay local.
-
-### Configuration Diagram
-
-| Variable | Purpose | Example Value | Default | Client Override? |
-|----------|---------|---------------|---------|------------------|
-| `PUBLIC_KILN_BASE_URL` | LLM API endpoint | `https://openrouter.ai/api/v1` | None (required) | Yes (UI) |
-| `PUBLIC_KILN_MODEL` | LLM model | `openai/gpt-4o-mini` | None (required) | Yes (UI) |
-| `PUBLIC_KILN_TEMPERATURE` | LLM creativity | `0.8` | 0.8 | Yes (UI) |
-| `PUBLIC_KILN_FHIR_BASE_URL` | FHIR server base | `https://r4.ontoserver.csiro.au/fhir` | None (required) | Yes (UI) |
-| `PUBLIC_KILN_VALIDATION_SERVICES_URL` | Validator endpoint | `http://localhost:3500` | Auto-detect | Yes (UI) |
-| `PUBLIC_KILN_FHIR_GEN_CONCURRENCY` | Parallel generation | `4` | 1 | No |
-| `VALIDATOR_HEAP` | Java heap size | `2g` | 4g | No |
-| `TERMINOLOGY_DB_PATH` | SQLite path | `./server/db/terminology.sqlite` | `./server/db/terminology.sqlite` | No |
-
-**Notes**: Table uses Markdown for clarity. Emphasize: Server vars in `.env.local` (git-ignored); client via UI (localStorage). For static builds, env vars generate `dist/config.json`—no localStorage needed for defaults. Warn: Expose no secrets in server env (e.g., use proxy for LLM keys).
-
-## 7. Development
-
-Kiln's development workflow leverages Bun's fast bundling and testing for rapid iteration. The project maintains high test coverage (>80% for server APIs) and uses Prettier for consistent formatting. Client changes (React/TSX) hot-reload automatically; server updates (Bun.ts) require restart. All tests focus on core functionality: terminology search, FHIR validation, and LLM integration (mocked for offline testing).
-
-### Running Tests
-Kiln includes unit and integration tests for the server (terminology search, validator) and basic client smoke tests. Tests use Bun's native test runner and mock external dependencies (LLM, FHIR server) for reliability.
-
-- **All Tests**: Run the full suite (server-focused; client tests are lightweight):
   ```
-  bun test
-  ```
-  Expected: ~2 minutes; coverage report in console. Tests validate FTS5 search (e.g., fuzzy matching across LOINC/SNOMED/RxNorm) and validator responses (structure, codings).
-
-- **Watch Mode** (Dev): Auto-rerun on file changes:
-  ```
-  bun test --watch
+  PUBLIC_KILN_LLM_URL=https://openrouter.ai/api/v1
+  PUBLIC_KILN_MODEL=openai/gpt-4o-mini
+  PUBLIC_KILN_TEMPERATURE=0.7
+  PUBLIC_KILN_FHIR_BASE_URL=https://kiln.fhir.me
+  PUBLIC_KILN_VALIDATION_SERVICES_URL=
+  PUBLIC_KILN_FHIR_GEN_CONCURRENCY=2
+  PUBLIC_KILN_MAX_RETRIES=3
+  PUBLIC_KILN_LLM_MAX_CONCURRENCY=4
+  PUBLIC_KILN_DEBUG_MODE=true
   ```
 
-- **Specific Suites**:
-  - Terminology: `bun test server/tests/terminology.test.ts` (search accuracy, edge cases like empty queries).
-  - Validator: `bun test server/tests/validator.test.ts` (structure validation, batch processing).
-  - Coverage: `bun test --coverage` (generates reports; aim for 80%+).
+  Source from `.env.example` and customize. For production, set vars before building (e.g., via CI/CD).
 
-Tests generate JSON reports (`server/tests/*-report.json`) for inspection (e.g., search hits, validation issues). FTS5 indexing ensures sub-50ms queries; validator tests use a headless Java subprocess.
+- **Security**: Never commit `.env.local` (git-ignored). In production, use platform secrets (e.g., Vercel env vars) for build-time config. Client-side localStorage is per-device and not shared.
 
-### Adding Vocabularies
-To extend terminology search (e.g., add UCUM or custom codes), use NDJSON format (gzipped for efficiency). Place files in `server/large-vocabularies/` and reload the database.
+## 4. Running the App
 
-- **Format**: NDJSON.gz with first line as CodeSystem JSON, subsequent lines as Concept objects:
+Kiln supports flexible execution modes, from local development with hot reload to production deployments. The default setup uses Bun for both the client and server, with no additional runtimes required beyond Java 17+ for validation. All modes assume you've completed the setup steps (install, server setup, terminology loading).
+
+### Development
+
+For local development, use Bun's built-in hot reload to iterate quickly. The server bundles the UI and APIs, making it easy to test the full workflow.
+
+- **Full Stack (Recommended)**: 
   ```
-  {"resourceType":"CodeSystem","url":"http://example.com","version":"1.0"}
-  {"code":"A01","display":"Example","designation":[{"use":{"code":"short"},"value":"Example A01"}]}
-  {"code":"B01","display":"Example B","property":[{"code":"category","valueCode":"A"}]}
+  bun run dev
   ```
-  Supports `designation` (for search) and `property` (for filters/relations).
+  This launches a single server at http://localhost:3000, serving the React UI with proxied API calls to the internal validator (port 3500). Hot reload is enabled for both client and server changes—edit TypeScript files and see updates instantly in the browser. The validator starts asynchronously (~30 seconds); use the health endpoint (`curl http://localhost:3000/health`) to confirm readiness. This mode is ideal for end-to-end testing: author sketches, generate narratives/FHIR, and validate in one place.
 
-- **Load**: Run the loader to populate SQLite:
+- **API Only**:
   ```
-  bun run server/scripts/load-terminology.ts
+  cd server
+  bun run dev
   ```
-  Expected: `✅ Loaded X concepts from http://example.com`. Re-run after adding files (overwrites existing).
+  This runs the server on http://localhost:3500 without the UI. Use it for headless testing or integration with external clients. Access the UI separately by serving the built static files (e.g., `npx serve . -l 3000 --cors` from the root) and pointing it to the API at http://localhost:3500. Useful for API-focused development or when running the UI on a different port.
 
-- **Custom Systems**: Ensure `url` matches FHIR CodeSystem (e.g., `http://example.com`). For hierarchical (SNOMED-like), use `property` with `code: "parent"`.
+In development, the server logs to the console (set `PUBLIC_KILN_DEBUG_MODE=true` for verbose output). Client config (e.g., API keys) is set in-browser via localStorage—changes persist across reloads but clear in incognito/private mode.
 
-- **FTS5 Optimization**: The loader creates FTS5 indexes on `designations` for full-text search. Large systems (>50k concepts) index in ~1-2 min; use `PRAGMA optimize;` for production.
+### Production
 
-### Contributing
-Contributions are welcome! Focus on improving LLM prompts, validation logic, or vocabulary integration. Fork the repo, make changes, and submit PRs with tests.
-
-- **Workflow**:
-  1. Fork and clone: `git clone <your-fork> && cd kiln && bun install`.
-  2. Branch: `git checkout -b feature/add-vocabulary`.
-  3. Develop: Edit in `/src` (client) or `/server` (APIs).
-  4. Test: `bun test` (ensure no regressions).
-  5. Format: `bun run format` (Prettier for TS/JS/JSON/MD/YAML).
-  6. Lint: `bun run lint:fix` (enforces consistent style).
-  7. Commit: Use semantic messages (e.g., "feat: add UCUM support").
-  8. PR: Include test coverage and docs updates.
-
-- **Guidelines**:
-  - Keep PRs focused (one feature/fix).
-  - Add tests for new functionality (e.g., new search filters).
-  - Update README for user-facing changes (e.g., new env vars).
-  - No breaking changes to APIs without discussion.
-
-Test coverage targets 80%+ for server (search perf, validation); client tests are smoke-only (e.g., UI rendering). Use `bun test --coverage` to verify.
-
-### Building
-For production or custom deployments, generate a static build with embedded configuration.
+For production, build a static bundle for deployment or run a server instance. Static mode is recommended for simplicity (no runtime server needed), while server mode suits environments requiring custom validation.
 
 - **Static Build**:
   ```
   bun run build
   ```
-  Creates `/dist` with minified assets, `config.json` (baked-in env vars), and `build-manifest.json`. Validates output (required files, config integrity).
+  This generates a self-contained `dist/` directory with the complete app, including injected configuration from environment variables. The build:
+  - Compiles TypeScript/React to optimized JS/CSS.
+  - Embeds `config.json` as `window.STATIC_CONFIG` for offline use.
+  - Copies public assets and examples.
+  - Validates the output (required files, config integrity).
 
-- **Validate Build**:
+  The result is a fully static site deployable to any CDN or static host (Netlify, Vercel, GitHub Pages, S3). No server is needed post-build—the client handles LLM calls directly and uses local validation if no server is available.
+
+- **Serve Static Build**:
   ```
-  bun run build:validate
+  bun run serve:static
   ```
-  Checks for missing files and config errors (e.g., invalid URLs).
-
-- **Custom Build**: Set `PUBLIC_KILN_*` env vars before building (e.g., `PUBLIC_KILN_MODEL=your-model bun run build`). For subpaths (e.g., `/app/`), use `PUBLIC_KILN_BASE_PATH=/app`.
-
-The build is ~500KB (gzipped) and runs offline (after vocabulary load). No server needed for core features, but APIs enhance validation/search.
-
-### Debugging
-Debugging focuses on client (browser tools) and server (console/logs). Use Bun's fast restarts for iteration.
-
-- **Server Logs**:
-  - Console output shows startup (e.g., "Loaded X concepts"), requests (e.g., `/tx/search`), and errors (e.g., validator OOM).
-  - Verbose: Set `DEBUG=* bun run dev` (includes SQLite queries, validator output).
-  - Validator: Monitor Java logs in server console (e.g., "Listening on port 8080").
-
-- **Client Debugging**:
-  - Browser DevTools: Inspect localStorage (Settings → keys like `kiln.apiKey`, `kiln.fhirBase`).
-  - Network Tab: Monitor LLM calls (`/chat/completions`), API requests (`/tx/search`, `/validate`).
-  - Console: Logs LLM responses, validation issues (e.g., "Coding unresolved: hypertension").
-
-- **Validator Debugging**:
-  - Set `DEBUG=validator:*` env var: Logs Java subprocess (e.g., "Validating Bundle...").
-  - Heap Issues: Increase `VALIDATOR_HEAP=6g` if OOM; check server console for "OutOfMemoryError".
-  - Test Standalone: `cd server && bun run scripts/setup.ts` (downloads JAR); run `java -jar validator.jar -version 4.0` manually.
-
-- **Common Debug Steps**:
-  - Clear Caches: `bun run clean` (removes `dist/`, bun.lockb).
-  - Reset Client: Browser DevTools → Application → Storage → Clear localStorage.
-  - Vocabulary: Verify `bun run server/scripts/load-terminology.ts` (check `./server/db/terminology.sqlite` size ~2GB).
-  - Ports: Ensure 3000/3500 free; use `lsof -i :3000` to kill conflicts.
-
-For LLM issues, test endpoints directly (e.g., `curl http://localhost:3500/tx/search -d '{"queries":["hypertension"]}'`). FTS5 ensures fast search (sub-50ms); validator latency is ~1-5s for Bundles.
-
-**Notes**: Include commands for common fixes (e.g., `bun run clean`). Mention FTS5 perf (SQLite indexes on `designations` for fuzzy search). No subsections beyond bullets for brevity.
-
-## 8. Deployment
-
-Kiln supports multiple deployment strategies, from simple static hosting to containerized production setups. The static build (recommended for most cases) serves the client directly from a CDN, while Docker provides a self-contained option with the server included. For high-traffic scenarios, deploy the Bun server on a VPS or cloud platform. All modes require setting `PUBLIC_KILN_*` environment variables for LLM and FHIR endpoints—see section 6 for details. The SQLite database (vocabularies) persists via volume mounts in containerized or server deployments.
-
-### Static Hosting (Recommended)
-Static hosting is the simplest option, leveraging the optimized build (`/dist`) for zero-server maintenance. The client runs entirely in the browser, with config injected at build time (`dist/config.json`). No runtime server needed, but ensure your host supports CORS for API calls (LLM/FHIR).
-
-- **Build**: Generate the production bundle with embedded configuration.
+  Or use any static server:
   ```
-  bun run build
+  npx serve dist -l 3001 --cors
+  python -m http.server 3001 dist/
   ```
-  This creates `/dist` (~500KB gzipped) with `config.json`, HTML/JS/CSS, and examples. Validates output automatically.
+  This serves the built app locally for testing. For production, deploy `dist/` to your preferred platform. Ensure CORS is enabled if the app calls external APIs (e.g., LLM providers). The app auto-detects the server for validation (same-origin `/validate`) or falls back to client-side checks.
 
-- **Deploy**:
-  - **Netlify/Vercel**: Drag `/dist` to deploy (auto-detects static files). Set `PUBLIC_KILN_*` as site environment variables in the dashboard (e.g., Netlify → Site settings → Environment variables).
-  - **GitHub Pages**: Push `/dist` to a `gh-pages` branch or use Actions to build/deploy.
-  - **Cloud Storage**: Upload to S3, GCS, or similar; enable public access and CORS (allow `*` for dev, restrict for prod).
-  - **Any Static Server**: Use `npx serve dist -l 3001 --cors` locally or Apache/Nginx.
-
-- **Config**: Environment variables are baked into `config.json` during build. For subpath deployment (e.g., `/kiln/`), set `PUBLIC_KILN_BASE_PATH=/kiln` before building. Client-side overrides (API keys) use localStorage.
-
-- **Scaling**: Infinite (CDN handles load). For custom domains, update `config.json` post-build or use a proxy to rewrite paths.
-
-### Docker (Self-Contained)
-Docker bundles the client, server, SQLite database, and validator into a single container. Ideal for testing, air-gapped environments, or quick deploys without local setup. The image includes pre-loaded vocabularies (~2GB) and runs on port 3000 (UI) + 3500 (APIs).
-
-- **Build**: Create the image from the Dockerfile (includes all deps: Bun, Java, SQLite).
+- **Server Mode**:
   ```
-  docker build -t kiln:latest .
+  bun run preview
   ```
-  Tag with version: `docker build -t kiln:v1.0 .`.
+  This runs the production server on http://localhost:3500 (API + UI proxy). It's optimized for performance but requires the runtime environment (Bun + Java). Use for deployments where dynamic validation is needed (e.g., custom profiles or high-volume processing). Scale by running multiple instances behind a load balancer.
+
+### Docker
+
+Docker simplifies deployment across environments, bundling Bun, Java, and the pre-loaded terminology database. The provided Dockerfile creates a minimal image (~200MB) with the server running on port 3500.
+
+- **Build**:
+  ```
+  docker build -t kiln .
+  ```
+  This builds the image, including:
+  - Pre-loaded SQLite database (LOINC/SNOMED/RxNorm).
+  - Validator JAR and Java runtime.
+  - All dependencies installed.
 
 - **Run**:
   ```
-  docker run -p 3000:3000 -p 3500:3500 \
-    -e PUBLIC_KILN_BASE_URL=https://openrouter.ai/api/v1 \
+  docker run -p 3000:3500 kiln
+  ```
+  Access the UI at http://localhost:3000 (proxies to internal API). The container is stateless—scale horizontally with replicas.
+
+- **With Environment Variables**:
+  ```
+  docker run \
+    -e PUBLIC_KILN_LLM_URL=https://openrouter.ai/api/v1 \
     -e PUBLIC_KILN_MODEL=openai/gpt-4o-mini \
-    -e PUBLIC_KILN_FHIR_BASE_URL=https://r4.ontoserver.csiro.au/fhir \
-    kiln:latest
+    -e PUBLIC_KILN_FHIR_BASE_URL=https://your-fhir-server \
+    -p 3000:3500 \
+    kiln
   ```
-  - Ports: 3000 (UI), 3500 (APIs).
-  - Env Vars: Set `PUBLIC_KILN_*` as shown (required for LLM/FHIR).
-  - Persistence: Mount a volume for the database: `-v $(pwd)/data:/app/server/db` (SQLite WAL/SHM files).
+  Set vars for custom config. For static builds in Docker, mount `dist/` and serve with nginx (see Dockerfile comments).
 
-- **Advanced**:
-  - **Multi-Instance**: Run multiple containers behind a load balancer (stateless except SQLite; use shared volume or replicas).
-  - **Custom Config**: Extend Dockerfile or use `--env-file` for `.env.local`.
-  - **Health Check**: Docker supports built-in health (curl `/health`); add to `docker-compose.yml` for orchestration.
-  - **Docker Compose**: Example `docker-compose.yml`:
-    ```yaml
-    version: '3.1'
-    services:
-      kiln:
-        image: kiln:latest
-        ports:
-          - "3000:3000"
-          - "3500:3500"
-        environment:
-          - PUBLIC_KILN_BASE_URL=https://openrouter.ai/api/v1
-          - PUBLIC_KILN_MODEL=openai/gpt-4o-mini
-          - PUBLIC_KILN_FHIR_BASE_URL=https://r4.ontoserver.csiro.au/fhir
-        volumes:
-          - ./data:/app/server/db  # Persistent SQLite
-    ```
+Notes: Port 3000 is for the UI (with API proxy); port 3500 is the raw API. In Docker, the container runs as non-root (UID 1000) for security. Use volumes for persistent logs (`-v /host/logs:/app/logs`). For Kubernetes, expose 3500 as the service port and 3000 for UI ingress.
 
-- **Image Size**: ~500MB (Bun runtime + JAR + SQLite). Pull with `docker pull jmandel/kiln:latest` (pre-built on Docker Hub).
+### Notes
 
-### VPS/Cloud
-For production or custom scaling, deploy the Bun server on a VPS (e.g., DigitalOcean, AWS EC2) or cloud platform (e.g., Render, Fly.io). The server handles APIs (search/validation); serve the static build from the same host or CDN.
+- **Port Usage**: Development uses port 3000 for the full app (UI + proxied APIs). API-only mode uses 3500 directly. In production static mode, serve on any port—the app detects the server via same-origin `/health`. Avoid conflicts by setting `PORT=3001` (applies to both dev and preview).
+- **LocalStorage for Client Config**: API keys, model selection, and session settings are stored in browser localStorage. They persist across reloads but clear in incognito/private browsing mode. For multi-user setups, each browser instance is isolated—no shared state.
+- **Validator Startup**: The Java validator takes ~30 seconds to initialize on first run. Monitor logs for "Validator server ready" and use `/health` to confirm. In Docker, the image includes a healthcheck for this.
+- **Performance**: Static builds are ~5MB gzipped (fast CDN delivery). Server mode uses in-memory SQLite (handles 1000+ concurrent searches). For high load, consider read replicas or external validators (configure via PUBLIC_KILN_VALIDATION_SERVICES_URL).
 
-- **Setup**:
-  - Clone repo: `git clone <repo> && cd kiln && bun install`.
-  - Build static assets: `bun run build` (optional; serve `/dist` via Nginx).
-  - Run server: `bun run preview` (port 3500; production mode).
-  - Use PM2 for process management: `npm i -g pm2 && pm2 start "bun run preview" --name kiln`.
-  - Systemd (Linux): Create `/etc/systemd/system/kiln.service`:
-    ```ini
-    [Unit]
-    Description=Kiln Server
-    After=network.target
+## 5. API Endpoints
 
-    [Service]
-    Type=simple
-    User=www-data
-    WorkingDirectory=/path/to/kiln
-    Environment=NODE_ENV=production
-    ExecStart=/usr/local/bin/bun run preview
-    Restart=always
+The server exposes a unified API for terminology search and FHIR validation, designed for stateless, on-demand use. All endpoints are prefixed with `/api` by default (configurable via server options) and support CORS (origin: `*` by default). The API uses JSON for requests/responses and is optimized for batch operations to reduce round trips. Base URL in development: http://localhost:3500/api. For production, adjust the port and ensure HTTPS.
 
-    [Install]
-    WantedBy=multi-user.target
-    ```
-    Enable: `sudo systemctl enable kiln && sudo systemctl start kiln`.
+No authentication is required—intended for development and trusted environments. The backend uses SQLite with FTS5 indexing for fast terminology lookups and the HAPI FHIR validator (Java) for structural checks. Requests are processed asynchronously; large batches may take 1-30 seconds depending on complexity.
 
-- **Volume Mount**: Persist SQLite: Mount `./server/db` as a volume (e.g., AWS EBS, DigitalOcean Volumes). Ensure read/write access for WAL/SHM files.
+### Terminology Search (/tx/*)
 
-- **Env Vars**: Set `PUBLIC_KILN_*` in your deployment platform (e.g., Render dashboard). For HTTPS, use a reverse proxy (Nginx/Caddy) with Let's Encrypt.
+These endpoints handle code lookups across loaded vocabularies (LOINC, SNOMED CT, RxNorm, and FHIR systems). Searches are fuzzy and ranked by relevance, supporting batch queries for efficiency.
 
-- **Scaling Notes**: The server is stateless except for SQLite (single writer; use read replicas for >100 QPS). Validator is CPU-bound—scale horizontally (multiple instances, shared DB). Monitor Java heap via logs; adjust `VALIDATOR_HEAP` for large Bundles. For high load, offload validation to a remote service (set `PUBLIC_KILN_VALIDATION_SERVICES_URL`).
-
-- **Reverse Proxy Example** (Nginx for VPS):
+- **`POST /tx/search`**  
+  Performs full-text search for clinical terms, returning ranked hits from specified systems. Ideal for autocompletion or terminology suggestions during authoring.  
+  **Body** (JSON):  
+  ```json
+  {
+    "queries": ["diabetes", "hypertension"],  // Required: Array of search terms (1-10 recommended)
+    "systems": ["http://loinc.org", "http://snomed.info/sct"],  // Optional: Filter by system URLs
+    "limit": 20  // Optional: Max results per query (default 20, max 200)
+  }
+  ```  
+  **Response** (JSON):  
+  ```json
+  {
+    "results": [
+      {
+        "query": "diabetes",
+        "hits": [
+          {
+            "system": "http://loinc.org",
+            "code": "LA10529-8",
+            "display": "Diabetes",
+            "score": -9.57
+          }
+        ],
+        "count": 25,
+        "fullSystem": false,  // True if all results are from a small system (complete list)
+        "guidance": "No matches found? Try broader terms."  // Optional: Search tips
+      }
+    ],
+    "count": 2  // Number of queries processed
+  }
+  ```  
+  **Example (curl)**:  
   ```
-  server {
-    listen 80;
-    server_name your-domain.com;
+  curl -X POST http://localhost:3500/api/tx/search \
+    -H "Content-Type: application/json" \
+    -d '{"queries": ["diabetes"], "systems": ["http://snomed.info/sct"], "limit": 10}'
+  ```  
+  Notes: Scores are BM25 relevance (negative = higher rank). For small systems (<200 concepts), `fullSystem: true` indicates a complete list. Guidance appears for zero/low results.
 
-    # Static assets (from build)
-    location / {
-      root /path/to/kiln/dist;
-      try_files $uri $uri/ /index.html;
-    }
+- **`POST /tx/codes/exists`**  
+  Checks if specific codes exist in the loaded vocabularies, with canonical display and normalization. Useful for validating user-entered codes or batch checks during FHIR generation.  
+  **Body** (JSON):  
+  ```json
+  {
+    "items": [
+      {"system": "http://loinc.org", "code": "2345-7"},
+      {"system": "http://snomed.info/sct", "code": "38341003"}
+    ]
+  }
+  ```  
+  **Response** (JSON):  
+  ```json
+  {
+    "results": [
+      {
+        "system": "http://loinc.org",
+        "code": "2345-7",
+        "exists": true,
+        "display": "Glucose [Mass/volume] in Serum or Plasma",
+        "normalizedSystem": "http://loinc.org"
+      },
+      {
+        "system": "http://snomed.info/sct",
+        "code": "38341003",
+        "exists": true,
+        "display": "Hypertensive disorder, systemic arterial (disorder)",
+        "normalizedSystem": "http://snomed.info/sct"
+      }
+    ]
+  }
+  ```  
+  **Example (curl)**:  
+  ```
+  curl -X POST http://localhost:3500/api/tx/codes/exists \
+    -H "Content-Type: application/json" \
+    -d '{"items": [{"system": "http://loinc.org", "code": "2345-7"}]}'
+  ```  
+  Notes: `normalizedSystem` resolves aliases (e.g., "loinc" → "http://loinc.org"). Empty display means no preferred term found. Batch up to 100 items for efficiency.
 
-    # APIs (Bun server)
-    location /api {
-      proxy_pass http://localhost:3500;
-      proxy_set_header Host $host;
-      proxy_set_header X-Real-IP $remote_addr;
+- **`GET /tx/capabilities`**  
+  Returns metadata about supported code systems, including sizes for query planning. No body required.  
+  **Response** (JSON):  
+  ```json
+  {
+    "supportedSystems": [
+      "http://loinc.org",
+      "http://snomed.info/sct",
+      "http://www.nlm.nih.gov/research/umls/rxnorm"
+    ],
+    "bigSystems": [
+      "http://snomed.info/sct",
+      "http://loinc.org"
+    ],
+    "builtinFhirCodeSystems": [
+      "http://hl7.org/fhir/CodeSystem/administrative-gender"
+    ]
+  }
+  ```  
+  **Example (curl)**:  
+  ```
+  curl http://localhost:3500/api/tx/capabilities
+  ```  
+  Notes: Use `bigSystems` to avoid exhaustive searches on large vocabularies (>500 concepts). `builtinFhirCodeSystems` lists native FHIR terms (e.g., for enums).
+
+### Validation (/validate/*)
+
+These endpoints validate FHIR resources against R4 schemas and profiles, filtering noise for actionable feedback. Supports single and batch modes.
+
+- **`POST /validate`**  
+  Validates a single FHIR resource, optionally against a profile. Returns conformance issues with severity and location.  
+  **Body** (JSON):  
+  ```json
+  {
+    "resource": { "resourceType": "Patient", "id": "example", ... },
+    "profile": "http://hl7.org/fhir/StructureDefinition/Patient"  // Optional: Profile URL
+  }
+  ```  
+  **Response** (JSON):  
+  ```json
+  {
+    "valid": true,
+    "issues": [
+      {
+        "severity": "error",
+        "code": "required",
+        "details": "Field 'name' is required",
+        "location": "Patient.name"
+      }
+    ],
+    "raw": "{...}"  // Optional: Full OperationOutcome for debugging
+  }
+  ```  
+  **Example (curl)**:  
+  ```
+  curl -X POST http://localhost:3500/api/validate \
+    -H "Content-Type: application/fhir+json" \
+    -d '{"resourceType":"Patient","id":"example","name":[{"use":"official","family":"Doe","given":["John"]}], "gender":"male", "birthDate":"1990-01-01"}'
+  ```  
+  Notes: `raw` contains the full HAPI OperationOutcome. Severity: "error"/"fatal" (blocking), "warning"/"information" (advisory). Locations use JSONPath (e.g., "Patient.name[0].family"). For profiles, use full URLs (e.g., IPS).
+
+- **`POST /validate/batch`**  
+  Validates multiple resources in one request, returning per-resource results. Efficient for validating generated bundles or batches.  
+  **Body** (JSON):  
+  ```json
+  {
+    "resources": [
+      {
+        "id": "patient-1",
+        "resource": { "resourceType": "Patient", ... },
+        "profile": "http://hl7.org/fhir/StructureDefinition/Patient"
+      }
+    ]
+  }
+  ```  
+  **Response** (JSON):  
+  ```json
+  {
+    "results": [
+      {
+        "id": "patient-1",
+        "valid": true,
+        "issues": [],
+        "raw": "{...}"
+      }
+    ]
+  }
+  ```  
+  **Example (curl)**:  
+  ```
+  curl -X POST http://localhost:3500/api/validate/batch \
+    -H "Content-Type: application/fhir+json" \
+    -d '{"resources":[{"id":"example","resourceType":"Patient","id":"example","name":[{"use":"official","family":"Doe","given":["John"]}], "gender":"male", "birthDate":"1990-01-01"}]}'
+  ```  
+  Notes: Up to 50 resources per batch (for performance). Each result includes the input `id` for correlation. Use for validating entire Bundles by passing entries as array items.
+
+### Health Check (/health)
+
+- **`GET /health`**  
+  Checks server status and service readiness. No body required.  
+  **Response** (JSON):  
+  ```json
+  {
+    "status": "ok",
+    "services": {
+      "terminology": true,
+      "validator": {
+        "ready": true
+      }
     }
   }
+  ```  
+  **Example (curl)**:  
   ```
+  curl http://localhost:3500/api/health
+  ```  
+  Notes: Use for liveness/readiness probes in production. `validator.ready` may be false during the initial 30-second startup. If false, retry after 10-60 seconds.
 
-### Scaling Notes
-Kiln scales easily due to its stateless design:
-- **Static Client**: Infinite scale via CDN (Netlify/Vercel handle millions of requests).
-- **Server APIs**: Stateless except SQLite (use read replicas for terminology search; shared volume for writes). Validator instances can be load-balanced (CPU-intensive; 1-2s per Bundle).
-- **Bottlenecks**: LLM rate limits (e.g., OpenAI: 60 RPM for GPT-4o-mini); mitigate with queuing or multiple keys. SQLite handles ~100 QPS; upgrade to PostgreSQL for >1k QPS.
-- **Monitoring**: Use Prometheus (expose `/health` metrics) or cloud logs. Track validator uptime (Java GC pauses) and search latency (FTS5 ensures <50ms).
+### Notes
 
-For production, enable HTTPS (free via Let's Encrypt) and restrict CORS (e.g., allow only your domain). Use a secrets manager for env vars (no API keys in server config).
+- **CORS Support**: All endpoints allow cross-origin requests (`Access-Control-Allow-Origin: *`). For production, restrict origins via server options (e.g., `--cors-origin=yourdomain.com`).
+- **Error Handling**: Invalid requests return 400 with `{error: "message"}`. Server errors are 500 with details. Always check `valid` and `issues` arrays.
+- **Performance**: Terminology searches are sub-second (FTS5-optimized SQLite). Validation takes 100ms-10s per resource (Java overhead). Batch endpoints reduce latency for multiple items.
+- **Backend**: SQLite (no auth, dev-only) powers terminology; HAPI FHIR validator handles structure. No user data is stored—requests are stateless.
+- **Limitations**: Dev server has no rate limiting; add via reverse proxy (nginx) for prod. Validator is single-threaded; scale with multiple server instances.
+- **Extensibility**: Add endpoints in `server/src/api.ts`. For custom vocabularies, extend `SqliteTerminologySearch` and update the schema.
 
-### Diagram
+## 6. Development
 
-```
-Static (Netlify/Vercel):
-  dist/ ──► CDN ──► Browser
-  (Config via env vars)
+Kiln's development workflow leverages Bun's fast tooling for a seamless full-stack experience. The project uses TypeScript for type safety, React for the UI, and a modular structure to separate client authoring from server validation. All changes (UI, server, tests) can be iterated on with hot reload, and the setup emphasizes simplicity—no complex build pipelines or multiple runtimes.
 
-Docker (Self-Contained):
-  Dockerfile ──► Container
-  (SQLite + Validator bundled)
+### Workflow
 
-VPS:
-  Bun server ──► Nginx/Proxy
-  (Mount /db for persistence)
-```
+- **Editor**: Use VS Code with the official Bun extension for syntax highlighting, debugging, and integrated terminal support. The extension provides Bun-specific features like fast test running and hot reload integration. Install it from the VS Code marketplace for optimal experience.
 
-## 9. Development
+- **Hot Reload**: The `bun run dev` command enables hot reload for both the client (React) and server (Bun runtime). Changes to TypeScript files, components, or server endpoints trigger automatic restarts or recompiles. For ultra-fast iteration, use `bun --hot` in the dev script (already enabled)—it watches the entire project and reloads in under 100ms for most changes. Client-side updates appear instantly in the browser; server changes require a quick page refresh.
 
-Kiln's development workflow leverages Bun's fast bundling and testing for rapid iteration. The project maintains high test coverage (>80% for server APIs) and uses Prettier for consistent formatting. Client changes (React/TSX) hot-reload automatically; server updates (Bun.ts) require restart. All tests focus on core functionality: terminology search, FHIR validation, and LLM integration (mocked for offline testing).
+- **Testing**: Run `bun test` to execute the test suite, which covers unit tests for LLM prompts, validation logic, and integration tests for the terminology search and FHIR generation pipelines. The suite uses Bun's built-in test runner with TypeScript support out-of-the-box. For watch mode during development, use `bun test --watch` to re-run tests on file changes. Tests focus on edge cases like invalid FHIR resources, terminology mismatches, and LLM response parsing. Coverage is targeted at 90%+ for critical paths (validation, search).
 
-### Running Tests
-Kiln includes unit and integration tests for the server (terminology search, validator) and basic client smoke tests. Tests use Bun's native test runner and mock external dependencies (LLM, FHIR server) for reliability.
+- **Linting/Formatting**: Prettier is configured for consistent code style across TypeScript, JSX, JSON, and Markdown files. Run `bun run format` to auto-format the entire codebase before committing. For checking without fixing, use `bun run format:check`. ESLint is not enforced but can be added via `bun add -D eslint` if desired—focus remains on Prettier for simplicity.
 
-- **All Tests**: Run the full suite (server-focused; client tests are lightweight):
-  ```
-  bun test
-  ```
-  Expected: ~2 minutes; coverage report in console. Tests validate FTS5 search (e.g., fuzzy matching across LOINC/SNOMED/RxNorm) and validator responses (structure, codings).
-
-- **Watch Mode** (Dev): Auto-rerun on file changes:
-  ```
-  bun test --watch
-  ```
-
-- **Specific Suites**:
-  - Terminology: `bun test server/tests/terminology.test.ts` (search accuracy, edge cases like empty queries).
-  - Validator: `bun test server/tests/validator.test.ts` (structure validation, batch processing).
-  - Coverage: `bun test --coverage` (generates reports; aim for 80%+).
-
-Tests generate JSON reports (`server/tests/*-report.json`) for inspection (e.g., search hits, validation issues). FTS5 indexing ensures sub-50ms queries; validator tests use a headless Java subprocess.
-
-### Adding Vocabularies
-To extend terminology search (e.g., add UCUM or custom codes), use NDJSON format (gzipped for efficiency). Place files in `server/large-vocabularies/` and reload the database.
-
-- **Format**: NDJSON.gz with first line as CodeSystem JSON, subsequent lines as Concept objects:
-  ```
-  {"resourceType":"CodeSystem","url":"http://example.com","version":"1.0"}
-  {"code":"A01","display":"Example","designation":[{"use":{"code":"short"},"value":"Example A01"}]}
-  {"code":"B01","display":"Example B","property":[{"code":"category","valueCode":"A"}]}
-  ```
-  Supports `designation` (for search) and `property` (for filters/relations).
-
-- **Load**: Run the loader to populate SQLite:
-  ```
-  bun run server/scripts/load-terminology.ts
-  ```
-  Expected: `✅ Loaded X concepts from http://example.com`. Re-run after adding files (overwrites existing).
-
-- **Custom Systems**: Ensure `url` matches FHIR CodeSystem (e.g., `http://example.com`). For hierarchical (SNOMED-like), use `property` with `code: "parent"`.
-
-- **FTS5 Optimization**: The loader creates FTS5 indexes on `designations` for full-text search. Large systems (>50k concepts) index in ~1-2 min; use `PRAGMA optimize;` for production.
-
-### Contributing
-Contributions are welcome! Focus on improving LLM prompts, validation logic, or vocabulary integration. Fork the repo, make changes, and submit PRs with tests.
-
-- **Workflow**:
-  1. Fork and clone: `git clone <your-fork> && cd kiln && bun install`.
-  2. Branch: `git checkout -b feature/add-vocabulary`.
-  3. Develop: Edit in `/src` (client) or `/server` (APIs).
-  4. Test: `bun test` (ensure no regressions).
-  5. Format: `bun run format` (Prettier for TS/JS/JSON/MD/YAML).
-  6. Lint: `bun run lint:fix` (enforces consistent style).
-  7. Commit: Use semantic messages (e.g., "feat: add UCUM support").
-  8. PR: Include test coverage and docs updates.
-
-- **Guidelines**:
-  - Keep PRs focused (one feature/fix).
-  - Add tests for new functionality (e.g., new search filters).
-  - Update README for user-facing changes (e.g., new env vars).
-  - No breaking changes to APIs without discussion.
-
-Test coverage targets 80%+ for server (search perf, validation); client tests are smoke-only (e.g., UI rendering). Use `bun test --coverage` to verify.
+- **Debug**: Enable verbose logging by setting `PUBLIC_KILN_DEBUG_MODE=true` in your environment (or via the browser's localStorage). This outputs detailed LLM prompts, validation traces, and server events to the browser console and server logs. Use Chrome DevTools for client-side debugging (React components, localStorage inspection). For server-side, attach Bun's debugger with `bun --inspect` and connect via Chrome (`chrome://inspect`). Watch for validator startup logs (~30s delay) and use `/health` to confirm readiness.
 
 ### Building
-For production or custom deployments, generate a static build with embedded configuration.
 
-- **Static Build**:
+- **Static Build**: Execute `bun run build` to create an optimized production bundle in the `dist/` directory. This command:
+  - Compiles TypeScript and React to minified JS/CSS.
+  - Generates and injects `config.json` (from PUBLIC_KILN_* vars) as `window.STATIC_CONFIG` for offline use.
+  - Copies public assets (CSS, images) and examples.
+  - Validates the output: checks for required files (`config.json`, `index.html`, `viewer.html`) and config integrity (e.g., valid URLs).
+  - Produces a self-contained site (~5MB gzipped) ready for CDN deployment.
+
+  The build is ESM-only for modern browsers, with source maps for debugging (disabled in production). For development builds (non-minified), use `bun run build:dev`.
+
+- **Validate Build**: Run `bun run build:validate` to check environment variables without generating files. It simulates the build process, flags missing/invalid PUBLIC_KILN_* vars, and previews the config. Use this before production builds to catch issues early (e.g., malformed URLs).
+
+### Notes
+
+- **Bun-Specific Tips**: Bun's `--hot` flag (enabled in `dev`) provides sub-second reloads for TypeScript changes—faster than Node.js watchers. Use `bun --bun run dev` for even quicker starts. For TypeScript errors, Bun reports them inline; fix with `bun run format` to auto-resolve common issues. If you encounter Bun-specific quirks (e.g., with JSX), ensure `tsconfig.json` has `"jsx": "react-jsx"`.
+
+- **Terminology Rebuilds**: After updating vocabularies in `server/large-vocabularies/` (e.g., adding new NDJSON.gz files), re-run `bun run server/scripts/load-terminology.ts` to rebuild the SQLite database. This script processes files into an FTS5-optimized index for fast searches. It's idempotent but takes 5-10 minutes for large imports (LOINC/SNOMED/RxNorm). Back up `server/db/terminology.sqlite` before changes.
+
+- **Adding New Vocabularies**: To extend terminology support:
+  1. Place NDJSON.gz files in `server/large-vocabularies/` (format: first line = CodeSystem resource, subsequent lines = concepts with `code`, `display`, `designation[]`).
+  2. Update `server/scripts/load-terminology.ts` to include the new system (add to `loadVocabularies()` or `loadNDJSON()` calls).
+  3. Re-run the loader: `bun run server/scripts/load-terminology.ts`.
+  4. Test with `bun test` (add cases to `tests/terminology.test.ts`).
+
+  For custom vocabularies, ensure the CodeSystem URL is canonical (e.g., `http://your-system.org`). The loader handles up to 10MB files efficiently; larger ones may need batching. See `server/large-vocabularies/` for examples (LOINC, SNOMED CT, RxNorm).
+
+- **Performance Tuning**: In development, the server uses in-memory SQLite for speed. For large-scale testing, monitor Java heap usage (`VALIDATOR_HEAP=4g` env var) and consider external validators for high concurrency. Client-side LLM calls are throttled via `PUBLIC_KILN_LLM_MAX_CONCURRENCY` to respect provider limits.
+
+## 7. Deployment
+
+Kiln supports two primary deployment modes: static (recommended for most use cases) and server-based. The static approach is ideal for simplicity and low overhead, as it requires no runtime server after building. Server mode is suited for environments needing dynamic validation, custom profiles, or integration with live FHIR services. Both modes leverage Bun's efficiency and the pre-built SQLite database for terminology, ensuring fast startup and low resource usage.
+
+### Static (Recommended for Prod)
+
+The static build mode compiles the entire application into a self-contained bundle in the `dist/` directory, embedding the configuration and assets. This is perfect for hosting on CDNs or static file servers, with no ongoing server requirements beyond serving the files. The app runs entirely in the browser, making LLM calls directly to your provider and using local validation fallbacks if no server is available.
+
+- **Build**:
   ```
   bun run build
   ```
-  Creates `/dist` with minified assets, `config.json` (baked-in env vars), and `build-manifest.json`. Validates output automatically.
+  This generates an optimized production bundle, including:
+  - Minified JavaScript/CSS (ESM format for modern browsers).
+  - Injected `config.json` as `window.STATIC_CONFIG` for offline configuration.
+  - Copied assets (public/, examples/) and build metadata (`build-manifest.json`).
+  - Validation of required files and config integrity.
 
-- **Validate Build**:
+  The output is ~5MB gzipped, loading quickly on any HTTPS-capable host. For development builds (non-minified, with source maps), use `bun run build:dev`.
+
+- **Deploy**:
+  Copy the `dist/` directory to your preferred static hosting platform:
+  - **Netlify/Vercel**: Drag `dist/` to the dashboard or use CLI (`netlify deploy --dir dist` or `vercel --prod`).
+  - **AWS S3**: Upload `dist/` to a public bucket with static website hosting enabled.
+  - **GitHub Pages**: Push `dist/` to `gh-pages` branch or use Actions for automated builds.
+  - **Other**: Any static server (nginx, Apache, Caddy) works—ensure CORS is configured for external LLM calls (e.g., OpenRouter).
+
+  Access the app at your domain (e.g., https://your-domain.com). The UI handles all functionality, including validation via same-origin APIs if a server is present (auto-detected).
+
+- **Custom Config**:
+  Set `PUBLIC_KILN_*` environment variables before building to customize the bundle:
   ```
-  bun run build:validate
+  export PUBLIC_KILN_LLM_URL=https://openrouter.ai/api/v1
+  export PUBLIC_KILN_MODEL=openai/gpt-4o-mini
+  export PUBLIC_KILN_FHIR_BASE_URL=https://your-fhir-server.com
+  bun run build
   ```
-  Checks for missing files and config errors (e.g., invalid URLs).
+  The config is baked in—re-build for changes. For multi-environment deploys (e.g., staging/prod), use CI/CD to set vars dynamically (e.g., GitHub Actions with secrets).
 
-- **Custom Build**: Set `PUBLIC_KILN_*` env vars before building (e.g., `PUBLIC_KILN_MODEL=your-model bun run build`). For subpaths (e.g., `/app/`), use `PUBLIC_KILN_BASE_PATH=/app`.
+- **Subpath**:
+  For deployment under a subdirectory (e.g., https://your-domain.com/kiln), set `PUBLIC_KILN_BASE_PATH=/kiln` (include trailing slash) before building. This adjusts asset paths and API prefixes. Re-build and redeploy to apply.
 
-The build is ~500KB (gzipped) and runs offline (after vocabulary load). No server needed for core features, but APIs enhance validation/search.
+Notes: Static mode is serverless and scales infinitely via CDN. No Java or Bun runtime is needed post-deploy—the app uses browser APIs for LLM calls and local storage for user settings. For offline use, the bundle works without internet (except LLM calls), falling back to basic authoring without validation.
 
-### Debugging
-Debugging focuses on client (browser tools) and server (console/logs). Use Bun's fast restarts for iteration.
+### Server Mode
 
-- **Server Logs**:
-  - Console output shows startup (e.g., "Loaded X concepts"), requests (e.g., `/tx/search`), and errors (e.g., validator OOM).
-  - Verbose: Set `DEBUG=* bun run dev` (includes SQLite queries, validator output).
-  - Validator: Monitor Java logs in server console (e.g., "Listening on port 8080").
+Server mode runs the full application as a Bun process, serving the UI and handling API requests for validation and terminology. It's useful for custom integrations, advanced validation (e.g., with profiles), or high-volume processing. The server is lightweight and stateless, making it easy to scale.
 
-- **Client Debugging**:
-  - Browser DevTools: Inspect localStorage (Settings → keys like `kiln.apiKey`, `kiln.fhirBase`).
-  - Network Tab: Monitor LLM calls (`/chat/completions`), API requests (`/tx/search`, `/validate`).
-  - Console: Logs LLM responses, validation issues (e.g., "Coding unresolved: hypertension").
+- **Docker**:
+  The provided Dockerfile creates a minimal, production-ready image (~200MB) with Bun, Java 17, and the pre-loaded terminology database. It runs the server on port 3500, with the UI proxied on port 3000.
 
-- **Validator Debugging**:
-  - Set `DEBUG=validator:*` env var: Logs Java subprocess (e.g., "Validating Bundle...").
-  - Heap Issues: Increase `VALIDATOR_HEAP=6g` if OOM; check server console for "OutOfMemoryError".
-  - Test Standalone: `cd server && bun run scripts/setup.ts` (downloads JAR); run `java -jar validator.jar -version 4.0` manually.
+  - **Build**:
+    ```
+    docker build -t kiln .
+    ```
+    This includes:
+    - Pre-built SQLite database (~1-2GB, optimized with FTS5).
+    - Validator JAR and Java runtime (heap tunable via VALIDATOR_HEAP).
+    - All dependencies (no separate install needed).
 
-- **Common Debug Steps**:
-  - Clear Caches: `bun run clean` (removes `dist/`, bun.lockb).
-  - Reset Client: Browser DevTools → Application → Storage → Clear localStorage.
-  - Vocabulary: Verify `bun run server/scripts/load-terminology.ts` (check `./server/db/terminology.sqlite` size ~2GB).
-  - Ports: Ensure 3000/3500 free; use `lsof -i :3000` to kill conflicts.
+  - **Run**:
+    ```
+    docker run -p 3000:3500 kiln
+    ```
+    Access the UI at http://localhost:3000 (proxies APIs internally). The container is non-root (UID 1000) for security and includes a healthcheck for readiness.
 
-For LLM issues, test endpoints directly (e.g., `curl http://localhost:3500/tx/search -d '{"queries":["hypertension"]}'`). FTS5 ensures fast search (sub-50ms); validator latency is ~1-5s for Bundles.
+  - **With Environment Variables**:
+    ```
+    docker run \
+      -e PUBLIC_KILN_LLM_URL=https://openrouter.ai/api/v1 \
+      -e PUBLIC_KILN_MODEL=openai/gpt-4o-mini \
+      -e PUBLIC_KILN_FHIR_BASE_URL=https://your-fhir-server \
+      -e VALIDATOR_HEAP=4g \
+      -p 3000:3500 \
+      kiln
+    ```
+    Set vars for custom config. For persistent logs, mount a volume: `-v /host/logs:/app/logs`. Customize ports via `-e PORT=8080` (maps to container's 3500).
 
-## 10. Troubleshooting
+  - **Tweaks**:
+    - **Custom Ports**: Edit Dockerfile `EXPOSE` and run with `-p your-port:3500`.
+    - **Volumes**: Mount `./server/db/` for persistent terminology: `-v /host/db:/app/server/db`.
+    - **Scaling**: Run multiple containers behind a load balancer (stateless server). Use Kubernetes with the healthcheck for orchestration.
+    - **HTTPS**: The container serves HTTP; use a reverse proxy (nginx in front) for TLS termination. Example nginx config:
+      ```
+      server {
+        listen 443 ssl;
+        server_name your-domain.com;
+        ssl_certificate /path/to/cert.pem;
+        ssl_certificate_key /path/to/key.pem;
 
-Kiln's local-first design minimizes issues, but setup (Java, vocabularies) or configuration (env vars, API keys) can cause problems. Below are common errors and fixes. Most resolve with simple steps like clearing caches or verifying dependencies. For persistent issues, check logs and report on GitHub (include server console output, browser network tab screenshots, and `bun run config:check` results).
+        location / {
+          proxy_pass http://localhost:3500;
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+        }
+      }
+      ```
 
-### Common Issues
-- **Bun Not Found**:
-  - Error: `bun: command not found`.
-  - Fix: Install Bun via the official script: `curl -fsSL https://bun.sh/install | bash`. Restart your terminal and verify with `bun --version` (should be 1.0+). No Node.js is needed—Kiln uses Bun exclusively.
+Notes: Docker images are optimized for low memory (~512MB RAM recommended). The validator starts in ~30 seconds—use the health endpoint to poll readiness. For air-gapped environments, pre-load the database and JAR via custom Dockerfile stages.
 
-- **Java Error**:
-  - Error: `java: command not found` or "Unsupported major.minor version" during vocabulary load or validation.
-  - Fix: Ensure JDK 17+ is installed and in your PATH. Verify: `java -version` (should show 17+). On macOS: `brew install openjdk@17 && export JAVA_HOME=/opt/homebrew/opt/openjdk@17`. On Ubuntu: `sudo apt install openjdk-17-jdk`. For WSL, install in WSL and ensure `JAVA_HOME` is set. If using Docker, the image includes Java—no local install needed.
+### Notes
 
-- **Vocabulary Load Fails**:
-  - Error: "No concepts loaded" or SQLite errors during `load-terminology.ts`.
-  - Fix: Re-run `bun run server/scripts/load-terminology.ts` manually and watch for errors (e.g., disk space, Java heap). Check `./server/db/terminology.sqlite` size (~2GB if successful). If it hangs, increase `VALIDATOR_HEAP=6g` in `/server/.env.local` and retry. Ensure the `large-vocabularies` submodule is updated: `cd server/large-vocabularies && git pull`.
+- **Static vs. Server**: Static is simpler (CDN-ready, no maintenance) but lacks dynamic validation—use for authoring with local fallbacks. Server mode enables full features (batch validation, custom profiles) but requires runtime (Bun + Java). Hybrid: Deploy static UI to CDN, proxy `/api/*` to server instances.
+- **Java Heap Tuning**: The validator uses 4GB heap by default (VALIDATOR_HEAP=4g). Increase for large bundles (`VALIDATOR_HEAP=8g`); monitor via logs. In Docker, set via `-e` and rebuild if needed.
+- **Scaling**: Both modes are stateless. Static scales via CDN; server handles 1000+ req/s per instance (SQLite limits). For high load, use read replicas for SQLite or external validators (e.g., Azure FHIR) via PUBLIC_KILN_VALIDATION_SERVICES_URL.
+- **Monitoring**: Use `/health` for liveness (returns `{status: 'ok', services: {terminology: true, validator: {ready: true}}}`). In production, log validator startup (first run only) and monitor Java memory. Tools like Prometheus can scrape this endpoint.
+- **Custom Ports/Volumes**: In Docker, adjust `EXPOSE` in Dockerfile for non-standard ports. Mount `server/db/` for persistent terminology updates without rebuilds. For custom validator JARs, COPY your version into the image.
 
-- **Validator Crashes**:
-  - Error: "OutOfMemoryError" or validator fails to start (check server console for Java stack traces).
-  - Fix: Increase heap in `/server/.env.local`: `VALIDATOR_HEAP=6g` (or higher for large Bundles). Verify JAR path: `bun run server/scripts/setup.ts` re-downloads if missing. Test standalone: `cd server && java -jar validator.jar -version 4.0`. If on low RAM (<4GB), use a remote validator URL instead (set `PUBLIC_KILN_VALIDATION_SERVICES_URL`).
+## 8. Contributing
 
-- **CORS Errors**:
-  - Error: Browser network tab shows "CORS policy" blocks for `/tx/search` or `/validate`.
-  - Fix: The server allows all origins by default (`*`). If deploying, ensure your proxy/CDN forwards CORS headers. For local dev, use the combined server (`bun run dev`). Test APIs directly: `curl http://localhost:3500/health`. If using a remote validator, set it in UI Settings.
+Kiln welcomes contributions that enhance its capabilities for clinical documentation, particularly in terminology integration, LLM prompt refinement, and validation improvements. The project follows a modular structure, making it easy to contribute to specific areas like vocabulary loading, UI components, or server endpoints. All contributions must maintain the focus on stateless processing and FHIR R4 compliance.
 
-- **No Terminology Results**:
-  - Error: Empty search results for common terms (e.g., "hypertension").
-  - Fix: Ensure vocabulary loading succeeded: Run `bun run server/scripts/load-terminology.ts` and confirm "Loaded X concepts" (X > 100k). Check database size: `ls -lh ./server/db/terminology.sqlite` (~2GB). If zero results, verify FTS5 index: `sqlite3 ./server/db/terminology.sqlite "SELECT COUNT(*) FROM designations_fts;"` (should match concept count). Restart server after loading.
+### Guidelines
 
-- **LLM Calls Fail**:
-  - Error: "401 Unauthorized" or "Invalid API key" in browser console.
-  - Fix: Enter a valid API key in UI Settings (e.g., OpenAI/OpenRouter). Test the endpoint: `curl -H "Authorization: Bearer sk-..." https://openrouter.ai/api/v1/chat/completions -d '{"model":"openai/gpt-4o-mini","messages":[{"role":"user","content":"test"}]}'`. Ensure `PUBLIC_KILN_BASE_URL` and `PUBLIC_KILN_MODEL` are set correctly (e.g., `https://openrouter.ai/api/v1`, `openai/gpt-4o-mini`). Check rate limits in provider dashboard.
+- **Code Style**: Use Prettier for consistent formatting across TypeScript, JSX, JSON, Markdown, and YAML files. Run `bun run format` before submitting pull requests to ensure compliance. The project adheres to TypeScript best practices with strict mode enabled in `tsconfig.json`. Avoid ESLint for simplicity, but flag any formatting issues during review.
 
-### Logs
-- **Server Logs**: 
-  - Primary: Terminal/console where you run `bun run dev` or `bun run preview`. Shows startup ("Loaded X concepts"), requests (e.g., "GET /tx/search"), and errors (e.g., validator OOM, SQLite issues).
-  - Verbose Mode: Prefix with `DEBUG=*` (e.g., `DEBUG=* bun run dev`) for detailed output: SQLite queries, validator subprocess logs, and API traces.
-  - File Logging: Redirect to file: `bun run dev > server.log 2>&1`.
+- **Commits**: Follow conventional commit messages (e.g., `feat: add support for new vocabulary`, `fix: resolve validation edge case`, `docs: update configuration guide`). This enables automated changelogs and semantic versioning. Include issue references if applicable (e.g., `fix: #123`).
 
-- **Client Logs**:
-  - Browser DevTools → Console: Logs LLM responses (e.g., "Generated outline"), validation issues (e.g., "3 unresolved codings"), and errors (e.g., "API key invalid").
-  - Network Tab: Inspect requests to LLM (`/chat/completions`), terminology (`/tx/search`), and validation (`/validate`). Look for 4xx/5xx status codes.
+- **Testing**: All changes require tests. Focus on validation edge cases (e.g., malformed FHIR resources, terminology mismatches) and integration (e.g., LLM response parsing). Use Bun's test runner: `bun test` for full suite, `bun test --watch` for development. Aim for 90%+ coverage on critical paths (e.g., resource generation, search). Add new tests to `tests/` with descriptive names.
 
-- **Validator Logs**:
-  - Integrated in server console (stdout/stderr from Java subprocess). Errors like "OutOfMemoryError" or "Failed to validate" appear here.
-  - Standalone Test: `cd server && java -jar validator.jar -server 8080` (separate process; logs to console).
+- **Vocabularies**: To add support for new terminologies (e.g., ICD-10-CM), create NDJSON.gz files in `server/large-vocabularies/` following the format: first line is a CodeSystem resource, subsequent lines are concepts with `code`, `display`, and optional `designation[]` arrays. Update `server/scripts/load-terminology.ts` to include the new system in `loadVocabularies()`. Re-run the loader (`bun run server/scripts/load-terminology.ts`) and add tests in `tests/terminology.test.ts`. Ensure the CodeSystem URL is canonical and the file is under 10MB for efficient loading.
 
-### Reset
-- **Clear Caches and Rebuild**:
-  ```
-  bun run clean
-  ```
-  Removes `/dist`, `node_modules/.cache`, and `bun.lockb`. Re-install deps with `bun install` and rebuild.
+### Setup for Contributors
 
-- **Reset Client State**:
-  - Browser DevTools → Application → Storage → Local Storage → Clear (resets API keys, settings, recent notes).
-  - Or: `localStorage.clear()` in console.
+1. **Fork and Clone**:
+   ```
+   git clone https://github.com/your-username/kiln.git
+   cd kiln
+   ```
 
-- **Reset Database** (Vocabularies):
-  ```
-  rm ./server/db/terminology.sqlite
-  bun run server/scripts/load-terminology.ts
-  ```
-  Re-populates SQLite from NDJSON (5-10 min).
+2. **Install Dependencies**:
+   ```
+   bun install
+   ```
+   This sets up all JavaScript packages for client and server.
 
-- **Full Reset**:
-  ```
-  bun run clean
-  rm -rf server/db/*
-  bun install
-  cd server && bun run scripts/setup.ts
-  bun run scripts/load-terminology.ts
-  ```
-  Restarts from scratch (downloads JAR, vocabularies, rebuilds DB).
+3. **Setup the Server**:
+   ```
+   cd server
+   bun run scripts/setup.ts
+   ```
+   Downloads the validator JAR and clones the vocabulary submodule.
 
-For issues not covered here, run `bun run config:check` to validate env vars, then report on GitHub with logs (server console, browser network tab) and steps to reproduce. Include your OS, Bun version (`bun --version`), and Java version (`java -version`).
+4. **Load Terminology Database**:
+   ```
+   bun run scripts/load-terminology.ts
+   ```
+   Imports vocabularies into SQLite. This may take 5-10 minutes on first run.
 
+5. **Run Development Server**:
+   ```
+   bun run dev
+   ```
+   Starts the full-stack app at http://localhost:3000. Make changes and iterate with hot reload.
 
+### Notes
 
-## 12. License
+Keep contributions minimal and focused on terminology additions (e.g., new NDJSON vocabularies) and LLM prompt improvements (e.g., better FHIR generation). For deeper guidelines, see CONTRIBUTING.md (generated from commits). Pull requests should include tests and documentation updates. Focus areas: enhancing the refinement loop for complex bundles, optimizing terminology search for clinical workflows, and adding support for additional FHIR profiles (e.g., IPS).
 
-Kiln is open-source software licensed under the MIT License. See the [LICENSE](LICENSE) file for full details.
+## 9. License
 
-### Dependencies
-All JavaScript/TypeScript dependencies are listed in `package.json` and follow their respective licenses (mostly MIT/Apache 2.0). Key libraries include:
-- **Bun.js**: MIT (runtime and bundler).
-- **React 19**: MIT (UI framework).
-- **Tailwind CSS**: MIT (styling).
-- **Marked**: MIT (Markdown parsing).
-- **SQLite**: Public Domain (via Bun's native support).
-- **HAPI FHIR Validator**: Apache 2.0 (Java-based; included JAR).
+### MIT License
 
-Run `bun pm ls` to view installed packages and their licenses. No proprietary dependencies are used.
+Copyright (c) 2024 Josh Mandel
 
-### Vocabularies
-Kiln includes pre-loaded terminology from public sources, each with specific usage terms:
-- **LOINC** (Logical Observation Identifiers Names and Codes): Copyright © 1995-2024 Regenstrief Institute, Inc. Freely available under the [LOINC License](http://loinc.org/license). Non-commercial use; attribution required ("Courtesy of LOINC®").
-- **SNOMED CT** (International Health Terminology Standards Development Organisation): Copyright © 2002-2024 SNOMED International. Licensed for use under the [SNOMED CT Browser License](https://www.snomed.org/snomed-ct/browser-license). International non-commercial distribution; requires IHTSDO affiliate agreement for production.
-- **RxNorm** (National Library of Medicine): Public domain (U.S. Government work). Freely usable and redistributable without permission. Attribution: "Source: U.S. National Library of Medicine."
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-For production use, review terms at:
-- LOINC: http://loinc.org/license
-- SNOMED CT: https://www.snomed.org/snomed-ct/get-snomed-ct
-- RxNorm: https://www.nlm.nih.gov/research/umls/rxnorm/docs/rxnormlicense.html
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
-Vocabularies are loaded via `server/scripts/load-terminology.ts` from NDJSON files in `server/large-vocabularies/`. Custom vocabularies (NDJSON.gz) can be added following FHIR CodeSystem format—see section 9 for details. Ensure compliance with source licenses for any redistribution or commercial deployment.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### Disclaimer
+
+This software is provided for research and educational purposes only. It is not intended for clinical decision-making, patient care, or any production use in healthcare settings. The author, contributors, and distributors make no representations or warranties regarding the accuracy, reliability, or suitability of the software for any purpose, including medical or clinical applications. Users assume all risks associated with its use. Always validate outputs against official standards and consult qualified healthcare professionals for clinical decisions.
 

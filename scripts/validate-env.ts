@@ -60,7 +60,7 @@ function validateEnvironment() {
       issues.forEach((issue) => console.log(`   ${issue}`));
       console.log('\n🔧 Fix these issues:');
       console.log('   1. Check .env.local or environment variables');
-      console.log('   2. Set PUBLIC_KILN_BASE_URL and PUBLIC_KILN_FHIR_BASE_URL');
+      console.log('   2. Set PUBLIC_KILN_LLM_URL and PUBLIC_KILN_FHIR_BASE_URL');
       console.log('   3. Ensure URLs start with http:// or https://');
       console.log('   4. See .env.example for format');
       if (issues.some((i) => i.startsWith('❌'))) process.exit(1);

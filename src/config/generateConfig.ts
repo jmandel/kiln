@@ -35,7 +35,7 @@ export function generateConfig(source: 'build-time' | 'runtime' = 'runtime'): Pu
   const isDev = nodeEnv === 'development';
 
   // Pre-compute values that are reused
-  const baseURL = (env.PUBLIC_KILN_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/+$|\/$/g, '');
+  const baseURL = (env.PUBLIC_KILN_LLM_URL || 'https://openrouter.ai/api/v1').replace(/\/+$|\/$/g, '');
   const model = env.PUBLIC_KILN_MODEL || 'openai/gpt-oss-120b:free';
   const temperature = Math.max(0, Math.min(2, Number(env.PUBLIC_KILN_TEMPERATURE || '0.8')));
 
