@@ -21,6 +21,8 @@ export default function ArtifactDetails({
   const [links, setLinks] = React.useState<Link[]>([]);
   const [steps, setSteps] = React.useState<Step[]>([]);
   const [expandAll, setExpandAll] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  const copyTimer = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     (async () => {
@@ -67,6 +69,58 @@ export default function ArtifactDetails({
   };
 
   const contentIsJson = !!tryJson(artifact.content);
+  const exportContentText = () => {
+    const parsed = tryJson(artifact.content);
+    return parsed != null ? JSON.stringify(parsed, null, 2) : String(artifact.content ?? '');
+  };
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(exportContentText());
+      try {
+        if (copyTimer.current) window.clearTimeout(copyTimer.current);
+      } catch {}
+      setCopied(true);
+      try {
+        copyTimer.current = window.setTimeout(() => setCopied(false), 500);
+      } catch {}
+      try {
+        // small visual feedback via title swap
+        const el = document.getElementById('copy-artifact-btn');
+        if (el) {
+          const prev = el.getAttribute('data-title') || 'Copy';
+          el.setAttribute('data-title', prev);
+          el.setAttribute('title', 'Copied!');
+          setTimeout(() => el.setAttribute('title', prev), 500);
+        }
+      } catch {}
+    } catch (e) {
+      console.error('Copy failed', e);
+      alert('Failed to copy to clipboard');
+    }
+  };
+  const handleDownload = () => {
+    try {
+      const text = exportContentText();
+      const isJson = contentIsJson;
+      const mime = isJson ? 'application/json;charset=utf-8' : 'text/plain;charset=utf-8';
+      const ext = isJson ? '.json' : '.txt';
+      const baseRaw = (artifact.title && String(artifact.title).trim()) ? String(artifact.title).trim() : `${artifact.kind}-${artifact.id}`;
+      const base = baseRaw.replace(/[^A-Za-z0-9._-]+/g, '_');
+      const filename = `${base}${ext}`;
+      const blob = new Blob([text], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.download = filename;
+      a.href = url;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Download failed', e);
+      alert('Failed to download');
+    }
+  };
   const renderContent = () => {
     if (!artifact.content) return <div className="text-sm text-gray-500">No content.</div>;
     if (contentIsJson) return <pre className="text-sm whitespace-pre-wrap">{pretty(artifact.content)}</pre>;
@@ -104,6 +158,26 @@ export default function ArtifactDetails({
           </span>
         </h2>
         <div className="flex items-center gap-2">
+          <button
+            id="copy-artifact-btn"
+            title="Copy JSON"
+            className="px-3 py-1 text-sm border rounded"
+            onClick={handleCopy}
+          >
+            Copy
+          </button>
+          {copied && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Copied
+            </span>
+          )}
+          <button
+            title="Download JSON"
+            className="px-3 py-1 text-sm border rounded"
+            onClick={handleDownload}
+          >
+            Download
+          </button>
           <button className="px-3 py-1 text-sm border rounded" onClick={() => setExpandAll((v) => !v)}>
             {expandAll ? 'Collapse all' : 'Expand all'}
           </button>
