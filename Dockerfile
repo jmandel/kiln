@@ -29,6 +29,7 @@ COPY server/package.json server/bun.lockb* ./server/
 
 # Copy source code
 COPY src ./src
+COPY bunfig.toml ./
 COPY server/src ./server/src
 COPY server/scripts ./server/scripts
 COPY server/tests ./server/tests
@@ -57,9 +58,6 @@ RUN sqlite3 server/db/terminology.sqlite "VACUUM;" && \
     sqlite3 server/db/terminology.sqlite "PRAGMA optimize;" && \
     sqlite3 server/db/terminology.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"
 
-# Build static assets
-RUN bun run build:static
-
 # Runtime stage - smaller image
 FROM oven/bun:1-alpine
 
@@ -81,7 +79,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/examples ./examples
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/tsconfig.json ./
-COPY --from=builder /app/dist ./dist
 
 # Copy server with all setup complete
 COPY --from=builder /app/server ./server
