@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kiln
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kiln-config
+  namespace: kiln
+data:
+  NODE_ENV: "production"
+  PORT: "3500"
+  VALIDATOR_HEAP: "512M"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kiln
+  namespace: kiln
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # SQLite doesn't support concurrent access
+  selector:
+    matchLabels:
+      app: kiln
+  template:
+    metadata:
+      labels:
+        app: kiln
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: kiln
+          image: ghcr.io/jmandel/kiln:main
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3500
+              name: http
+          volumeMounts:
+            - name: terminology
+              mountPath: /data
+            - name: job-data
+              mountPath: /app/jobs
+          envFrom:
+            - configMapRef:
+                name: kiln-config
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "500m"
+            limits:
+              memory: "6Gi"  # Need memory for validator + terminology operations
+              cpu: "2000m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60  # Give time for validator to start
+            periodSeconds: 10
+            timeoutSeconds: 5
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30  # Allow up to 5 minutes for startup
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kiln
+  namespace: kiln
+spec:
+  selector:
+    app: kiln
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kiln
+  namespace: kiln
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  tls:
+    - hosts:
+        - kiln.fhir.me
+      secretName: kiln-fhir-me-tls
+  rules:
+    - host: kiln.fhir.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kiln
+                port:
+                  number: 80
+---
+# Certificate for TLS
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kiln-fhir-me
+  namespace: kiln
+spec:
+  secretName: kiln-fhir-me-tls
+  commonName: kiln.fhir.me
+  dnsNames:
+    - kiln.fhir.me
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
