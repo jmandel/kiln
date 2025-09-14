@@ -20,6 +20,10 @@ function validateEnvironment() {
     console.log(`LLM Base URL: ${config.baseURL}`);
     console.log(`Model: ${config.model}`);
     console.log(`Temperature: ${config.temperature}`);
+    try {
+      const hasPub = (config as any).publicApiKey ? 'present (embedded)' : 'none';
+      console.log(`Public API Key: ${hasPub}`);
+    } catch {}
     console.log('');
     console.log(`FHIR Base URL: ${config.fhirBaseURL}`);
     console.log(`Validation Services: ${config.validationServicesURL || '[auto-detect]'}`);
@@ -80,4 +84,3 @@ function validateEnvironment() {
 if (import.meta.main) {
   validateEnvironment();
 }
-

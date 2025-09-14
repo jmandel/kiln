@@ -65,13 +65,17 @@ export function resolveTaskConfig(
     const n = Number(t);
     return Number.isFinite(n) ? n : config.temperature();
   })();
-  // API key continues to be stored locally in the browser
+  // API key: prefer per-task override, then user default, then embedded public key (if any)
   const apiKeyDefault = ((): string => {
     try {
-      return localStorage.getItem('TASK_DEFAULT_API_KEY') || '';
-    } catch {
-      return '';
-    }
+      const v = localStorage.getItem('TASK_DEFAULT_API_KEY');
+      if (v && v.trim()) return v;
+    } catch {}
+    try {
+      // Use embedded public key when provided by server config
+      return (config as any).publicApiKey?.() || '';
+    } catch {}
+    return '';
   })();
   const apiKey = ((): string => {
     try {

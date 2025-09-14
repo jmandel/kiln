@@ -7,7 +7,8 @@ export interface Config {
   baseURL: string;
   model: string;
   temperature: number;
-  apiKeyHint: 'set-in-localstorage' | 'not-configured';
+  apiKeyHint: 'set-in-localstorage' | 'embedded' | 'not-configured';
+  publicApiKey?: string | null;
   fhirBaseURL: string;
   validationServicesURL: string;
   fhirGenConcurrency: number;
@@ -90,6 +91,10 @@ export const config = {
   apiKeyHint: (): Config['apiKeyHint'] => {
     if (!resolvedConfig) throw new Error('Configuration not loaded');
     return resolvedConfig.apiKeyHint;
+  },
+  publicApiKey: (): string | null | undefined => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.publicApiKey;
   },
   fhirBaseURL: (): string => {
     if (!resolvedConfig) throw new Error('Configuration not loaded');

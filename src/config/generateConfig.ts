@@ -9,7 +9,8 @@ export interface PublicConfig {
   baseURL: string;
   model: string;
   temperature: number;
-  apiKeyHint: 'set-in-localstorage' | 'not-configured';
+  apiKeyHint: 'set-in-localstorage' | 'embedded' | 'not-configured';
+  publicApiKey?: string | null;
 
   // FHIR Configuration
   fhirBaseURL: string;
@@ -52,12 +53,17 @@ export function generateConfig(source: 'build-time' | 'runtime' = 'runtime'): Pu
     )
   );
 
+  // Always embed a key: pass through env if set; otherwise supply a placeholder demo key
+  const publicApiKey = (env.PUBLIC_KILN_LLM_PUBLIC_KEY || env.PUBLIC_KILN_API_KEY || env.KILN_API_KEY || 'sk-public-demo').trim();
+
   const config: PublicConfig = {
     // LLM Configuration - COMPLETE VALUES ONLY
     baseURL,
     model,
     temperature,
-    apiKeyHint: env.KILN_API_KEY ? 'set-in-localstorage' : 'not-configured',
+    // API Key handling (always embedded per simplified policy)
+    apiKeyHint: 'embedded',
+    publicApiKey,
 
     // FHIR Configuration - COMPLETE VALUES ONLY
     fhirBaseURL,
