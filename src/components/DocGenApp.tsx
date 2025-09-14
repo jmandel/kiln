@@ -202,7 +202,7 @@ export default function DocGenApp(): React.ReactElement {
     if ((window as any).docGen?.set) {
       (window as any).docGen.set({
         jobId: '',
-        title: 'No job selected',
+        title: '',
         status: 'queued',
         metrics: { stepCounts: {}, totalTokens: 0, elapsedMs: 0 },
         artifacts: [],
@@ -237,7 +237,7 @@ export default function DocGenApp(): React.ReactElement {
         (window as any).docGen?.set &&
           (window as any).docGen.set({
             jobId: '',
-            title: 'No job selected',
+            title: '',
             status: 'queued',
             metrics: { stepCounts: {}, totalTokens: 0, elapsedMs: 0 },
             artifacts: [],
