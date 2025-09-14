@@ -1,4 +1,4 @@
-# 0. Kiln: Clinical Narrative From Raw Clay
+# Kiln: Clinical Narrative From Raw Clay
 
 Kiln is a browser-based tool for iteratively shaping raw patient sketches into realistic clinical notes and IPS-compliant FHIR Bundles using LLMs for synthesis and external services for validation, built by Josh Mandel, MD.
 
@@ -211,21 +211,6 @@ Kiln's APIs provide low-level access to core services. All endpoints support JSO
 
 For batch validation, use `POST /validate/batch` with `{ "resources": [{ "id": "p1", "resource": {...} }] }`. All endpoints return JSON with CORS headers enabled.
 
-### Configuration
-Kiln uses environment variables for flexible setup. Set them in your shell, `.env` file, or Docker run command.
-
-- **LLM Integration:** 
-  - `TASK_DEFAULT_BASE_URL`: API base for LLM calls (e.g., `https://openrouter.ai/api/v1`).
-  - `TASK_DEFAULT_API_KEY`: Your API key for the LLM provider (required for generation).
-  - `TASK_DEFAULT_MODEL`: Optional model override (default: OpenRouter's default).
-  - Supports OpenRouter; configure others via custom LLM tasks in `./src/workflows`.
-
-- **FHIR and Services:**
-  - `FHIR_BASE_URL`: Canonical base for resource URLs in bundles (default: `https://kiln.fhir.me`). Set to your FHIR server (e.g., `https://your-fhir-server`).
-  - `VALIDATION_SERVICES_URL`: Base for validation/terminology APIs (default: same-origin). Points to your server if deploying separately.
-  - `VALIDATOR_HEAP`: Java heap for validator (default: 4g). Increase to 8g+ for large bundles.
-
-After changes, restart the server or reload the UI. For production, use absolute paths for `TERMINOLOGY_DB_PATH` to persist the SQLite database.
 
 ### Example: Generate from Sketch
 To create a full document from a sketch:
