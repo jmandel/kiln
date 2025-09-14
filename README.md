@@ -1,486 +1,413 @@
-# Kiln
+# 0. Kiln: Clinical Narrative From Raw Clay
 
-Kiln is a browser-based tool for authoring clinical notes and generating FHIR documents. It uses LLM-driven workflows to synthesize narrative notes into structured FHIR Bundles, with server-side validation for terminology (e.g., SNOMED, LOINC, RxNorm) and resource structure.
-
-### Core Mental Model
-Kiln treats clinical documentation as a pipeline: start with free-text sketches (e.g., "52F with chest pain, onset 2 weeks ago"), use LLMs to generate outlines and section drafts, refine into a cohesive narrative, then map to FHIR resources (e.g., Condition, Observation, MedicationRequest). The final output is a validated FHIR R4 Bundle (document type) conforming to profiles like IPS. Each step is a "phase" (planning, drafting, assembly, validation), making the process modular and debuggable—failed phases surface artifacts for inspection.
-
-### Key Components
-- **Frontend**: React app for note authoring, previewing Markdown output, and workflow orchestration. All LLM interactions happen via API calls to the backend.
-- **Backend**: Bun.ts server for terminology search (FTS on SQLite with LOINC/SNOMED/RxNorm) and FHIR validation (proxies to HAPI FHIR validator via Java process).
-- **Data Flow**: Sketch → LLM planning (outline/briefs) → Section refinement loop → FHIR resource generation → Bundle assembly → Validation. Errors (e.g., unresolved codes) are captured as debug artifacts.
-- **Dependencies**: Bun runtime; Java 17+ for validator; SQLite (~500MB) for terminology.
-
-### Use Cases
-- Rapid prototyping of clinical notes to FHIR for documentation systems.
-- Testing LLM-driven FHIR generation against real standards.
-- Educational tool for understanding note-to-structure mapping.
-
-See [Architecture](#architecture) for a detailed diagram of the pipeline.
+Kiln is a browser-based tool for iteratively shaping raw patient sketches into realistic clinical notes and IPS-compliant FHIR Bundles using LLMs for synthesis and external services for validation, built by Josh Mandel, MD.
 
 ## 1. Overview
 
-Kiln is a browser-based tool for authoring clinical notes and generating FHIR documents. It uses LLM-driven workflows to synthesize narrative notes into structured FHIR Bundles, with server-side validation for terminology (e.g., SNOMED, LOINC, RxNorm) and resource structure.
+Kiln is a browser-based tool that transforms unstructured patient sketches into clinically realistic narrative notes and standardized FHIR Bundles. By leveraging large language models (LLMs) for iterative content synthesis, it bridges the gap between free-form clinical descriptions and interoperable structured data, with built-in validation to ensure compliance with FHIR R4 and IPS profiles.
 
-### Core Mental Model
-Kiln processes notes as a pipeline: begin with free-text sketches (e.g., "52F with chest pain, onset 2 weeks ago"), use LLMs to generate outlines and section drafts, refine into a cohesive narrative, then map to FHIR resources (e.g., Condition, Observation, MedicationRequest). The final output is a validated FHIR R4 Bundle (document type) conforming to profiles like IPS. Each step is a "phase" (planning, drafting, assembly, validation), making the process modular and debuggable—failed phases surface artifacts for inspection.
+### Purpose
+Kiln enables rapid prototyping of clinical documentation workflows. Users input a simple patient sketch (e.g., "52F with chest pain, onset 2 weeks ago"), and the system generates a comprehensive narrative note through guided LLM prompts, followed by automatic mapping to a FHIR Document Bundle. It emphasizes evidence-based realism in narratives while enforcing canonical coding (e.g., SNOMED for problems, LOINC for observations) and structure validation, making it ideal for exploring AI-driven content generation without deep FHIR expertise.
+
+### Key Features
+- **Narrative Generation from Sketches:** Start with a brief patient description; Kiln uses LLMs to create a structured outline, draft sections (e.g., HPI, exam, assessment), and assemble a cohesive Markdown note with iterative refinement loops for quality control.
+- **Automatic FHIR Conversion:** Extracts sections from the narrative to build an IPS-compliant Composition, generates discrete resources (e.g., Observation, Condition, MedicationRequest), and assembles a validated Bundle ready for clinical systems.
+- **Terminology Search:** Integrated lookup across SNOMED CT, LOINC, RxNorm, and FHIR code systems, with fuzzy matching and code existence checks to support accurate coding during generation.
+- **FHIR Validation:** Real-time structure and conformance checks against R4/IPS using an embedded HAPI validator, surfacing issues like unresolved references or invalid codes for quick fixes.
+- **Browser-Based UI:** Intuitive dashboard for sketching, reviewing artifacts (outlines, drafts, bundles), and managing workflows, with support for chaining narratives to FHIR.
+
+### Target Users
+Kiln targets clinicians exploring AI for documentation, informaticians building content pipelines, and developers prototyping FHIR integrations. It's particularly useful for generating synthetic data for testing or educational purposes, though it's not intended as a production electronic medical record (EMR) system.
+
+### Limitations
+Kiln depends on external services for LLM inference (e.g., OpenRouter) and FHIR validation (HAPI Java server), which may incur costs or require configuration. Outputs are LLM-generated and should be reviewed for clinical accuracy; it's not a substitute for professional judgment or certified medical software.
 
 ```
-[User Sketch] --> [LLM Planning/Outlining] --> [Section Drafting & Refinement] --> [FHIR Resource Generation]
-                      |                                              |
-                      +--> [Frontend: Author & Preview] <--> [Backend: Validate Terminology & Structure]
-                                                                 |
-                                                                 +--> [Output: FHIR Bundle (validated)]
+Patient Sketch → LLM Synthesis → Narrative Note → FHIR Generation → Validated Bundle
+                  (Iterative refinement)          (IPS-compliant)
 ```
 
-### Key Components
-- **Frontend**: React app for note authoring (narrative sketches → outlines → drafts → final note). Renders Markdown previews and handles LLM interactions via API calls to the backend. No server-side rendering; all logic is client-side for dev, built to static for production.
-- **Backend**: Bun.ts server exposes REST endpoints for terminology search (`/tx/search`, `/tx/codes/exists`): FTS on SQLite DB with LOINC/SNOMED/RxNorm; FHIR validation (`/validate`): Proxies to Java-based HAPI FHIR validator (runs as a child process); health checks (`/health`): Monitors validator readiness.
-- **Data Flow**: User inputs → LLM tasks (via OpenRouter/OpenAI) → Resource generation/refinement → Validation → Bundle output. Errors (e.g., unresolved codes) are surfaced as artifacts for debugging.
-- **Dependencies**: Bun for runtime/scripts; Java 17+ for validator; SQLite for terminology (loaded via scripts).
+## 2. Mental Models
 
-### Use Cases
-- Rapid note-to-FHIR conversion for clinical documentation systems.
-- Testing LLM-driven FHIR generation against real standards (e.g., IPS profiles).
-- Educational tool for mapping unstructured notes to structured data.
+Kiln's design draws from the metaphor of pottery: clinical sketches are raw "clay" that can be molded iteratively into a human-readable narrative, then "fired" into a durable, standardized FHIR Bundle. This separation ensures flexibility in content creation while maintaining interoperability. The system uses LLMs to infuse realism and clinical plausibility, guided by structured prompts that draw on evidence-based medicine, while validation loops catch and resolve issues like invalid codes or structural errors.
 
-See [Architecture](#architecture) for a detailed diagram of the pipeline.
+### Core Concept: From Sketch to Structure
+At its heart, Kiln transforms a concise patient sketch into a complete clinical document. The process begins with a natural language input, such as "52F with chest pain, onset 2 weeks ago," which serves as the seed for LLM-driven synthesis. The LLM first creates a logical outline with section briefs (e.g., Chief Complaint, HPI, Physical Exam, Assessment, Plan), ensuring coverage of key clinical elements like symptoms, history, and risks. Each section is then expanded into detailed prose, drawing on the sketch for plausible, evidence-based details—such as radiation patterns for pain or typical exam findings—while avoiding fabrication.
 
-## 2. Architecture
+Refinement happens through score-based loops: drafts are critiqued for realism, consistency, and synthesis (e.g., no duplication across sections), and low scores trigger revisions until quality thresholds are met. The final narrative is assembled as Markdown, preserving readability. For FHIR, the system maps sections to an IPS Composition, generates discrete resources (e.g., Observation for vitals, Condition for diagnoses, MedicationRequest for orders), and produces a Bundle with fullUrl references and embedded narratives from the original note.
 
-Kiln's architecture separates concerns into a client-side authoring interface and a lightweight backend for validation and lookups, forming a "pipeline engine" where each phase (planning, drafting, validation) is a composable function. The frontend handles user interaction and LLM orchestration, while the backend ensures compliance with FHIR standards. This design keeps the system modular: workflows are defined as arrays of phase functions in TypeScript, allowing easy extension (e.g., add a new validation phase without frontend changes).
+### Workflow Layers
+Kiln's pipeline separates concerns across three layers, each optimized for its role:
 
-### Frontend
-The React-based frontend (running at http://localhost:3000) manages the note authoring experience. It starts with user sketches (free-text inputs like "52F with chest pain"), invokes LLM tasks via API calls to the backend, and renders outputs like Markdown previews, outlines, and intermediate artifacts. Key features include:
-- **Workflow Orchestration**: Defined in `src/workflows/` (e.g., `buildNarrativeWorkflow`), phases are executed sequentially—e.g., planning generates an outline, drafting refines sections, assembly stitches the note. Each phase produces artifacts (e.g., JSON outlines, text drafts) stored in IndexedDB for offline dev and displayed in a dashboard.
-- **UI Components**: `DocGenApp` orchestrates the app; `DocGenDashboard` shows artifacts, events, and progress (e.g., phase completion via `PhaseProgress`). Markdown rendering uses `marked` for real-time previews.
-- **LLM Integration**: Calls to OpenRouter/OpenAI (via localStorage key) for tasks like outlining (`plan_outline`) or refinement (`fhir_resource_validate_refine`). Prompts are templated in `src/workflows/*/prompts.ts`.
-- **Build**: Uses Bun for dev server with hot reload (`bun run dev`); builds to static HTML/JS in `/dist` for production (via `bun run build:static`).
+- **Clay (Narrative Layer):** This is the malleable, human-focused stage. LLMs are prompted to generate content iteratively, emphasizing clinical realism (e.g., patient quotes, exam descriptions) over structure. Prompts guide the model to expand sketches with details like onset, severity, and comorbidities, using a critique loop where scores below thresholds (e.g., 0.75 for sections) prompt rewrites. The output is a cohesive Markdown note, editable and reviewable in the UI.
 
-No server-side rendering—client-side logic ensures fast iteration, with artifacts persisting across reloads for debugging failed phases.
+- **Firing (FHIR Layer):** Here, the narrative is transformed into structured data. Sections are extracted (e.g., HPI → Condition/Observation) and mapped to IPS resources, with placeholders for entries (e.g., "Observation/obs-bp-1" for blood pressure). LLMs generate individual resources with canonical codes (SNOMED for problems, LOINC for labs), ensuring each Observation focuses on one facet (e.g., systolic BP as a component). The result is a Bundle with Composition as the root, linking all resources via references to a shared Patient and Encounter.
 
-### Backend
-The Bun.ts backend (http://localhost:3500) is stateless except for the SQLite DB and validator process, exposing a minimal REST API for terminology and validation. It runs as a single process, handling ~1000 req/s on modest hardware.
-
-- **Terminology Search**: `/tx/search` and `/tx/codes/exists` use FTS5 on SQLite (`designations_fts` table) for fuzzy matching across LOINC/SNOMED/RxNorm. Queries normalize systems (e.g., "loinc" → "http://loinc.org") and rank by BM25 score on designations (primary display + synonyms). `/tx/capabilities` lists supported systems (~200 total, 3 "big" ones >500k concepts).
-- **FHIR Validation**: `/validate` proxies to HAPI FHIR validator (Java JAR running as child process on random port, e.g., 8081). Supports single resources or batches (`/validate/batch`); filters noise (e.g., reference resolution warnings). Profiles (e.g., IPS) via query param. Startup ~30s; monitor via `/health`.
-- **Health Checks**: `/health` returns `{status: "ok", services: {terminology: true, validator: {ready: true}}}`.
-- **Implementation**: `src/server.ts` routes requests; `src/services/terminology.ts` handles FTS; `src/services/validator.ts` spawns Java process with configurable heap (`VALIDATOR_HEAP=4g`).
-
-Bun is chosen for its speed (no Node.js overhead) and SQLite for lightweight storage (~500MB DB). Java is unavoidable for the validator but isolated as a subprocess.
-
-### Data Flow
-User inputs trigger LLM workflows, which call the backend for lookups and validation:
+- **Validation Layer:** This enforces standards without disrupting creativity. Terminology searches (via SQLite FTS) verify codes exist in SNOMED/LOINC/RxNorm; unresolved ones get annotated extensions (e.g., `http://kraken.fhir.me/StructureDefinition/coding-issue`). Structure validation uses HAPI to check R4/IPS conformance, rejecting invalid patches and surfacing issues like missing fullUrl or code mismatches for refinement.
 
 ```mermaid
 graph TD
-    A[User: Sketch Input] --> B[Frontend: LLM Workflow]
-    B --> C[Backend: Terminology Search]
-    C --> D[LLM Refinement Loop]
-    D --> E[FHIR Resource Assembly]
-    E --> F[Java Validator: Structure & Profiles]
-    F --> G[Output: Validated Bundle]
-    B -.->|API Calls| C
-    D -.->|API Calls| F
-    H[SQLite: LOINC/SNOMED/RxNorm] --> C
-    I[Java Process] --> F
+    A[Patient Sketch] --> B[LLM: Outline & Briefs]
+    B --> C[LLM: Section Drafts<br/>(Iterative Critique)]
+    C --> D[Assemble Narrative]
+    D --> E[Extract Sections →<br/>Composition Plan]
+    E --> F[LLM: Generate Resources<br/>(Observation, Condition, etc.)]
+    F --> G[Refine & Validate<br/>(Terminology + Structure)]
+    G --> H[FHIR Bundle<br/>(IPS-Compliant)]
+    H --> I[Final Validation]
+    style A fill:#f9f
+    style H fill:#bbf
 ```
 
-- **Terminology Lookup**: Query "diabetes" → Normalize to SNOMED URL → FTS on `designations_fts` → BM25 ranking → Results with score.
-  ```
-  Query: "diabetes"
-      ↓
-  Normalize: http://snomed.info/sct
-      ↓
-  FTS: MATCH 'diabetes' IN designations
-      ↓
-  Rank: BM25 score (display + synonyms)
-      ↓
-  Results: [{system, code, display, score}]
-  ```
-- **Validation**: Resource → Java endpoint (`/validateResource`) → OperationOutcome → Filtered issues (errors only; no ref noise).
+### Key Decisions
+Several choices shape Kiln's behavior to balance creativity and compliance:
 
-Think of Kiln as a forge: the frontend molds raw sketches into forms (outlines/drafts), the backend tempers them against FHIR standards (terminology + validation), producing a durable Bundle. The pipeline is fault-tolerant—unresolved codes trigger refinement loops, with artifacts logging each step for debugging.
+- **LLM Prompting:** Prompts prioritize canonical coding (e.g., SNOMED for conditions, LOINC for observations) but permit narrative fallbacks for ambiguous cases, avoiding over-reliance on the model for precise FHIR specs. IPS guidance is embedded as structured notes (e.g., "use LOINC for single measurements") rather than full R4 rules, keeping prompts concise and focused on clinical synthesis.
 
-(Word count: 478)
+- **Validation Loops:** During FHIR generation, unresolved codings trigger terminology searches (e.g., via `/tx/search`), with results fed back to the LLM for refinement. Invalid patches (e.g., partial Coding updates) are rejected, and issues are annotated as extensions (e.g., `coding-issue` for unresolved codes) rather than halting the process, allowing partial success.
 
-## 3. Prerequisites
+- **Error Handling:** The system favors graceful degradation: narrative notes are always generated, even if FHIR validation fails, with placeholders (e.g., `<requires search_for_coding>`) for missing codes. This ensures usability while providing clear feedback for manual intervention.
 
-Kiln requires a modern development environment. Ensure the following are installed before setup:
+These models ensure Kiln produces both readable narratives and valid FHIR, making it a practical tool for clinical content exploration.
 
-### Runtime
-- **Bun 1.0+**: The JavaScript runtime and package manager. Install via:
-  ```
-  curl -fsSL https://bun.sh/install | bash
-  ```
-  Verify with `bun --version`.
+## 3. Setup
 
-### Java
-- **JDK 17+**: Required for the HAPI FHIR validator (runs as a Java subprocess). Download from [Oracle](https://www.oracle.com/java/technologies/downloads/) or use OpenJDK. Set `JAVA_HOME` if not in your PATH (e.g., `export JAVA_HOME=/path/to/jdk-17`).
-  Verify with `java -version` (should show version 17 or higher).
+Kiln requires Bun (the JavaScript runtime) for the development server and Java 17+ for the embedded FHIR validator. The terminology database uses SQLite for efficient local storage. Follow these steps to get started.
 
-### Git
-- **Git 2.0+**: Used to clone the large-vocabularies submodule for terminology data. Install via your package manager (e.g., `brew install git` on macOS, `apt install git` on Ubuntu).
-  Verify with `git --version`.
+### Prerequisites
+- **Bun 1.0+**: Install via `curl -fsSL https://bun.sh/install | bash`. Verify with `bun --version`.
+- **Java 17+**: Required for the HAPI FHIR validator. Install via your package manager (e.g., `apt install openjdk-17-jre` on Debian-based systems) or from [Adoptium](https://adoptium.net/). Set `JAVA_HOME` if multiple versions are installed. Verify with `java -version`.
+- **Git**: For cloning the repository and managing the vocabulary submodule. Install via your package manager (e.g., `apt install git`).
 
-### OS
-- Tested on macOS and Linux (Ubuntu/Debian). For Windows, use WSL 2 with Ubuntu for best compatibility—native Windows support is experimental due to Java/Bun interactions.
+If you're using Docker, no additional prerequisites are needed beyond Docker itself.
 
-### Hardware
-- **Minimum**: 8GB RAM, SSD storage (DB ~500MB after loading).
-- **Recommended**: 16GB+ RAM for running the validator with large Bundles (defaults to 4GB heap; see [Configuration](#configuration) to adjust via `VALIDATOR_HEAP`).
+### Installation Steps
+1. **Clone the Repository:**
+   ```
+   git clone https://github.com/joshmandel/kiln.git
+   cd kiln
+   ```
 
-| Component | Minimum Version | Notes |
-|-----------|-----------------|-------|
-| Bun      | 1.0+           | Runtime & package manager |
-| Java     | 17+            | For FHIR validator |
-| Git      | 2+             | For vocabulary submodules |
+2. **Install Root Dependencies:**
+   ```
+   bun install
+   ```
+   This sets up the browser UI and shared packages.
 
-The validator defaults to 4GB heap—monitor memory usage; increase via `VALIDATOR_HEAP=8g` if processing large IGs or Bundles. SQLite is lightweight and handles up to 1M concepts efficiently on modest hardware.
+3. **Setup Server Dependencies:**
+   ```
+   cd server
+   bun install
+   ```
+   This installs server-specific packages.
 
-## 4. Installation & Setup
+4. **Download Validator and Vocabularies:**
+   ```
+   cd server
+   bun run setup.ts
+   ```
+   This downloads the FHIR validator JAR, sets up the large-vocabularies Git submodule (containing LOINC, SNOMED CT, and RxNorm), and prepares the SQLite database structure.
 
-Kiln uses Bun for both frontend and backend, making setup straightforward. The process involves installing dependencies, setting up the server (including the Java validator), and loading terminology data into SQLite. Total time: ~10-15 minutes (plus 5-10 minutes for terminology loading on an SSD).
+5. **Load Terminology Database:**
+   ```
+   cd server
+   bun run scripts/load-terminology.ts
+   ```
+   This populates the SQLite database (`./server/db/terminology.sqlite`) with terminology from the vocabularies. The process may take several minutes for initial load; subsequent runs are faster.
 
-### Step 1: Clone and Install Dependencies
-Clone the repository and install Bun packages for both root (frontend) and server.
+Once complete, the database will contain searchable concepts from major code systems, optimized with FTS5 for fast lookups.
 
-```bash
-# Clone the repo
-git clone https://github.com/joshmandel/kiln.git
-cd kiln
+### Environment Variables
+Configure these in your shell or `.env` file. Defaults are shown for local development.
 
-# Install frontend dependencies
-bun install
+- `PORT`: Server port for the full app (default: 3000). For APIs only, use port 3500 from the `./server` directory.
+- `VALIDATOR_HEAP`: Java heap size for the validator (default: 4g). Increase for large resources (e.g., `8g` for production).
+- `TERMINOLOGY_DB_PATH`: Path to the SQLite terminology database (default: `./server/db/terminology.sqlite`). Use absolute paths for persistence in Docker.
 
-# Install server dependencies
-cd server
-bun install
-cd ..
-```
-
-### Step 2: Server Setup
-The server requires a Java-based validator JAR and vocabulary data. Run the setup script to handle this automatically.
-
-```bash
-# From the server directory
-cd server
-bun run scripts/setup.ts
-```
-
-This script:
-- Downloads the latest HAPI FHIR validator JAR (`validator.jar`) from GitHub.
-- Clones the `fhir-concept-publication-demo` repository as a git submodule into `./server/large-vocabularies` (provides NDJSON for LOINC/SNOMED/RxNorm).
-- Creates the `./server/db` directory for the SQLite database.
-
-If the submodule already exists, it updates it via `git pull`. No manual intervention needed unless you want to customize vocabularies.
-
-### Step 3: Load Terminology
-Populate the SQLite database with terminology data (LOINC, SNOMED CT, RxNorm). This step imports ~1M+ concepts and takes 5-10 minutes on an SSD.
-
-```bash
-# From the server directory
-cd server
-bun run scripts/load-terminology.ts
-```
-
-The script loads:
-- LOINC (~150k concepts)
-- SNOMED CT (~300k active concepts from US edition)
-- RxNorm (~500k prescribable drugs)
-- FHIR R4 built-in CodeSystems (~50 systems)
-- CVX vaccine codes (~500 entries)
-
-The resulting database (~500MB) enables fuzzy search across displays and synonyms. If you encounter import errors, ensure Java 17+ is installed (`java -version`) and retry.
-
-### Step 4: Environment Variables
-Configure via `.env` or export directly. Key variables:
-
-- `PORT=3500`: Backend server port (default: 3500).
-- `VALIDATOR_HEAP=4g`: Java heap size for the validator (default: 4g; increase to 8g for large Bundles via `export VALIDATOR_HEAP=8g`).
-- `TERMINOLOGY_DB_PATH=./server/db/terminology.sqlite`: Path to the SQLite database (default: `./server/db/terminology.sqlite`).
-- `VALIDATOR_JAR=./server/validator.jar`: Path to the validator JAR (auto-downloaded; override if using a custom build).
-- `OPENROUTER_API_KEY=your-key`: API key for LLM calls (free tier works for dev; set via localStorage in browser for testing).
-
-Example `.env` file:
-```
-PORT=3500
-VALIDATOR_HEAP=4g
-TERMINOLOGY_DB_PATH=./server/db/terminology.sqlite
-OPENROUTER_API_KEY=sk-or-v1-...
-```
-
-### Step 5: Verify and Run
-Start the dev server and check health.
-
-```bash
-# Start the backend server (from root)
-bun run src/server.ts
-```
-
-The server runs at http://localhost:3500. Verify with:
-```bash
-curl http://localhost:3500/health
-```
-
-Expected response: `{ "status": "ok", "services": { "terminology": true, "validator": { "ready": true } } }`. The validator takes ~30s to initialize—refresh if `ready` is false.
-
-For the full app (frontend + backend):
-```bash
-# In a new terminal (from root)
-bun run dev
-```
-
-Access at http://localhost:3000. The frontend proxies API calls to the backend.
+Reload the environment after changes or restart the server.
 
 ### Docker (Alternative)
-For a self-contained setup with pre-loaded DB:
+For a containerized setup with all dependencies pre-installed:
 
-```bash
-# Build image
-docker build -t kiln .
+1. **Build the Image:**
+   ```
+   docker build -t kiln .
+   ```
+   This creates an image with Bun, Java, validator JAR, and pre-loaded terminology (SQLite in `/app/server/db/terminology.sqlite`).
 
-# Run (maps port 3500)
-docker run -p 3500:3500 kiln
+2. **Run the Container:**
+   ```
+   docker run -p 3500:3500 -v ./server/db:/app/server/db kiln
+   ```
+   Access the full app at `http://localhost:3500` (UI + APIs). For persistence, the volume mounts the local `./server/db` directory.
+
+3. **Advanced Docker Usage:**
+   - Override env vars: `docker run -p 3500:3500 -e PORT=8080 -e VALIDATOR_HEAP=8g kiln`.
+   - Multi-container: Run the server with `docker run -p 3500:3500 kiln` and access via `http://localhost:3500`.
+
+If you encounter issues (e.g., Java heap exhaustion), check container logs with `docker logs <container-id>` and adjust `VALIDATOR_HEAP`.
+
+```
+git clone repo
+│
+├─ bun install (root)
+│
+├─ cd server
+│ ├─ bun install
+│ ├─ bun run setup.ts (downloads validator + vocab)
+│ └─ bun run scripts/load-terminology.ts (populates DB)
+│
+└─ bun run dev (starts UI + APIs on port 3000)
 ```
 
-The image includes the loaded DB (~500MB) and validator. Override env vars via `-e` flags (e.g., `docker run -e VALIDATOR_HEAP=8g -p 3500:3500 kiln`).
+## 4. Usage
 
-### Troubleshooting
-- **Java Errors**: Ensure JDK 17+ (`java -version`). If validator fails to start, check logs for heap issues—increase `VALIDATOR_HEAP`.
-- **DB Import Fails**: Run `bun run server/scripts/load-terminology.ts` again; verify `./server/large-vocabularies` has NDJSON files.
-- **Port Conflicts**: Change `PORT` if 3500 is in use.
-- **Memory**: Monitor usage during terminology load (peak ~2GB); validator uses separate heap.
-- **Windows**: Use WSL 2; native Bun works but Java paths may need adjustment.
+Kiln provides both an intuitive browser interface for interactive use and a set of RESTful APIs for programmatic access. The UI handles the full workflow from sketch to FHIR, while the APIs enable custom integrations, such as embedding terminology lookup in other tools or validating generated resources.
 
-(Word count: 528)
+### Running the App
+Kiln runs as a single-process server combining the UI and APIs, powered by Bun for fast hot-reloading during development.
 
-## 5. Usage
+- **Full Dev Server (UI + APIs):** Run `bun run dev` from the project root. This starts the app on http://localhost:3000, serving the browser UI with all APIs mounted. Changes to code or assets trigger automatic reloads.
+- **APIs Only:** For headless use, navigate to the `./server` directory and run `bun run dev`. The server listens on http://localhost:3500, exposing endpoints without the UI. Ideal for testing or integrating with external clients.
+- **Production Deployment:** Build static assets with `bun run build:static` (outputs to `./dist`), then deploy the server via your platform. Bun supports serverless environments like Vercel or Cloudflare Workers with minimal configuration. Use Docker for containerized deployment: `docker build -t kiln . && docker run -p 3500:3500 kiln`.
 
-Kiln's usage centers on its pipeline model, where phases (e.g., planning, drafting) execute sequentially, producing debuggable artifacts at each step. The frontend provides an interactive authoring experience, while the backend handles lookups and validation. Start the dev server with `bun run dev`—this launches the frontend at http://localhost:3000 (note authoring UI) and the backend at http://localhost:3500 (API endpoints). The app is self-contained: sketches are processed in-browser, with API calls for heavy lifting.
+Monitor logs for startup messages; the server will indicate when the validator and terminology services are ready.
 
-### Running Dev Server
-Run the full stack (frontend + backend) from the project root:
+### UI Workflow
+The browser interface offers a streamlined experience for generating and refining clinical content. Access it at http://localhost:3000 after starting the dev server.
 
-```bash
-bun run dev
+1. **Enter Patient Sketch:** In the header bar, type a brief description (e.g., "52F with chest pain, onset 2 weeks ago, no known allergies"). Click "Start" to initiate generation. Optionally, check "Also generate FHIR Bundle" for automatic conversion.
+2. **Generate Narrative:** Review the LLM-generated outline in the dashboard. Approve or revise sections (e.g., HPI, Physical Exam) via the artifacts table. Use the critique loop to iterate on drafts until satisfied—scores indicate quality (e.g., >0.75 for approval).
+3. **Convert to FHIR:** Once the narrative is finalized (look for the "ReleaseCandidate" artifact), select "Convert to FHIR" from the job sidebar or header. This extracts sections, generates resources, and produces an IPS-compliant Bundle.
+4. **View and Manage Artifacts:** The dashboard shows a timeline or table of outputs (notes, outlines, bundles). Click artifacts to inspect details, including validation issues. Use the "Rerun" button to regenerate with tweaks, or "Clear Cache" to reset specific phases.
+
+The sidebar lists all jobs (narratives or FHIR conversions); select one to view its progress and artifacts. For chaining, complete a narrative first, then create a new FHIR job referencing it.
+
+### API Endpoints
+Kiln's APIs provide low-level access to core services. All endpoints support JSON requests/responses and CORS (default: allow all origins). Base URL: http://localhost:3500 (or your configured port).
+
+- **Terminology Search:** `POST /tx/search`
+  - **Purpose:** Find codes across SNOMED CT, LOINC, RxNorm, and FHIR systems.
+  - **Request Body:** `{ "queries": ["diabetes"], "systems": ["http://snomed.info/sct"], "limit": 20 }`.
+  - **Response:** `{ "results": [{ "query": "diabetes", "hits": [{ "system": "...", "code": "...", "display": "..." }], "count": N }] }`.
+  - **Example:** Search for "chest pain" to get SNOMED codes for integration into your app.
+
+- **Code Existence Check:** `POST /tx/codes/exists`
+  - **Purpose:** Verify if specific codes exist in the terminology database.
+  - **Request Body:** `{ "items": [{ "system": "http://loinc.org", "code": "2345-7" }] }`.
+  - **Response:** `{ "results": [{ "system": "...", "code": "...", "exists": true, "display": "..." }] }`.
+  - **Example:** Check LOINC glucose code before using it in an Observation.
+
+- **FHIR Validation:** `POST /validate`
+  - **Purpose:** Validate a single FHIR resource against R4/IPS.
+  - **Request Body:** `{ "resource": { "resourceType": "Patient", ... }, "profile": "http://hl7.org/fhir/StructureDefinition/Patient" }`.
+  - **Response:** `{ "valid": true, "issues": [] }` or `{ "valid": false, "issues": [{ "severity": "error", "details": "..." }] }`.
+  - **Example:** Send a generated Bundle to check conformance.
+
+- **Health Check:** `GET /health`
+  - **Purpose:** Verify server status.
+  - **Response:** `{ "status": "ok", "services": { "terminology": true, "validator": { "ready": true } } }`.
+  - **Example:** Use in monitoring or before API calls.
+
+For batch validation, use `POST /validate/batch` with `{ "resources": [{ "id": "p1", "resource": {...} }] }`. All endpoints return JSON with CORS headers enabled.
+
+### Configuration
+Kiln uses environment variables for flexible setup. Set them in your shell, `.env` file, or Docker run command.
+
+- **LLM Integration:** 
+  - `TASK_DEFAULT_BASE_URL`: API base for LLM calls (e.g., `https://openrouter.ai/api/v1`).
+  - `TASK_DEFAULT_API_KEY`: Your API key for the LLM provider (required for generation).
+  - `TASK_DEFAULT_MODEL`: Optional model override (default: OpenRouter's default).
+  - Supports OpenRouter; configure others via custom LLM tasks in `./src/workflows`.
+
+- **FHIR and Services:**
+  - `FHIR_BASE_URL`: Canonical base for resource URLs in bundles (default: `https://kiln.fhir.me`). Set to your FHIR server (e.g., `https://your-fhir-server`).
+  - `VALIDATION_SERVICES_URL`: Base for validation/terminology APIs (default: same-origin). Points to your server if deploying separately.
+  - `VALIDATOR_HEAP`: Java heap for validator (default: 4g). Increase to 8g+ for large bundles.
+
+After changes, restart the server or reload the UI. For production, use absolute paths for `TERMINOLOGY_DB_PATH` to persist the SQLite database.
+
+### Example: Generate from Sketch
+To create a full document from a sketch:
+
+- **Via UI:** 
+  1. Start the server: `bun run dev`.
+  2. At http://localhost:3000, enter "52F with chest pain, onset 2 weeks ago" in the header.
+  3. Click "Start" to generate the narrative (review outline and sections).
+  4. Once approved, click "Convert to FHIR" to create the Bundle.
+  5. View artifacts in the dashboard; download or validate the JSON.
+
+- **Via API (Programmatic):**
+  1. Use `/tx/search` to find terms: `curl -X POST http://localhost:3500/tx/search -d '{"queries": ["chest pain"]}'`.
+  2. Generate via UI or implement LLM calls mirroring `./src/workflows`.
+  3. Validate the Bundle: `curl -X POST http://localhost:3500/validate -d '{"resource": { ... }}'`.
+
+This produces a narrative note and FHIR Bundle with validated resources (e.g., Condition for chest pain, Observation for vitals).
+
+```mermaid
+graph LR
+    A[Client] -->|POST /tx/search<br/>{queries: ["chest pain"]}| B[Terminology Service]
+    B --> C[SNOMED/LOINC/RxNorm<br/>Results]
+    A -->|POST /validate<br/>{resource: Bundle}| D[FHIR Validator]
+    D --> E[Issues or Valid]
 ```
 
-- **Frontend**: http://localhost:3000 – Interactive dashboard for workflows.
-- **Backend**: http://localhost:3500 – REST API for terminology and validation.
+## 5. Architecture
 
-The server starts the Java validator (~30s warmup; monitor `/health` for readiness). For production, build static assets (`bun run build:static`) and serve `/dist` via any HTTP server (e.g., `bun run src/server.ts` for API-only).
+Kiln's architecture is designed for simplicity and performance, leveraging Bun as a unified runtime for both the frontend and backend while integrating external services for specialized tasks like FHIR validation. The system avoids traditional Node.js dependencies, using TypeScript throughout for type safety and maintainability. It runs as a single-process server in development (with hot-reloading) and supports containerized deployment for production.
 
-### Authoring Workflow
-Kiln supports two primary modes: narrative (sketch-to-FHIR) and direct FHIR (note text to Bundle). Phases are atomic—e.g., a validation failure halts refinement, surfacing artifacts like unresolved codings for manual review.
+### Stack
+Kiln uses a modern, lightweight stack optimized for rapid iteration and low overhead:
 
-- **Narrative Mode**: 
-  - Enter a sketch (e.g., "52F with chest pain, onset 2 weeks ago") in the input form.
-  - **Planning Phase**: LLM generates an outline (4-8 sections) and briefs (e.g., "Chief Complaint: Patient reports...").
-  - **Drafting Phase**: Refine sections iteratively (up to 3 revisions per section, targeting 0.75+ score for approval).
-  - **Assembly Phase**: Stitch drafts into a Markdown note (e.g., "## Chief Complaint\nPatient describes...").
-  - **Review Phase**: LLM critiques the full note (0.78+ score threshold); finalize to ReleaseCandidate.
-  - **Export**: Generate FHIR Bundle (IPS profile); download or copy JSON.
+- **Runtime:** Bun (fast JavaScript/TypeScript runtime with built-in bundling and server capabilities). No Node.js is used; Bun handles HTTP serving, SQLite access, and script execution directly.
+- **UI:** React (version 19+) for the browser interface, with hooks for state management (e.g., IndexedDB stores) and components for workflows and artifact viewing. Development mode includes no-build hot-reloading via Bun's plugin system.
+- **Backend:** A single Bun-based server that proxies the UI and exposes RESTful APIs. It manages workflows, terminology lookups, and validation requests without a separate backend framework.
+- **Storage:** SQLite for the terminology database (`./server/db/terminology.sqlite`), using FTS5 for efficient full-text search across designations. No external database server is required; the DB is pre-populated with LOINC, SNOMED CT, RxNorm, and FHIR code systems.
+- **External Services:**
+  - **FHIR Validator:** HAPI FHIR validator (Java-based, runs as a spawned process on port 8080). Integrated via HTTP calls for structure and profile checks.
+  - **LLM Provider:** External API (e.g., OpenRouter) for generation tasks. Configurable via environment variables; no local model hosting.
 
-- **FHIR Mode**: 
-  - Paste note text (or chain from a Narrative job via "Select Narrative") into the input.
-  - **Encoding Phase**: LLM plans a Composition (sections from note headers), generates resources (e.g., Condition for "hypertension"), and refines via validation loops (resolves codes, fixes structure).
-  - **Validation**: Backend validates the Bundle (errors only; no reference noise).
-  - **Output**: Download validated Bundle; view reports (e.g., coding issues).
+This stack ensures fast startup (under 10 seconds locally) and low resource use, with the SQLite DB providing offline-capable terminology search.
 
-Phases run asynchronously; monitor progress in the dashboard (e.g., "Sections: 3/5 complete"). Artifacts (outlines, drafts, traces) are listed with previews—click to inspect LLM prompts/raw outputs.
+### Directory Structure
+The monorepo is organized for clear separation of concerns, with the server and UI sharing the same Bun runtime for seamless development:
 
-### API Endpoints (for Integration)
-For custom integrations, use the backend REST API. All endpoints return JSON with CORS enabled.
+- **`./src`:** Core application source code.
+  - **UI Components:** React components for the dashboard, artifact viewer, input forms, and job management.
+  - **Hooks:** Custom React hooks (e.g., `useDashboardState` for state synchronization, `useJobsList` for sidebar).
+  - **Workflows:** LLM-driven pipelines (`./src/workflows`) for narrative synthesis and FHIR generation.
+  - **Services:** Utilities for FHIR operations (`./src/services`), including bundle assembly and resource refinement.
+  - **Stores:** IndexedDB wrappers (`./src/stores`) for managing app state like jobs and artifacts.
+  - **Types:** Shared TypeScript interfaces (e.g., `Context`, `Artifact`) for type safety across UI and workflows.
 
-- **`POST /tx/search`**: Search terminology across LOINC/SNOMED/RxNorm.
-  - Body: `{ "queries": ["diabetes"], "systems": ["loinc"], "limit": 20 }`.
-  - Response: `{ "results": [{ "query": "diabetes", "hits": [{ "system": "http://loinc.org", "code": "...", "display": "..." }], "count": N }] }`.
-  - Example (curl):
-    ```bash
-    curl -X POST http://localhost:3500/tx/search \
-      -H "Content-Type: application/json" \
-      -d '{"queries": ["chest pain"], "systems": ["snomed"], "limit": 5}'
-    ```
+- **`./server`:** API server and backend services.
+  - **Source (`./server/src`):** TypeScript modules for API routes (`./server/src/api.ts`), terminology search (`./server/src/services/terminology.ts`), and validation (`./server/src/services/validator.ts`).
+  - **Database (`./server/db`):** SQLite file (`terminology.sqlite`) with FTS5 indexes for fast lookups.
+  - **Vocabularies (`./server/large-vocabularies`):** Cached NDJSON files for LOINC, SNOMED CT, RxNorm, and FHIR code systems, loaded via `./server/scripts/load-terminology.ts`.
+  - **Scripts (`./server/scripts`):** Setup (`setup.ts`) and data loading (`load-terminology.ts`).
 
-- **`POST /validate`**: Validate a FHIR resource.
-  - Body: `{ "resource": { ... }, "profile": "http://hl7.org/fhir/StructureDefinition/Patient" }` (optional profile).
-  - Response: `{ "valid": true/false, "issues": [{ "severity": "error", "code": "...", "details": "...", "location": "..." }] }`.
+- **`./public`:** Static assets served directly by Bun (e.g., logo, CSS, favicon).
 
-- **`POST /validate/batch`**: Validate multiple resources.
-  - Body: `{ "resources": [{ "id": "p1", "resource": { ... } }] }`.
-  - Response: `{ "results": [{ "id": "p1", "valid": true/false, "issues": [...] }] }`.
+- **`./scripts`:** Utility scripts for building static assets (`build-static.ts`) and other tasks.
 
-- **`GET /health`**: Check server status.
-  - Response: `{ "status": "ok", "services": { "terminology": true, "validator": { "ready": true } } }`.
+- **Root Files:** `package.json` (Bun dependencies), `tsconfig.json` (TypeScript config), `index.html` (entry point for UI).
 
-Endpoints are rate-limited for dev; production scaling via Bun's built-in clustering.
+This structure allows independent development: edit UI in `./src` with hot reloads, or focus on APIs in `./server` without rebuilding.
 
-### Output
-Kiln produces FHIR R4 Bundles (type: "document") with IPS conformance. Resources (e.g., Patient, Condition, Observation) reference a single subject/encounter. Outputs include:
-- **Bundle**: Validated document Bundle (download JSON).
-- **Artifacts**: Intermediate files (e.g., outlines as JSON, drafts as Markdown, validation reports as OperationOutcome).
-- **Reports**: Coding analysis (unresolved terms), validation issues (errors only).
+### Key Modules
+Kiln's modularity enables easy extension, with clear responsibilities for each component:
 
-Export via "Download Bundle" button; validated Bundles pass IPS profiles (e.g., no unresolved SNOMED codes).
+- **Workflows (`./src/workflows`):** Core LLM-driven generation logic. Separate phases for narrative (e.g., `buildNarrativeWorkflow` in `./src/workflows/narrative/index.ts`) and FHIR conversion (`buildFhirWorkflow` in `./src/workflows/fhir/index.ts`). Each workflow is an array of functions (`DocumentWorkflow<FhirInputs>`), executing steps like outline creation, section drafting, and bundle assembly. Prompts are defined in subdirectories (e.g., `./src/workflows/fhir/prompts.ts`).
 
-### Preview & Debug
-Use the browser dev tools (F12) for LLM traces—console logs show API responses. The artifacts panel lists phase outputs (e.g., "Outline v1: JSON with sections"). For failed phases:
-- Check events log for LLM errors (e.g., low scores trigger re-drafts).
-- Query DB: `sqlite3 server/db/terminology.sqlite "SELECT * FROM concepts WHERE system='http://snomed.info/sct' LIMIT 5;"`.
-- Validator logs: Watch backend console for Java output (e.g., heap warnings).
+- **Services (`./src/services`):** Reusable utilities for FHIR operations.
+  - **FHIR Generation (`./src/services/fhirGeneration.ts`):** Handles resource creation and refinement, including terminology searches and patch application.
+  - **Artifacts (`./src/services/artifacts.ts`):** Helpers for emitting JSON artifacts with metadata (e.g., `emitJsonArtifact`).
+  - **Coding Analysis (`./src/codingAnalysis.ts`):** Scans resources for unresolved codings and applies extensions.
 
-Phases are atomic: validation halts on errors, logging the exact step (e.g., "refine:analyze: unresolved codings"). This design aids debugging—trace via artifacts without re-running the full pipeline.
+- **Stores (`./src/stores`):** Browser-side state management using IndexedDB.
+  - **Dashboard Store (`./src/dashboardStore.ts`):** Manages job views, artifacts, and events with subscription patterns for reactive UI updates.
+  - **Job Store:** Tracks workflows, steps, and dependencies (e.g., narrative to FHIR chaining).
 
-(Word count: 378)
+- **UI (`./src/components`):** React-based interface.
+  - **Dashboard (`./src/components/DocGenDashboard.tsx`):** Central view for jobs, artifacts, and progress.
+  - **Artifact Viewer (`./src/components/ArtifactDetails.tsx`):** Inspects notes, bundles, and validation reports.
+  - **Input Forms (`./src/components/documents`):** Type-specific UIs (e.g., `NarrativeInputForm.tsx` for sketches).
+  - **UI Utilities (`./src/components/ui`):** Shared components like badges, cards, and progress bars.
 
-## 6. Configuration
+### Data Flow
+Data moves through Kiln in a directed acyclic graph (DAG) of artifacts and steps, ensuring traceability:
 
-Kiln's configuration is split between frontend and backend, with environment variables for key behaviors. Most defaults work out-of-the-box for dev, but production setups may need tweaks for scale (e.g., memory for the validator) or integration (e.g., LLM provider).
+1. **Input:** User enters a sketch via UI or API.
+2. **LLM Prompts:** Workflow phases trigger LLM calls (e.g., outline generation in `planningPhase`), producing artifacts like briefs and drafts stored in IndexedDB.
+3. **Artifact Creation:** Each step outputs typed artifacts (e.g., `SectionDraft`, `FhirResource`) with metadata (phase, version, tags) and links to prior steps.
+4. **Validation:** Generated FHIR resources are checked via `/validate` API; issues (e.g., invalid codes) are annotated as extensions and fed back for refinement.
+5. **Output:** Final artifacts (narrative MD, FHIR JSON) are viewable/exportable; bundles include fullUrl references for interoperability.
 
-### Frontend
-The React frontend uses Tailwind CSS (via `bun-plugin-tailwind` for JIT compilation) and relies on environment variables for API integration. Set these in `.env` or via browser localStorage for testing:
+The flow is fault-tolerant: narrative generation proceeds even if FHIR fails, with placeholders for unresolved elements.
 
-- `REACT_APP_API_URL=http://localhost:3500`: Base URL for backend API calls (default: auto-detects from window location). For production, point to your hosted server (e.g., `https://your-domain.com`).
-
-No other frontend config is needed—LLM tasks (e.g., outlining, refinement) are hardcoded in `src/workflows/` but can be overridden via localStorage (e.g., `localStorage.setItem('OPENROUTER_API_KEY', 'sk-or-v1-...')` for ad-hoc testing).
-
-### Backend
-The Bun.ts backend is configured via environment variables in `.env` or exports. Key options:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | 3500 | Backend server port (e.g., `export PORT=8080`). |
-| `VALIDATOR_HEAP` | 4g | Java heap size for the HAPI FHIR validator (e.g., `export VALIDATOR_HEAP=8g` for large Bundles or IGs). Higher values handle bigger resources but increase memory usage—monitor via `/health` (validator readiness). |
-| `TERMINOLOGY_DB_PATH` | ./server/db/terminology.sqlite | Path to SQLite database (e.g., `./db/prod.sqlite` for custom DB). Reloading requires re-running `load-terminology.ts`. |
-| `VALIDATOR_JAR` | ./server/validator.jar | Path to HAPI FHIR validator JAR (auto-downloaded; override for custom builds, e.g., `./custom-validator.jar`). |
-| `OPENROUTER_API_KEY` | (none) | API key for LLM calls (OpenRouter/OpenAI). Set in env or localStorage; free tier suffices for dev (~1000 tokens/min). |
-
-For LLM tasks, prompts are in `src/workflows/*/prompts.ts` (e.g., `fhir_generate_resource` for resource synthesis). The backend supports OpenRouter (default) or OpenAI—switch via localStorage (`localStorage.setItem('LLM_PROVIDER', 'openai')`) and provide the key. Temperature is fixed at 0.2 for consistency; adjust in prompts for creativity vs. precision tradeoffs.
-
-### Validation Profiles
-Pass profiles to `/validate` for targeted checks (e.g., IPS conformance):
-- Query param: `?profiles=http://hl7.org/fhir/uv/ips/StructureDefinition/Composition-uv-ips`.
-- Body: `{ "resource": {...}, "profile": "..." }`. Useful for Bundles (IPS) or resources (e.g., Patient R4).
-
-### Terminology Search
-FTS is optimized for 2+ character tokens (BM25 ranking on displays/synonyms). It supports fuzzy matching but skips single-char queries to avoid noise. Customize via DB schema (`server/db/terminology.sqlite`): add concepts to `concepts`/`designations` and run `ANALYZE` for query planning. Large systems (SNOMED: 300k+ concepts) use indexing for sub-second searches; small ones (<200 concepts) return full lists on zero hits with guidance (e.g., "No matches; try broader terms").
-
-Tradeoffs: Higher `VALIDATOR_HEAP` improves large Bundle validation (e.g., 100+ resources) but raises memory needs—test with your workload. For terminology, SQLite scales to 1M+ concepts; use WAL mode (`PRAGMA journal_mode=WAL`) for concurrent reads during dev.
-
-(Word count: 178)
-
-## 7. Development
-
-Kiln's development workflow leverages Bun's hot reload for rapid iteration, with workflows defined as composable TypeScript functions in `src/workflows/` (e.g., `buildNarrativeWorkflow`). Think of phases as atomic units: each (planning, drafting) produces artifacts (JSON/text) for inspection, enabling targeted debugging without re-running the full pipeline. The frontend-backend split keeps concerns separate—edit UI in React, tweak LLM prompts in workflows, and test validation independently.
-
-### Hot Reload
-Run the dev server from the project root:
-
-```bash
-bun run dev
+```mermaid
+graph TB
+    UI[React UI<br/>(Bun dev server)] -->|HTTP| API[Bun API Server<br/>(port 3500)]
+    API --> DB[SQLite<br/>(Terminology)]
+    API --> VLD[Java Validator<br/>(port 8080)]
+    UI --> LLM[External LLM<br/>(OpenRouter)]
+    LLM -->|Prompts| WF[Workflow Engine<br/>(LLM Tasks)]
+    WF -->|Artifacts| UI
+    DB -->|Search/Exists| API
+    VLD -->|Validate| API
+    classDef ui fill:#e1f5fe
+    classDef api fill:#f3e5f5
+    classDef ext fill:#fff3e0
+    class UI,WF ui
+    class API api
+    class DB,VLD ext
 ```
 
-- **Frontend**: React hot-reloads on TS/TSX changes (e.g., edit `DocGenApp.tsx` → instant UI update at http://localhost:3000).
-- **Backend**: Bun restarts the server on file saves in `src/server/` or `src/services/` (e.g., modify `/tx/search` logic → ~2s restart). Validator (Java) doesn't hot-reload but stays running.
+This architecture supports both interactive use and API-driven automation, with clear extension points for new workflows or vocabularies.
 
-This setup supports live testing: sketch a note, watch phases execute in the dashboard (e.g., "Planning: 80% complete"), and inspect artifacts like outlines or validation reports.
+## 6. Development
 
-### Building
-For production, build static assets and serve via Bun:
+Kiln is designed for easy contribution, with a focus on rapid iteration and clear extension points. The codebase uses TypeScript for type safety, Bun for the runtime, and a modular structure to separate UI, workflows, and services. Contributors can extend functionality by adding new workflows, vocabularies, or custom prompts while maintaining the existing architecture.
 
-```bash
-bun run build:static
-```
+### Local Development
+Kiln supports hot-reloading for both the UI and API, making it straightforward to test changes as you code. The development server watches for updates to TypeScript, JavaScript, CSS, and Markdown files, rebuilding and refreshing automatically.
 
-- Outputs optimized HTML/JS/CSS to `/dist` (frontend) and bundles the backend.
-- Serve: `bun run src/server.ts` (API + static files from `/dist`).
-- Docker: `docker build -t kiln . && docker run -p 3500:3500 kiln` (pre-loaded DB; override env via `-e`).
+- **Hot Reload:** Run `bun run dev` from the project root to start the full server (UI on port 3000, APIs on 3500). Edits to `./src` trigger UI reloads, while changes to `./server/src` restart the API. Use the browser dev tools to inspect React components and network calls to the LLM or validator.
+- **Test:** Execute `bun test` to run unit and integration tests. Coverage includes workflow phases, API endpoints, and UI interactions. Tests use Bun's built-in test runner with mocks for external services (e.g., LLM responses). Run specific suites like `bun test terminology` for focused debugging.
+- **Lint:** Use `bun run format` to auto-format with Prettier (handles TS/JS/JSON/MD/YAML). Check compliance with `bun run format:check`. ESLint is not enforced but can be added via `bun add -D eslint`.
+- **Build:** Generate production-ready static assets with `bun run build:static`. This bundles the UI into `./dist` (HTML/JS/CSS) while preserving the server. Deploy the output to any static host (e.g., Vercel, Netlify) or use the Docker image for the full stack.
 
-The build is fast (~10s) and minifies JS, making it suitable for edge deployment (e.g., Vercel with Bun runtime).
-
-### Testing
-Kiln uses Bun's test runner for unit/integration tests:
-
-```bash
-# Run all tests
-bun test
-
-# Watch mode for dev
-bun test --watch
-
-# Filter (e.g., terminology)
-bun test "terminology"
-```
-
-Tests cover workflows (e.g., sketch → Bundle), API endpoints (search/validation), and LLM tasks (mocked responses). Run from root (`bun test`) or server dir (`cd server && bun test`). Tests generate reports (e.g., `./server/tests/terminology-test-report.json`) for inspection. Aim for 80%+ coverage on workflows; add custom tests in `src/` (e.g., phase assertions).
-
-### Debugging
-Debugging follows the pipeline model: trace phases via artifacts, which log inputs/outputs (e.g., LLM prompts, raw responses).
-
-- **Frontend**: Use browser dev tools (F12) for console logs (e.g., API responses, LLM traces). The artifacts panel in `DocGenDashboard` shows phase results (e.g., click "Outline v1" for JSON preview). For LLM issues, check localStorage (`OPENROUTER_API_KEY`) and network tab for request payloads.
-- **Backend**: Logs to stdout (e.g., validator startup, query times). Query the DB: `sqlite3 server/db/terminology.sqlite "SELECT * FROM concepts WHERE system='http://snomed.info/sct' LIMIT 5;"`. Use `bun --inspect` for runtime debugging.
-- **Validator**: Monitor `/health` for readiness (e.g., `{validator: {ready: true}}`). Timeouts (~30s startup) indicate heap issues—increase `VALIDATOR_HEAP=8g` and restart. Check Java logs in console for OOM errors.
-
-Common pitfalls: Validator warmup (wait 30s post-start); Java path issues (ensure `JAVA_HOME`); DB locks during load (use WAL mode: `PRAGMA journal_mode=WAL`).
+For debugging, enable Bun's verbose logging with `BUN_DEBUG=1 bun run dev` to trace API calls, or use `console.log` in workflows for step-by-step inspection.
 
 ### Adding Vocabularies
-Extend `server/scripts/load-terminology.ts` for new NDJSON files in `./server/large-vocabularies`:
-1. Add loader logic (e.g., parse custom format → insert to `concepts`/`designations`).
-2. Run `bun run server/scripts/load-terminology.ts` to populate.
-3. Optimize FTS: `sqlite3 db/terminology.sqlite "INSERT INTO designations_fts(designations_fts) VALUES('rebuild');"`.
+Extending Kiln's terminology coverage is straightforward, as it supports NDJSON.gz files for code systems. This format allows efficient loading of large vocabularies without complex ETL.
 
-The DB schema (`concepts`, `designations`) supports 1M+ entries; FTS indexes on labels for fuzzy search.
+- **Prepare Vocabulary:** Obtain or generate an NDJSON.gz file in FHIR CodeSystem format (first line: CodeSystem resource; subsequent lines: individual concepts with `code`, `display`, and optional `designation`/`property` arrays). Place it in `./server/large-vocabularies` (e.g., `CodeSystem-myvocab-v1.0.ndjson.gz`).
+- **Ingest Data:** Run `bun run scripts/load-terminology.ts` from the `./server` directory. This scans for new files, parses them, and populates the SQLite database with concepts and designations. The script handles deduplication and creates FTS5 indexes for search.
+- **Update System Recognition:** If the vocabulary uses a new system URL, add it to `SYSTEM_URLS` in `./server/scripts/load-terminology.ts` (e.g., `myvocab: 'http://example.com/myvocab'`). Re-run the loader to include it in searches.
+- **Verify:** Restart the server and test via UI (search for a known code) or API (`POST /tx/search { "queries": ["term"], "systems": ["http://example.com/myvocab"] }`). Check `./server/db/terminology.sqlite` for loaded rows.
 
-### Custom Workflows
-Workflows are arrays of phase functions in `src/workflows/` (e.g., `buildFhirWorkflow`). To add:
-1. Define phases (e.g., new refinement loop) in `src/workflows/fhir/index.ts`.
-2. Register in `src/documentTypes/registry.ts` (e.g., `registry.register('fhir', { buildWorkflow })`).
-3. Update UI in `src/components/documents/FhirInputForm.tsx` if needed.
+Vocabularies are loaded on startup or via the script, with automatic optimization (e.g., FTS5 for fuzzy matching). For large imports (>100k concepts), monitor Java heap usage and consider batching.
 
-Test via `bun test` (e.g., mock LLM responses). Phases are composable—e.g., insert a "C-CDA export" phase post-validation without touching the frontend.
+### Customizing Workflows
+Kiln's workflows are modular arrays of phases, making it easy to add new document types or modify generation logic.
+
+- **Edit Workflows:** Modify existing phases in `./src/workflows` (e.g., `./src/workflows/fhir/index.ts` for FHIR generation). Each phase is a function array (e.g., `definePhase('Planning', { phase: 'planning' }, [task1, task2])`), allowing sequential or parallel steps. Update prompts in subdirectories like `./src/workflows/fhir/prompts.ts`.
+- **Add Document Types:** Register new types in `./src/documentTypes/registry.ts` (e.g., `registry.register('lab-report', { buildWorkflow: labWorkflow })`). Create corresponding input forms (`./src/components/documents/LabInputForm.tsx`) and workflows (`./src/workflows/lab-report.ts`). The UI will auto-detect via `registry.all()`.
+- **Test Changes:** Use `bun test` for unit tests on workflows (e.g., mock LLM responses). In the UI, enable `forceRecompute: true` in job inputs (via dev tools) to re-run phases without cache. Debug with the dashboard's step viewer, which shows prompts, outputs, and validation traces.
+
+Workflows are typed with `DocumentWorkflow<T>` for inputs (e.g., `FhirInputs`), ensuring compatibility with the UI and stores.
+
+### Debugging
+Kiln provides multiple entry points for troubleshooting, from UI inspection to API traces.
+
+- **LLM Prompts:** Artifacts in the dashboard (e.g., "Outline v1") include raw prompts and responses. Click to view the full LLM input/output, including guidance like IPS notes. For custom debugging, log prompts in workflows (e.g., `console.log('Prompt:', params)` in `./src/workflows/narrative/index.ts`).
+- **Validation:** Use the UI's artifact viewer to see issues (e.g., unresolved codings as extensions) or call `/validate` directly: `curl -X POST http://localhost:3500/validate -d '{"resource": { ... }}'`. Check server logs for Java validator output (e.g., code mismatches).
+- **Logs:** Bun's console shows API requests, LLM calls, and errors. For verbose mode, set `BUN_DEBUG=1` or add `console.log` in services (e.g., `./src/services/fhirGeneration.ts`). Use the dashboard's events panel for real-time workflow traces.
+
+For performance issues, profile with Bun's built-in tools (`bun --inspect`) or monitor SQLite queries in the terminology service.
 
 ```
-Edit TS/TSX → bun dev (hot reload)
-             ↓
-Test: bun test (or browser)
-             ↓
-Debug: Console + sqlite3 db.sqlite
+Code Change → bun run dev → Hot Reload (UI + API)
+                ↓
+             bun test → Coverage Report
+                ↓
+         bun run build:static → ./dist (deployable)
 ```
 
-(Word count: 198)
+## 7. License
 
-## 8. Contributing
+Kiln is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
 
-Kiln welcomes contributions to enhance its workflows, vocabulary support, and integration capabilities. To contribute:
+### Attribution
+Kiln is written by Josh Mandel, MD. It incorporates the HAPI FHIR validator (Apache 2.0 license) for structure and conformance checks. Vocabularies (LOINC, SNOMED CT, RxNorm) are sourced from public repositories under their respective licenses (e.g., LOINC under LOINC® License; SNOMED CT under IHTSDO terms). See individual files in `./server/large-vocabularies` for details.
 
-- **Fork and Pull Request**: Fork the repository on GitHub, create a feature branch (e.g., `feature/new-workflow`), make changes, and submit a PR to the `main` branch. Ensure tests pass (`bun test`) and the build succeeds (`bun run build:static`).
+### Dependencies
+- **Bun**: MIT License (runtime and package manager).
+- **React**: MIT License (UI framework).
+- **HAPI FHIR Validator**: Apache 2.0 License (Java-based validation server).
+- **SQLite**: Public Domain (database engine).
+- **Prettier**: MIT License (code formatting).
 
-- **Focus Areas**: 
-  - New workflows (e.g., C-CDA export phase in `src/workflows/`).
-  - Vocabulary loaders (extend `server/scripts/load-terminology.ts` for additional NDJSON sources).
-  - LLM prompt tuning (refine templates in `src/workflows/*/prompts.ts` for better accuracy).
-  - UI improvements (e.g., artifact previews in `src/components/`).
-
-- **Conventions**: Use TypeScript with strict mode; add JSDoc for types; write tests for workflows (aim for 80% coverage). Follow existing patterns (e.g., phases as composable functions). Lint with `bun run lint:fix` before committing.
-
-- **Issues**: Report bugs or request features via GitHub issues. Use labels like "enhancement" for new ideas or "bug" for fixes. Include reproduction steps and expected behavior.
-
-For detailed guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md). All contributions are licensed under MIT—thanks for helping shape clinical documentation standards!
-
-## 9. License
-
-Kiln is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-SPDX-License-Identifier: MIT
-
-**Copyright (c) 2025 Josh Mandel, MD**
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-Built with Bun.ts and HAPI FHIR.
+All dependencies are included in `package.json` and follow their respective licenses. No proprietary or restrictive licenses are used in the core codebase.
 

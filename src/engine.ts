@@ -329,6 +329,8 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
     meta: {
       stepKey: string;
       tokensUsed: number;
+      promptTokens?: number;
+      completionTokens?: number;
       raw: string;
       attempts: number;
       status?: number;
@@ -343,13 +345,22 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
     const result = await step(
       fullKey,
       async () => {
-        const { result, tokensUsed, raw, attempts, status } = await llmCall(modelTask, prompt, opts ?? {});
-        metaLocal = { tokensUsed, raw, attempts, status };
+        const { result, tokensUsed, promptTokens, completionTokens, raw, attempts, status } = await llmCall(
+          modelTask,
+          prompt,
+          opts ?? {}
+        );
+        metaLocal = { tokensUsed, promptTokens, completionTokens, raw, attempts, status };
         const stepRec = await stores.steps.get(jobId, fullKey);
         if (stepRec) {
           const tags = stepRec.tagsJson ? JSON.parse(stepRec.tagsJson) : {};
           const llmProv = { model: cfg.model, temperature: usedTemperature, baseURL: cfg.baseURL };
-          const newTags = { ...tags, modelTask, llm: llmProv, attempts, llmRaw: raw };
+          const usage = {
+            in: typeof promptTokens === 'number' ? promptTokens : undefined,
+            out: typeof completionTokens === 'number' ? completionTokens : undefined,
+            total: typeof tokensUsed === 'number' ? tokensUsed : undefined,
+          };
+          const newTags = { ...tags, modelTask, llm: llmProv, usage, attempts, llmRaw: raw };
           await stores.steps.put({
             ...stepRec,
             llmTokens: tokensUsed,
@@ -364,6 +375,8 @@ export function makeContext(stores: Stores, jobId: ID, extras?: { type?: string;
     const meta = {
       stepKey: fullKey,
       tokensUsed: metaLocal?.tokensUsed || 0,
+      promptTokens: metaLocal?.promptTokens,
+      completionTokens: metaLocal?.completionTokens,
       raw: metaLocal?.raw || '',
       attempts: metaLocal?.attempts || 1,
       status: metaLocal?.status,
@@ -409,7 +422,15 @@ async function llmCall(
   task: string,
   prompt: string,
   { expect = 'text', temperature }: { expect?: 'text' | 'json'; temperature?: number } = {}
-): Promise<{ result: any; tokensUsed: number; raw: string; attempts: number; status?: number }> {
+): Promise<{
+  result: any;
+  tokensUsed: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  raw: string;
+  attempts: number;
+  status?: number;
+}> {
   const cfg = resolveTaskConfig(task);
   if (!cfg.apiKey) throw new Error("API key required for LLM; set localStorage 'TASK_DEFAULT_API_KEY'");
   const retries = Number(localStorage.getItem('TASK_DEFAULT_RETRIES') ?? 3);
@@ -574,6 +595,8 @@ async function llmCall(
       const content = contentNode ?? '';
       lastRaw = content;
       const tokensUsed = data.usage?.total_tokens ?? 0;
+      const promptTokens = data.usage?.prompt_tokens ?? undefined;
+      const completionTokens = data.usage?.completion_tokens ?? undefined;
       dbg('llm.fetch.end', {
         task,
         attempt,
@@ -594,9 +617,25 @@ async function llmCall(
           await sleep(backoffMs(attempt));
           continue;
         }
-        return { result: obj, tokensUsed, raw: content, attempts: attempt, status: lastStatus };
+        return {
+          result: obj,
+          tokensUsed,
+          promptTokens,
+          completionTokens,
+          raw: content,
+          attempts: attempt,
+          status: lastStatus,
+        };
       }
-      return { result: content, tokensUsed, raw: content, attempts: attempt, status: lastStatus };
+      return {
+        result: content,
+        tokensUsed,
+        promptTokens,
+        completionTokens,
+        raw: content,
+        attempts: attempt,
+        status: lastStatus,
+      };
     }
   } finally {
     llmPool.release();

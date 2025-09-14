@@ -64,6 +64,7 @@ export const StatusBadge = ({ status }: { status: string }) => {
   const map: Record<string, { text: string; className: string }> = {
     queued: { text: 'Queued', className: 'badge-kiln bg-gray-100 text-gray-700' },
     running: { text: 'Running', className: 'badge-blue' },
+    paused: { text: 'Paused', className: 'badge-kiln bg-gray-100 text-gray-700' },
     done: { text: 'Done', className: 'badge-success' },
     error: { text: 'Error', className: 'badge-error' },
   };

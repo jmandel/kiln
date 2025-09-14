@@ -61,7 +61,7 @@ export interface Job {
   title: string;
   type: DocumentType;
   inputs: InputsUnion;
-  status: 'queued' | 'running' | 'done' | 'failed' | 'blocked';
+  status: 'queued' | 'running' | 'paused' | 'done' | 'failed' | 'blocked';
   dependsOn?: ID[];
   lastError?: string | null;
   cacheVersion?: number;

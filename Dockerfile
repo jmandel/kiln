@@ -41,6 +41,7 @@ COPY server/tsconfig.json ./server/
 COPY server/README.md ./server/
 COPY index.html ./
 COPY viewer.html ./
+COPY public ./public
 COPY examples ./examples
 COPY tsconfig.json ./
 COPY scripts ./scripts
@@ -80,6 +81,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/index.html ./
 COPY --from=builder /app/viewer.html ./
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/examples ./examples
 COPY --from=builder /app/scripts ./scripts
 COPY --from=builder /app/tsconfig.json ./

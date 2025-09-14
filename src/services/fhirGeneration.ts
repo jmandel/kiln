@@ -14,7 +14,8 @@ export async function generateAndRefineResources(
   note_text: string,
   references: Array<{ reference: string; display: string }>,
   subjectRef?: string,
-  encounterRef?: string
+  encounterRef?: string,
+  authorRef?: string
 ): Promise<any[]> {
   const GEN_CONC = Math.max(1, Number(localStorage.getItem('FHIR_GEN_CONCURRENCY') || 1));
   const generatedResources: any[] = new Array(references.length);
@@ -36,6 +37,7 @@ export async function generateAndRefineResources(
         resource_description: ref.display,
         subject_ref: subjectRef,
         encounter_ref: encounterRef,
+        author_ref: authorRef,
         ...ipsBits,
       };
     })();
@@ -168,9 +170,47 @@ export async function generateAndRefineResources(
       }
 
       // Include all warnings (including for pointers newly introduced by a filtered patch)
-      const warnings = refineWarnings || [];
+      const warnings = (() => {
+        try {
+          const byPtr = new Map<string, any>();
+          for (const w of refineWarnings || []) {
+            if (w && typeof (w as any).pointer === 'string') byPtr.set((w as any).pointer, w);
+          }
+          return Array.from(byPtr.values());
+        } catch {
+          return refineWarnings || [];
+        }
+      })();
+      const fmtScalar = (v: any) => {
+        try {
+          if (v == null) return '';
+          return typeof v === 'object' ? JSON.stringify(v) : String(v);
+        } catch {
+          return String(v ?? '');
+        }
+      };
+      const warningsNormalized = (warnings as any[]).map((w: any) => {
+        const ptr = String(w?.pointer || '(unspecified)');
+        const patchPayload =
+          Array.isArray(w?.patchOps) && w.patchOps.length ? w.patchOps : w?.partials || w?.invalid || [];
+        const patchJson = (() => {
+          try {
+            return JSON.stringify(patchPayload, null, 2);
+          } catch {
+            return String(patchPayload ?? '');
+          }
+        })();
+        const reason = w?.message || 'invalid patch';
+        const mustSearch = `YOU MUST PERFORM \"search_for_coding\" at { \"pointer\": \"${ptr}\" } before you can proceed.`;
+        return {
+          pointer: ptr,
+          message: `YOU PREVIOUSLY SUBMITTED AN INVALID PATCH: ${patchJson} at ${ptr}; reason: ${reason}. ${mustSearch}`,
+        } as any;
+      });
 
-      // Redact .code from Coding objects that are unresolved to avoid confusing the LLM.
+      // Nudge: For unresolved Codings, replace code with a clear placeholder instead of removing it
+      const CODE_PLACEHOLDER = '<requires search_for_coding to resolve>';
+      // Replace .code in Coding objects that are unresolved to guide the model
       const resourceForPrompt = JSON.parse(JSON.stringify(resObj));
       const getObjByPointer = (root: any, pointer: string): any => {
         try {
@@ -193,17 +233,17 @@ export async function generateAndRefineResources(
         const obj = getObjByPointer(resourceForPrompt, ptr);
         if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
           try {
-            if ('code' in obj) delete (obj as any).code;
+            if ('code' in obj) (obj as any).code = CODE_PLACEHOLDER;
           } catch {}
         }
       }
 
-      // Also redact the original.code in the Unresolved Codings summary to avoid confusing the LLM
+      // Also replace original.code in the Unresolved Codings summary to nudge search_for_coding
       const unresolvedForPrompt = (Array.isArray(unresolved) ? unresolved : []).map((u: any) => {
         try {
           const copy = JSON.parse(JSON.stringify(u));
           if (copy && copy.original && typeof copy.original === 'object') {
-            delete copy.original.code;
+            copy.original.code = CODE_PLACEHOLDER;
           }
           return copy;
         } catch {
@@ -218,38 +258,36 @@ export async function generateAndRefineResources(
         validatorErrors,
         attempts,
         searchNotebook: notebook,
-        warnings,
+        warnings: warningsNormalized,
         budgetRemaining,
       });
     };
 
     const acceptedSteps: Array<{ stepKey: string; prompt?: string; raw?: string }> = [];
-    while (budget > 0) {
+    let extraTurns = 5;
+    let iterCount = 0;
+    while (budget > 0 || extraTurns > 0) {
+      iterCount += 1;
       const resHash = await sha256(JSON.stringify(resource));
-      const iterIndex = INITIAL_BUDGET - budget + 1;
-      const { report } = await ctx.step(
-        `refine:analyze:${resHash}`,
-        async () => {
-          return await analyzeCodings(ctx, [resource]);
-        },
-        {
-          title: 'Analyze Codings',
-          tags: { phase: 'fhir', stage: 'validate-refine', refineIter: iterIndex },
-        }
-      );
-      const preReport = report || [];
-      const initialValidation = await ctx.step(
+      const iterIndex = iterCount;
+      const preflight = await ctx.step(
         `refine:validate:${resHash}`,
         async () => {
           const result = await validateResource(resource);
-          return { input: resource, result };
+          const { report } = await analyzeCodings(ctx, [resource]);
+          return { input: resource, result, terminology: report };
         },
         {
-          title: 'Validate Resource',
+          title: 'Validate Candidate',
           tags: { phase: 'fhir', stage: 'validate-refine', refineIter: iterIndex },
         }
       );
-      const valRes = initialValidation?.result || initialValidation;
+      // Ensure validate step appears as a contributor in artifact step list
+      try {
+        contributedStepKeys.add(`refine:validate:${resHash}`);
+      } catch {}
+      const preReport = (preflight as any)?.terminology || [];
+      const valRes = (preflight as any)?.result || preflight;
       const unresolved = preReport.filter((it: any) => it.status !== 'ok');
       if (
         unresolved.length === 0 &&
@@ -257,7 +295,8 @@ export async function generateAndRefineResources(
       ) {
         break;
       }
-      const prompt = buildRefinePrompt(resource, preReport, valRes, budget);
+      const displayBudget = budget > 1 ? budget : 1;
+      const prompt = buildRefinePrompt(resource, preReport, valRes, displayBudget);
       const { result: decision, meta } = await (ctx as any).callLLMEx('fhir_resource_validate_refine', prompt, {
         expect: 'json',
         tags: { phase: 'fhir', stage: 'validate-refine' },
@@ -284,7 +323,9 @@ export async function generateAndRefineResources(
             llmStepKey,
             decision,
           });
-          budget -= 1;
+          if (budget > 1) budget -= 1;
+          else if (extraTurns > 0) extraTurns -= 1;
+          else budget = 0;
           continue;
         }
         const tried = attemptedQueriesByPtr.get(ptr) || new Set<string>();
@@ -302,9 +343,19 @@ export async function generateAndRefineResources(
             llmStepKey,
             decision,
           });
-          budget -= 1;
+          if (budget > 1) budget -= 1;
+          else if (extraTurns > 0) extraTurns -= 1;
+          else budget = 0;
           continue;
         }
+        // We are about to execute new searches for this pointer; clear prior warnings for it
+        try {
+          if (ptr) {
+            for (let i = refineWarnings.length - 1; i >= 0; i--) {
+              if (refineWarnings[i]?.pointer === ptr) refineWarnings.splice(i, 1);
+            }
+          }
+        } catch {}
         for (const q of newQueries) tried.add(q.toLowerCase());
         attemptedQueriesByPtr.set(ptr, tried);
         const qHash = await sha256(JSON.stringify({ q: newQueries, systems: systems || [] }));
@@ -357,7 +408,9 @@ export async function generateAndRefineResources(
           llmStepKey,
           decision,
         });
-        budget -= 1;
+        if (budget > 1) budget -= 1;
+        else if (extraTurns > 0) extraTurns -= 1;
+        else budget = 0;
         continue;
       }
 
@@ -497,22 +550,24 @@ export async function generateAndRefineResources(
           code?: string;
         }> => {
           const invalid: Array<{ pointer: string; system?: string; code?: string }> = [];
-          for (const [ptr, arr] of introducedByPtr.entries()) {
-            const allowed = new Set<string>();
-            const notebook = searchNotebook.get(ptr) || [];
-            for (const entry of notebook) {
+          // Relaxed policy: allowed if code appears anywhere in the Search Notebook
+          const allowedAll = new Set<string>();
+          for (const entries of searchNotebook.values()) {
+            for (const entry of entries || []) {
               if (!Array.isArray(entry?.resultsByQuery)) continue;
               for (const q of entry.resultsByQuery) {
                 for (const h of q.hits || []) {
                   const key = `${String(h.system || '').trim()}|${String(h.code || '').trim()}`;
-                  allowed.add(key);
+                  allowedAll.add(key);
                 }
               }
             }
+          }
+          for (const [ptr, arr] of introducedByPtr.entries()) {
             for (const x of arr) {
               const key = `${String(x.system || '').trim()}|${String(x.code || '').trim()}`;
               if (!x.system && !x.code) continue; // ignore non-coding structural edits
-              if (!allowed.has(key)) invalid.push({ pointer: ptr, system: x.system, code: x.code });
+              if (!allowedAll.has(key)) invalid.push({ pointer: ptr, system: x.system, code: x.code });
             }
           }
           return invalid;
@@ -522,95 +577,7 @@ export async function generateAndRefineResources(
         let localDecision = decision;
         let localMeta = meta;
 
-        // After retries, if still invalid codes proposed, redact those and continue
-        const stillBad = introducedInvalid();
-        const stillPartial: any[] = [];
-        if (stillBad.length > 0) {
-          const redactAtPointer = (root: any, pointer: string) => {
-            try {
-              const segs = pointer
-                .split('/')
-                .filter(Boolean)
-                .map((s) => decodeURIComponent(s));
-              let cur = root;
-              for (const s of segs) {
-                const idx = String(Number(s)) === s ? Number(s) : s;
-                cur = Array.isArray(cur) ? cur[idx as number] : cur?.[idx as any];
-                if (!cur) return;
-              }
-              if (cur && typeof cur === 'object') {
-                delete (cur as any).system;
-                delete (cur as any).code;
-              }
-            } catch {}
-          };
-          for (const bad of stillBad) redactAtPointer(resource, bad.pointer);
-          // Surface explicit feedback for the next prompt and tag the step
-          try {
-            // Update step tags so UI shows what was filtered
-            if (localMeta?.stepKey) {
-              const rec = await ctx.stores.steps.get((ctx as any).jobId, localMeta.stepKey);
-              if (rec) {
-                const t = rec.tagsJson ? JSON.parse(rec.tagsJson) : {};
-                // Normalize invalid entries for human-readable display
-                const normalized = stillBad.map((i) => ({
-                  pointer: i.pointer,
-                  system: i.system != null && typeof i.system !== 'object' ? String(i.system) : undefined,
-                  code:
-                    i.code == null
-                      ? undefined
-                      : typeof i.code === 'object'
-                        ? JSON.stringify(i.code)
-                        : String(i.code),
-                }));
-                t.refineDecision = t.refineDecision || 'filtered';
-                t.refineDetails = { ...(t.refineDetails || {}), invalid: normalized };
-                await ctx.stores.steps.put({ ...rec, tagsJson: JSON.stringify(t) });
-              }
-            }
-          } catch {}
-          try {
-            // Group invalids by pointer and enrich with canonical displays when available
-            const byPtr = new Map<string, Array<{ system?: string; code?: string }>>();
-            for (const it of stillBad) {
-              const arr = byPtr.get(it.pointer) || [];
-              arr.push({ system: it.system, code: it.code });
-              byPtr.set(it.pointer, arr);
-            }
-            const allPairs = stillBad.map((ic) => ({ system: ic.system, code: ic.code }));
-            let existsResults: Array<{ system?: string; code?: string; exists?: boolean; display?: string }> = [];
-            try {
-              existsResults = await batchExists(ctx, allPairs);
-            } catch {}
-            const lookupCanonical = (sys?: string, code?: string): string | undefined => {
-              const hit = existsResults.find(
-                (r) => String(r.system || '') === String(sys || '') && String(r.code || '') === String(code || '')
-              );
-              return hit && hit.exists && hit.display ? String(hit.display) : undefined;
-            };
-            for (const [ptr, arr] of byPtr.entries()) {
-              const enriched = arr.map((i) => ({
-                ...i,
-                canonicalDisplay: lookupCanonical(i.system, i.code),
-              }));
-              refineWarnings.push({
-                pointer: ptr,
-                invalid: enriched,
-                message: 'Proposed coding not present in Search Notebook; perform search_for_coding for this pointer or pick from the listed hits.',
-              });
-            }
-          } catch {}
-          trace.push({
-            iter: INITIAL_BUDGET - budget + 1,
-            action: 'update',
-            result: 'redacted_invalid_codes',
-            targets: stillBad,
-            llmStepKey: localMeta?.stepKey,
-            decision: localDecision,
-          });
-          budget -= 1;
-          continue;
-        }
+        // We no longer reject or redact codes prior to application. Any guidance will be surfaced via warnings.
         // Prepare patch array before analyzing partial-code updates
         const patch = Array.isArray(localDecision?.patch) ? localDecision.patch : [];
         // Detect partial-code updates (changed 'code' without also setting 'system' and 'display')
@@ -640,9 +607,17 @@ export async function generateAndRefineResources(
               byPtr.set(it.pointer, arr);
             }
             for (const [ptr, arr] of byPtr.entries()) {
+              const patchOps =
+                Array.isArray(patch) ?
+                  (patch as any[]).filter((op: any) => {
+                    const p = String(op?.path || '');
+                    return p === ptr || p.startsWith(ptr + '/');
+                  })
+                : [];
               refineWarnings.push({
                 pointer: ptr,
                 partials: arr.map((a) => ({ path: ptr, ...(a as any) })),
+                patchOps,
                 message:
                   "Partial Coding update is invalid: when changing 'code', also set 'system' and 'display' in the same replacement.",
               });
@@ -659,206 +634,70 @@ export async function generateAndRefineResources(
             llmStepKey: localMeta?.stepKey,
             decision: localDecision,
           });
-          budget -= 1;
+          if (budget > 1) budget -= 1;
+          else if (extraTurns > 0) extraTurns -= 1;
+          else budget = 0;
           continue;
         }
-        // Functional filtering: map each op to a list of implicated codings, decide, and collect
-        const isCodingObject = (v: any): boolean =>
-          v && typeof v === 'object' && !Array.isArray(v) && 'system' in v && 'code' in v && 'display' in v;
-        const ucum = 'http://unitsofmeasure.org';
-        const normalizeKey = (sys?: string, code?: string) =>
-          `${String(sys || '').trim()}|${String(code || '').trim()}`;
-        const allowedForPtr = (ptr: string): Set<string> => {
-          const hits = new Set<string>();
-          for (const entry of searchNotebook.get(ptr) || []) {
-            for (const q of entry?.resultsByQuery || []) {
-              for (const h of q?.hits || []) hits.add(normalizeKey(h.system, h.code));
-            }
-          }
-          return hits;
-        };
-        const canonicalDisplayFor = (ptr: string, sys: string, code: string): string | undefined => {
-          for (const entry of searchNotebook.get(ptr) || []) {
-            for (const q of entry?.resultsByQuery || []) {
-              for (const h of q?.hits || []) {
-                if (normalizeKey(h.system, h.code) === normalizeKey(sys, code)) return String(h.display ?? '');
+        // Apply patch as-is, but normalize display fields when the chosen system|code exists in the Search Notebook
+        const normalizedPatch = (() => {
+          try {
+            const hits = new Map<string, string>();
+            for (const arr of searchNotebook.values()) {
+              for (const entry of arr || []) {
+                for (const q of entry?.resultsByQuery || []) {
+                  for (const h of q?.hits || []) {
+                    const key = `${String(h.system || '').trim()}|${String(h.code || '').trim()}`;
+                    if (key && typeof h.display === 'string' && h.display) hits.set(key, String(h.display));
+                  }
+                }
               }
             }
-          }
-          return undefined;
-        };
-        type Implicated = {
-          ptr: string;
-          system?: string;
-          code?: string;
-          display?: string;
-          source: 'whole' | 'cc' | 'prop';
-        };
-        const extractCodingsFromOp = (op: any): Implicated[] => {
-          const path = String(op?.path || '');
-          if (!(op?.op === 'replace' || op?.op === 'add')) return [];
-          const val = op?.value;
-          const out: Implicated[] = [];
-          if (isCodingObject(val)) {
-            const ptr = baseCodingPtr(path) || path;
-            out.push({
-              ptr,
-              system: val.system,
-              code: val.code,
-              display: val.display,
-              source: 'whole',
+            const cloneOps = (patch as any[]).map((op) => {
+              try {
+                if (!op || (op.op !== 'replace' && op.op !== 'add')) return op;
+                const v = op.value;
+                const keyOf = (sys?: any, code?: any) => `${String(sys || '').trim()}|${String(code || '').trim()}`;
+                if (v && typeof v === 'object' && !Array.isArray(v) && ('system' in v || 'code' in v)) {
+                  const key = keyOf((v as any).system, (v as any).code);
+                  const disp = hits.get(key);
+                  if (disp && String((v as any).display || '') !== disp) {
+                    return { ...op, value: { ...(v as any), display: disp } };
+                  }
+                } else if (v && typeof v === 'object' && Array.isArray((v as any).coding)) {
+                  const cc = v as any;
+                  let changed = false;
+                  const newCoding = cc.coding.map((c: any) => {
+                    if (!c) return c;
+                    const key = keyOf(c.system, c.code);
+                    const disp = hits.get(key);
+                    if (disp && String(c.display || '') !== disp) {
+                      changed = true;
+                      return { ...c, display: disp };
+                    }
+                    return c;
+                  });
+                  if (changed) return { ...op, value: { ...cc, coding: newCoding } };
+                }
+                return op;
+              } catch {
+                return op;
+              }
             });
-            return out;
+            return cloneOps;
+          } catch {
+            return patch as any[];
           }
-          if (val && typeof val === 'object' && Array.isArray((val as any).coding)) {
-            const cc = val as any;
-            for (let i = 0; i < cc.coding.length; i++) {
-              const c = cc.coding[i] || {};
-              if (!c) continue;
-              const ptr = `${path}/coding/${i}`;
-              out.push({ ptr, system: c.system, code: c.code, display: c.display, source: 'cc' });
-            }
-            return out;
-          }
-          // Property-level coding edits: capture ptr but no filtering here (allowed)
-          const lastSeg = path.split('/').filter(Boolean).pop();
-          if (lastSeg === 'system' || lastSeg === 'code' || lastSeg === 'display') {
-            const ptr = baseCodingPtr(path);
-            if (ptr) out.push({ ptr, source: 'prop' });
-          }
-          return out;
-        };
-        const invalidCodings: Array<{ pointer: string; system?: string; code?: string }> = [];
-        const filteredOps: any[] = [];
-        patch.forEach((op: any) => {
-          // Decide at op level based on implicated codings with both system+code
-          const implicated = extractCodingsFromOp(op);
-          const candidates = implicated.filter((c) => c.source !== 'prop' && c.system && c.code);
-          if (candidates.length === 0) {
-            filteredOps.push(op);
-            return;
-          }
-          // All candidates must be allowed
-          const allAllowed = candidates.every(
-            (c) => String(c.system) === ucum || allowedForPtr(c.ptr).has(normalizeKey(c.system, c.code))
-          );
-          if (!allAllowed) {
-            candidates
-              .filter((c) => !(String(c.system) === ucum) && !allowedForPtr(c.ptr).has(normalizeKey(c.system, c.code)))
-              .forEach((c) => invalidCodings.push({ pointer: c.ptr, system: c.system, code: c.code }));
-            return; // drop this op
-          }
-          // Auto-normalize display for whole/cc when notebook provides it (UCUM excluded)
-          try {
-            if (isCodingObject(op?.value)) {
-              const sys = String(op.value.system || '');
-              const code = String(op.value.code || '');
-              if (sys !== ucum) {
-                const canon = canonicalDisplayFor(baseCodingPtr(op.path) || op.path, sys, code);
-                if (canon && String(op.value.display || '') !== canon) op.value.display = canon;
-              }
-            } else if (op?.value && typeof op.value === 'object' && Array.isArray((op.value as any).coding)) {
-              const cc = op.value as any;
-              for (let i = 0; i < cc.coding.length; i++) {
-                const c = cc.coding[i] || {};
-                const sys = String(c.system || '');
-                const code = String(c.code || '');
-                if (!sys || !code || sys === ucum) continue;
-                const canon = canonicalDisplayFor(`${op.path}/coding/${i}`, sys, code);
-                if (canon && String(c.display || '') !== canon) cc.coding[i].display = canon;
-              }
-            }
-          } catch {}
-          filteredOps.push(op);
-        });
-        if (invalidCodings.length) {
-          trace.push({
-            iter: INITIAL_BUDGET - budget + 1,
-            action: 'update',
-            result: 'filtered_patch',
-            removedInvalidCodings: invalidCodings,
-          });
-          try {
-            if (localMeta?.stepKey) {
-              const rec = await ctx.stores.steps.get((ctx as any).jobId, localMeta.stepKey);
-              if (rec) {
-                const t = rec.tagsJson ? JSON.parse(rec.tagsJson) : {};
-                // Normalize for display
-                const normalized = invalidCodings.map((i) => ({
-                  pointer: i.pointer,
-                  system: i.system != null && typeof i.system !== 'object' ? String(i.system) : undefined,
-                  code:
-                    i.code == null
-                      ? undefined
-                      : typeof i.code === 'object'
-                        ? JSON.stringify(i.code)
-                        : String(i.code),
-                }));
-                t.refineDecision = t.refineDecision || 'filtered';
-                t.refineDetails = { ...(t.refineDetails || {}), invalid: normalized };
-                await ctx.stores.steps.put({ ...rec, tagsJson: JSON.stringify(t) });
-              }
-            }
-          } catch {}
-          // Record warning for next prompt
-          try {
-            // Group invalids by pointer for clarity
-            const byPtr = new Map<string, Array<{ system?: string; code?: string }>>();
-            for (const it of invalidCodings) {
-              const arr = byPtr.get(it.pointer) || [];
-              arr.push({ system: it.system, code: it.code });
-              byPtr.set(it.pointer, arr);
-            }
-            // Enrich with canonical display if code exists in terminology DB
-            const allPairs = invalidCodings.map((ic) => ({ system: ic.system, code: ic.code }));
-            let existsResults: Array<{
-              system?: string;
-              code?: string;
-              exists?: boolean;
-              display?: string;
-            }> = [];
-            try {
-              existsResults = await batchExists(ctx, allPairs);
-            } catch {}
-            const lookupCanonical = (sys?: string, code?: string): string | undefined => {
-              const hit = existsResults.find(
-                (r) => String(r.system || '') === String(sys || '') && String(r.code || '') === String(code || '')
-              );
-              return hit && hit.exists && hit.display ? String(hit.display) : undefined;
-            };
-            for (const [ptr, arr] of byPtr.entries()) {
-              const enriched = arr.map((i) => ({
-                ...i,
-                canonicalDisplay: lookupCanonical(i.system, i.code),
-              }));
-              refineWarnings.push({
-                pointer: ptr,
-                invalid: enriched,
-                message: 'Filtered off-notebook coding; perform search_for_coding for this pointer.',
-              });
-            }
-          } catch {}
-        }
-        if (filteredOps.length === 0) {
-          trace.push({
-            iter: INITIAL_BUDGET - budget + 1,
-            action: 'update',
-            result: 'no_effect_after_filter',
-            llmStepKey: localMeta?.stepKey,
-            decision: localDecision,
-          });
-          budget -= 1;
-          continue;
-        }
-        const candidate = applyJsonPatch(resource, filteredOps);
+        })();
+        const candidate = applyJsonPatch(resource, normalizedPatch);
         const candHash = await sha256(JSON.stringify(candidate));
-        // Record the candidate we are about to validate
-        // Validate the candidate and capture issues (and include the candidate as input)
-        const validationBundle = await ctx.step(
+        // Single combined step: validate candidate and include terminology (coding) analysis
+        const combinedBundle = await ctx.step(
           `refine:validate:${candHash}`,
           async () => {
             const result = await validateResource(candidate);
-            return { input: candidate, result };
+            const { report } = await analyzeCodings(ctx, [candidate]);
+            return { input: candidate, result, terminology: report };
           },
           {
             title: 'Validate Candidate',
@@ -869,25 +708,17 @@ export async function generateAndRefineResources(
             },
           }
         );
-        const valOk = validationBundle?.result || validationBundle;
+        const valOk = combinedBundle?.result || combinedBundle;
         // Ensure this step appears in artifact step list
         try {
           contributedStepKeys.add(`refine:validate:${candHash}`);
         } catch {}
-        const { report: candReport } = await ctx.step(
-          `refine:analyze:${candHash}`,
-          async () => {
-            return await analyzeCodings(ctx, [candidate]);
-          },
-          { title: 'Analyze Candidate Codings', tags: { phase: 'fhir', stage: 'validate-refine' } }
-        );
-
-        // Accept unconditionally after filtering. Validator/analyzer output is for feedback only.
+        // Accept unconditionally. Validator/analyzer output is for feedback only.
         resource = candidate;
-        // Compute coding pointers actually changed by filteredOps (for trace only)
+        // Compute coding pointers actually changed by the patch (for trace only)
         const changedPtrs = Array.from(
           new Set(
-            filteredOps
+            normalizedPatch
               .map((op: any) => baseCodingPtr(String(op?.path || '')))
               .filter((p: any) => typeof p === 'string' && p)
           )
@@ -896,7 +727,7 @@ export async function generateAndRefineResources(
           iter: INITIAL_BUDGET - budget + 1,
           action: 'update',
           result: 'accepted',
-          patch: filteredOps,
+          patch: normalizedPatch,
           changedPointers: changedPtrs,
           rationale: localDecision?.rationale,
           llmStepKey: localMeta?.stepKey,
@@ -919,8 +750,22 @@ export async function generateAndRefineResources(
             }
           } catch {}
         }
-        budget -= 1;
+        // Also tag the corresponding validate step as accepted so the badge appears there too
+        try {
+          const validateStepKey = `refine:validate:${candHash}`;
+          const rec2 = await ctx.stores.steps.get((ctx as any).jobId, validateStepKey);
+          if (rec2) {
+            const t2 = rec2.tagsJson ? JSON.parse(rec2.tagsJson) : {};
+            t2.refineDecision = 'accepted';
+            t2.refineDetails = { changedPointers: changedPtrs };
+            await ctx.stores.steps.put({ ...rec2, tagsJson: JSON.stringify(t2) });
+          }
+        } catch {}
+        if (budget > 1) budget -= 1;
+        else if (extraTurns > 0) extraTurns -= 1;
+        else budget = 0;
         continue;
+        // (duplicate legacy block removed)
       }
 
       if (action === 'stop') {
@@ -932,11 +777,14 @@ export async function generateAndRefineResources(
           decision,
         });
         budget = 0;
+        extraTurns = 0;
         break;
       }
 
       trace.push({ iter: INITIAL_BUDGET - budget + 1, action: 'unknown', llmStepKey, decision });
-      budget -= 1;
+      if (budget > 1) budget -= 1;
+      else if (extraTurns > 0) extraTurns -= 1;
+      else budget = 0;
     }
 
     const traceArtifact = await emitJsonArtifact(ctx, {

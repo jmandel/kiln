@@ -170,6 +170,12 @@ export default function ArtifactDetails({
                       <summary>Validation Result</summary>
                       <pre className="text-xs whitespace-pre-wrap">{pretty(JSON.stringify(parsed.result))}</pre>
                     </details>
+                    {parsed?.terminology ?
+                      <details open={expandAll}>
+                        <summary>Terminology Report</summary>
+                        <pre className="text-xs whitespace-pre-wrap">{pretty(JSON.stringify(parsed.terminology))}</pre>
+                      </details>
+                    : null}
                   </>
                 : s.resultJson && (
                     <details open={expandAll}>
@@ -180,16 +186,27 @@ export default function ArtifactDetails({
                     </details>
                   )
                 }
-                {stags?.refineDetails?.invalid &&
-                  Array.isArray(stags.refineDetails.invalid) &&
-                  stags.refineDetails.invalid.length > 0 && (
+                {(() => {
+                  const invalid = (stags as any)?.refineDetails?.invalid;
+                  if (!Array.isArray(invalid) || invalid.length === 0) return null;
+                  const looksLikePatch = (arr: any[]) =>
+                    arr.some((x) => x && (typeof x.op === 'string' || typeof x.path === 'string'));
+                  let toShow: any[] = invalid;
+                  if (!looksLikePatch(invalid)) {
+                    try {
+                      const raw = (stags as any)?.llmRaw;
+                      const parsed = raw ? JSON.parse(raw) : null;
+                      const p = parsed && Array.isArray(parsed.patch) ? parsed.patch : null;
+                      if (p && p.length) toShow = p;
+                    } catch {}
+                  }
+                  return (
                     <details open={expandAll}>
                       <summary>Invalid Proposals</summary>
-                      <pre className="text-xs whitespace-pre-wrap">
-                        {pretty(JSON.stringify(stags.refineDetails.invalid))}
-                      </pre>
+                      <pre className="text-xs whitespace-pre-wrap">{pretty(JSON.stringify(toShow))}</pre>
                     </details>
-                  )}
+                  );
+                })()}
                 {stags?.refineDetails?.partials &&
                   Array.isArray(stags.refineDetails.partials) &&
                   stags.refineDetails.partials.length > 0 && (

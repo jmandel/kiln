@@ -22,6 +22,8 @@ type DocGenEvent = { ts: string; level: 'info' | 'warn' | 'error'; msg: string }
 type Metrics = {
   stepCounts: Record<string, number>;
   totalTokens: number;
+  llmInTokens: number;
+  llmOutTokens: number;
   elapsedMs: number;
 };
 
@@ -45,7 +47,7 @@ const defaultState: DocGenState = {
   jobId: '',
   title: 'No job selected',
   status: 'queued',
-  metrics: { stepCounts: {}, totalTokens: 0, elapsedMs: 0 },
+  metrics: { stepCounts: {}, totalTokens: 0, llmInTokens: 0, llmOutTokens: 0, elapsedMs: 0 },
   artifacts: [],
   events: [],
 };
@@ -155,7 +157,11 @@ export default function DocGenDashboard({
                 total={getTotalSteps(state.metrics.stepCounts)}
                 icon="📊"
               />
-              <MetricPill label="Tokens" value={`${(state.metrics.totalTokens / 1000).toFixed(1)}k`} icon="💬" />
+              <MetricPill
+                label="Tokens"
+                value={`↑${(state.metrics.llmInTokens / 1000).toFixed(1)}k ↓${(state.metrics.llmOutTokens / 1000).toFixed(1)}k`}
+                icon="💬"
+              />
               {state.jobId && onRerun && (
                 <button className="btn-kiln-secondary whitespace-nowrap" onClick={onRerun}>
                   Rerun

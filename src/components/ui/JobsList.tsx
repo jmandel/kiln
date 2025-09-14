@@ -23,6 +23,8 @@ export function JobsList({ jobs, selected, onSelect, onDelete }: JobsListProps) 
         return 'bg-green-50 border-green-200';
       case 'running':
         return 'bg-craft-blue/10 border-craft-blue/30';
+      case 'paused':
+        return 'bg-gray-50 border-gray-200';
       case 'blocked':
         return 'bg-rose-50 border-rose-200';
       case 'error':
@@ -36,11 +38,11 @@ export function JobsList({ jobs, selected, onSelect, onDelete }: JobsListProps) 
     const colors = {
       done: 'badge-success',
       running: 'badge-blue',
+      paused: 'badge-kiln bg-gray-100 text-gray-700',
       blocked: 'badge-error',
       error: 'badge-error',
     };
     const color = colors[status as keyof typeof colors] || 'badge-kiln bg-gray-100 text-gray-700';
-
     return <span className={color}>{status || 'queued'}</span>;
   };
 

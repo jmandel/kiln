@@ -174,6 +174,15 @@ export default function DocGenApp(): React.ReactElement {
       const s = await createStores();
       if (!mounted) return;
       setStores(s);
+      // On app load, mark any previously running jobs as paused
+      try {
+        const all = await s.jobs.all();
+        for (const j of all) {
+          if ((j as any).status === 'running') {
+            await s.jobs.updateStatus(j.id as any, 'paused' as any);
+          }
+        }
+      } catch {}
       const ds = new DashboardStore(s);
       setStore(ds);
     })();
@@ -318,6 +327,31 @@ export default function DocGenApp(): React.ReactElement {
     apply();
     return () => window.removeEventListener('popstate', apply);
   }, []);
+
+  // Auto-open newly created jobs: when jobs list grows, select the newest (sorted by updatedAt desc in store)
+  const prevDocsLen = React.useRef<number>(0);
+  React.useEffect(() => {
+    try {
+      if (docs.length > prevDocsLen.current) {
+        const newest = docs[0]?.id as ID | undefined;
+        if (newest) setSelected(newest);
+      }
+    } finally {
+      prevDocsLen.current = docs.length;
+    }
+  }, [docs]);
+
+  // Keep the URL in sync with the selected job so refresh restores selection
+  React.useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (selected) sp.set('job', selected);
+      else sp.delete('job');
+      const url = `${window.location.pathname}?${sp.toString()}`;
+      // Use replaceState to avoid polluting history excessively
+      window.history.replaceState({}, '', url);
+    } catch {}
+  }, [selected]);
 
   const openArtifact = (id: ID) => {
     const sp = new URLSearchParams();

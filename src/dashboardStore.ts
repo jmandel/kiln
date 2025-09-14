@@ -6,10 +6,16 @@ type Level = 'info' | 'warn' | 'error';
 export type DashboardView = {
   jobId: string;
   title: string;
-  status: 'queued' | 'running' | 'done' | 'error';
+  status: 'queued' | 'running' | 'paused' | 'done' | 'error';
   currentPhase?: string;
   jobStartTime?: string;
-  metrics: { stepCounts: Record<string, number>; totalTokens: number; elapsedMs: number };
+  metrics: {
+    stepCounts: Record<string, number>;
+    totalTokens: number;
+    llmInTokens: number;
+    llmOutTokens: number;
+    elapsedMs: number;
+  };
   artifacts: Array<{
     id: string;
     name: string;
@@ -28,7 +34,7 @@ const defaultView: DashboardView = {
   jobId: '',
   title: 'No job selected',
   status: 'queued',
-  metrics: { stepCounts: {}, totalTokens: 0, elapsedMs: 0 },
+  metrics: { stepCounts: {}, totalTokens: 0, llmInTokens: 0, llmOutTokens: 0, elapsedMs: 0 },
   artifacts: [],
   events: [],
   phases: [],
@@ -160,6 +166,8 @@ export class DashboardStore {
     const pCounts: PhaseCounts = new Map();
     const stepCounts: Record<string, number> = { running: 0, pending: 0, done: 0, failed: 0 };
     let tokens = 0;
+    let llmIn = 0;
+    let llmOut = 0;
 
     for (const s of steps) {
       const ph = safePhase(s.tagsJson);
@@ -170,7 +178,15 @@ export class DashboardStore {
       pc.total += 1;
       if (s.status === 'done') pc.done += 1;
       stepCounts[s.status] = (stepCounts[s.status] || 0) + 1;
+      // Derive total as in+out (when available)
+      // Keep a fallback to step.llmTokens for providers without usage fields
       tokens += s.llmTokens || 0;
+      try {
+        const t = s.tagsJson ? JSON.parse(s.tagsJson) : {};
+        const u = t?.usage || {};
+        if (typeof u.in === 'number') llmIn += u.in;
+        if (typeof u.out === 'number') llmOut += u.out;
+      } catch {}
     }
 
     this.stepIndex.set(jobId, sIndex);
@@ -231,7 +247,13 @@ export class DashboardStore {
         return latest ? safePhase(latest.tagsJson) : undefined;
       })(),
       jobStartTime,
-      metrics: { stepCounts, totalTokens: tokens, elapsedMs },
+      metrics: {
+        stepCounts,
+        totalTokens: llmIn + llmOut || tokens,
+        llmInTokens: llmIn,
+        llmOutTokens: llmOut,
+        elapsedMs,
+      },
       artifacts,
       events: [],
       error,
@@ -300,7 +322,13 @@ export class DashboardStore {
             const pc = phases.get(newPhase)!;
             pc.total += 1;
             if (curStatus === 'done') pc.done += 1;
-            view.metrics.totalTokens += ev.llmTokens || 0;
+            // Usage accounting (in/out), then derive total = in + out
+            try {
+              const u = (ev as any)?.tags?.usage || {};
+              if (typeof u.in === 'number') view.metrics.llmInTokens += u.in;
+              if (typeof u.out === 'number') view.metrics.llmOutTokens += u.out;
+            } catch {}
+            view.metrics.totalTokens = (view.metrics.llmInTokens || 0) + (view.metrics.llmOutTokens || 0);
           } else {
             if (prevStatus !== curStatus) {
               view.metrics.stepCounts[prevStatus!] = Math.max(0, (view.metrics.stepCounts[prevStatus!] || 1) - 1);
@@ -331,9 +359,21 @@ export class DashboardStore {
                 newPc.done += 1;
               }
             }
-            const prevTok = prev.llmTokens || 0;
-            const curTok = ev.llmTokens || 0;
-            if (curTok > prevTok) view.metrics.totalTokens += curTok - prevTok;
+            // Update in/out tokens based on tags.usage deltas
+            try {
+              const prevTags = prev as any;
+              const prevIn = prevTags?.usageIn || 0;
+              const prevOut = prevTags?.usageOut || 0;
+              const u = (ev as any)?.tags?.usage || {};
+              const curIn = typeof u.in === 'number' ? u.in : prevIn;
+              const curOut = typeof u.out === 'number' ? u.out : prevOut;
+              if (curIn > prevIn) view.metrics.llmInTokens += curIn - prevIn;
+              if (curOut > prevOut) view.metrics.llmOutTokens += curOut - prevOut;
+              // persist on meta for next delta
+              (prev as any).usageIn = curIn;
+              (prev as any).usageOut = curOut;
+            } catch {}
+            view.metrics.totalTokens = (view.metrics.llmInTokens || 0) + (view.metrics.llmOutTokens || 0);
           }
           stepsByPk.set(pk, {
             status: curStatus,
@@ -393,11 +433,22 @@ export class DashboardStore {
         }
 
         if (ev.type === 'job_status') {
+          const s = (ev as any).status as string;
+          // Map job status to dashboard status (use 'error' for failed/blocked for badge semantics)
           view.status =
-            ev.status === 'done' ? 'done'
-            : ev.status === 'blocked' ? 'error'
-            : 'running';
-          if (ev.status === 'running') shouldClearError = true;
+            s === 'done' ? 'done'
+            : s === 'failed' ? 'error'
+            : s === 'blocked' ? 'error'
+            : (s as any);
+          if (s === 'running') shouldClearError = true;
+          // If job failed, surface lastError immediately
+          if (s === 'failed' && (ev as any).lastError) {
+            try {
+              view.error = String((ev as any).lastError || 'Job failed');
+            } catch {
+              view.error = 'Job failed';
+            }
+          }
         }
         // document_status removed in job-centric design
 
@@ -406,41 +457,47 @@ export class DashboardStore {
           view.metrics.elapsedMs = Math.max(view.metrics.elapsedMs, nowTs - new Date(view.jobStartTime).getTime());
       }
 
-      // Update error banner: clear on resume signals, otherwise reflect latest failed step if any
+      // Update error banner: clear on resume signals, otherwise reflect job.lastError or latest failed step
       if (shouldClearError) {
         view.error = undefined;
       } else {
-        const failedCount = Number(view.metrics.stepCounts.failed || 0);
-        if (failedCount === 0) {
-          view.error = undefined;
-        } else {
-          try {
-            const steps = await this.stores.steps.listByJob(docId);
-            const failed = steps.filter((s) => s.status === 'failed').sort((a, b) => b.ts.localeCompare(a.ts))[0];
-            if (failed) {
-              const details =
-                failed.resultJson ?
-                  (() => {
-                    try {
-                      return JSON.parse(failed.resultJson);
-                    } catch {
-                      return null;
-                    }
-                  })()
-                : null;
-              const rawSnippet =
-                details?.raw ?
-                  String(details.raw).slice(0, 200).replace(/\s+/g, ' ') + (String(details.raw).length > 200 ? '…' : '')
-                : '';
-              view.error =
-                `${failed.title || failed.key} — ${failed.error || 'failed'}` +
-                (rawSnippet ? ` — Raw: ${rawSnippet}` : '');
-            } else {
+        try {
+          const job = await this.stores.jobs.get(docId);
+          if (job && (job as any).status === 'failed' && (job as any).lastError) {
+            view.error = String((job as any).lastError);
+          } else {
+            const failedCount = Number(view.metrics.stepCounts.failed || 0);
+            if (failedCount === 0) {
               view.error = undefined;
+            } else {
+              const steps = await this.stores.steps.listByJob(docId);
+              const failed = steps.filter((s) => s.status === 'failed').sort((a, b) => b.ts.localeCompare(a.ts))[0];
+              if (failed) {
+                const details =
+                  failed.resultJson ?
+                    (() => {
+                      try {
+                        return JSON.parse(failed.resultJson);
+                      } catch {
+                        return null;
+                      }
+                    })()
+                  : null;
+                const rawSnippet =
+                  details?.raw ?
+                    String(details.raw).slice(0, 200).replace(/\s+/g, ' ') +
+                    (String(details.raw).length > 200 ? '…' : '')
+                  : '';
+                view.error =
+                  `${failed.title || failed.key} — ${failed.error || 'failed'}` +
+                  (rawSnippet ? ` — Raw: ${rawSnippet}` : '');
+              } else {
+                view.error = undefined;
+              }
             }
-          } catch {
-            // ignore
           }
+        } catch {
+          // ignore
         }
       }
 

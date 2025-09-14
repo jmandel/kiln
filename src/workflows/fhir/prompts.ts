@@ -1,5 +1,21 @@
 // FHIR-specific prompt templates used by LLM tasks (restored to full guidance)
 
+function safeScalar(v: any): string {
+  try {
+    if (v == null) return '';
+    const t = typeof v;
+    if (t === 'string' || t === 'number' || t === 'boolean') return String(v);
+    // Prefer JSON to avoid [object Object]
+    return JSON.stringify(v);
+  } catch {
+    try {
+      return String(v);
+    } catch {
+      return '';
+    }
+  }
+}
+
 export const FHIR_PROMPTS = {
   // Composition planning prompt (restored wording)
   fhir_composition_plan: ({
@@ -23,6 +39,14 @@ High-level goals:
 - Group related observations properly (e.g., panels) so downstream generation can produce a coherent, complete set.
 - Keep individual Observations focused on a single measurable facet or assertion.
 
+Physical exam guidance (important):
+- Do NOT explode general physical exam narrative into many Observations. It is acceptable—and preferred—to keep most exam findings as plain text narrative in the appropriate Composition.section.text.
+- Limit Observations to vital signs and clearly structured, measurable findings or standardized instruments (e.g., BP, HR, temperature, SpO₂, BMI, well-defined scores). Routine exam statements (e.g., “lungs clear to auscultation”, “no edema”) should remain in narrative unless explicitly required as a discrete, coded data point.
+
+Social history and labs (important):
+- Substance use (tobacco, alcohol) should be captured as structured data (e.g., Observation with appropriate codes for status/amount/frequency) when the note provides sufficient detail; use narrative for other social history items unless a standard instrument/scale is present.
+- Laboratory results should be structured via DiagnosticReport + component Observations with appropriate LOINC codes; avoid creating Observations for loosely descriptive narrative that is not a result or measurable finding.
+
  Rules:
 1) Create a \`Composition\`. If a list of section titles is provided, you MUST use exactly those section titles in the given order; do not invent, rename, remove, or reorder sections. Only populate \`entry\` arrays for each section.
    - Not every section needs discrete entries. For example, "Assessment" typically has no entries; it is narrative only. "Plan" may include a few orders (e.g., \`ServiceRequest\`) or medication orders (\`MedicationRequest\`) — keep this list small and essential.
@@ -40,7 +64,7 @@ High-level goals:
    - Orders for tests/imaging/procedures → \`ServiceRequest\` (these are "orders", not results).
    - Performed procedures/interventions → \`Procedure\`.
    - Result reports (laboratory/imaging/other diagnostics) → \`DiagnosticReport\`.
-   - Measurements/observations → \`Observation\`.
+   - Measurements/observations → \`Observation\` (primarily vitals and clearly structured measures; general physical exam findings should remain narrative).
 3) Observations must be specific and single-facet:
    - Each Observation captures one measurable (e.g., LDL-C value, systolic BP) or one assertion (e.g., oxygen therapy used: true).
    - Use \`Observation.component\` only for a single logical observation with parts (e.g., blood pressure with systolic/diastolic). Do NOT put loosely related results in components.
@@ -88,6 +112,7 @@ Return ONLY the FHIR Composition resource as a single JSON object. Do not includ
     resource_description,
     subject_ref,
     encounter_ref,
+    author_ref,
     ips_notes,
     ips_example,
   }: {
@@ -96,6 +121,7 @@ Return ONLY the FHIR Composition resource as a single JSON object. Do not includ
     resource_description: string;
     subject_ref?: string;
     encounter_ref?: string;
+    author_ref?: string;
     ips_notes?: string[];
     ips_example?: string;
   }) => `You are an expert FHIR resource author. Given a full clinical note for context, and a specific instruction for a resource to create, generate a single, complete FHIR resource in JSON format.
@@ -110,6 +136,7 @@ Resource to Generate:
 - Description: "${resource_description}"
 ${subject_ref ? `- Subject Reference to use (if applicable): "${subject_ref}"` : ''}
 ${encounter_ref ? `- Encounter Reference to use (if applicable): "${encounter_ref}"` : ''}
+${author_ref ? `- Author/Practitioner Reference (if applicable): "${author_ref}"` : ''}
 
 Generate the FHIR resource that matches the description and target type. Ensure the \`id\` matches the provided target reference.
 
@@ -142,6 +169,7 @@ ${ips_example}
 Coding guidance (important):
 - Emit real \`Coding\` entries with \`system\`, \`code\`, and \`display\` for all \`CodeableConcept\`s. Prefer canonical systems based on context (e.g., SNOMED for problems/findings, LOINC for observations/tests, RxNorm for medications, FHIR built-in code systems for enumerations).
 - LOINC selection: use standard LOINC test/observable codes for single measurements; do NOT use LOINC Part (\`LP...\`) or LOINC Answer (\`LA...\`) codes unless a specific attribute explicitly requires a Part/Answer.
+- CodeableConcept: include exactly ONE Coding in \`coding\` (no synonyms). Choose the single best canonical code; do not add multiple codings to express different nuances.
 - If the note does not justify a specific code, pick the most precise code you can justify from the canonical system (we will verify and auto-correct later if needed). Do NOT emit custom placeholder fields.
 
 Return ONLY the generated FHIR resource as a single JSON object.
@@ -189,6 +217,7 @@ Allowed actions (choose exactly one per turn):
 Guidance:
 - Prefer minimal edits that preserve clinical meaning and coherence.
 - Changes will be re-validated and accepted only if they improve overall correctness.
+ - Address as many clearly resolvable issues as possible in this turn when the correct values are evident from validator errors and the Search Notebook. It is acceptable to include multiple patch operations (and fix multiple pointers) when each change is confidently supported by the available data.
 
 Patch constraints (important):
 - When modifying a Coding, update the full Coding entry in one operation. Prefer replacing the entire coding object at the pointer, e.g., {"system":"...","code":"...","display":"..."}.
@@ -196,7 +225,8 @@ Patch constraints (important):
 - You MUST only propose codes that appear in the Search Notebook results for THIS pointer (from the most recent searches shown). Do NOT invent or select codes that are not listed.
  - Whole-subtree edits: When fixing structured datatypes (e.g., Coding, Quantity, Dosage, CodeableConcept), prefer replacing the entire object at that JSON pointer in a single operation rather than emitting many property-level patches. This keeps changes atomic, auditable, and less error‑prone.
  - UCUM units: For Quantity fields, always use UCUM (system = "http://unitsofmeasure.org") and set unit/code accordingly; UCUM units are allowed even if not listed in the Search Notebook.
- - Focus scope: Prefer to fix one pointer (one Coding or one datatype subtree) per update. Avoid mixing many unrelated edits in a single patch so validation can clearly attribute improvements.
+ - CodeableConcept: ensure \`coding\` contains exactly ONE Coding (pick the single best canonical code; remove synonyms).
+ - Scope: Group related fixes in a single patch. You may fix multiple pointers in one patch when each change is independently justified by the Search Notebook and validator feedback; avoid speculative or loosely related edits.
 - If no suitable code is present in the Search Notebook for this pointer, prefer:
   1) action "search_for_coding" with new, concise terms and appropriate systems; or
   2) if still no suitable code is found (or budget is low), action "update" that REMOVES the entire coding object at that pointer (e.g., { op: "remove", path: "/.../coding/0" }) rather than emitting a partial/incorrect code.
@@ -214,9 +244,7 @@ ${warnings
     if (w.invalid && w.invalid.length) {
       const items = w.invalid
         .map((i: any) => {
-          const sysStr = typeof i.system === 'object' ? JSON.stringify(i.system) : String(i.system || '');
-          const codeStr = typeof i.code === 'object' ? JSON.stringify(i.code) : String(i.code || '');
-          const base = `${sysStr}|${codeStr}`;
+          const base = `${safeScalar(i.system)}|${safeScalar(i.code)}`;
           return i.canonicalDisplay ? `${base} (canonical display: "${i.canonicalDisplay}")` : base;
         })
         .join(', ');
@@ -248,24 +276,24 @@ Budget remaining (turns): ${budgetRemaining}
 Current Resource (JSON):
 ${JSON.stringify(resource, null, 2)}
 
-${warnings && warnings.length ? `Warnings (filtered, not applied in the previous step):\n${warnings.map((w) => {
-  const removed = (w.invalid && w.invalid.length)
-    ? ` — removed: ${w.invalid.map((i) => {
-        const sysStr = typeof i.system === 'object' ? JSON.stringify(i.system) : String(i.system || '');
-        const codeStr = typeof i.code === 'object' ? JSON.stringify(i.code) : String(i.code || '');
-        return `${sysStr}|${codeStr}`;
-      }).join(', ')}`
-    : '';
-  const partialMsg = w.partials && w.partials.length ? ' — dropped partial property edits' : '';
-  const msg = w.message ? ` — ${w.message}` : '';
-  return `- pointer: ${w.pointer}${removed}${partialMsg}${msg}`;
-}).join('\n')}` : ''}
-
-Unresolved Codings:
-${JSON.stringify(unresolvedCodings, null, 2)}
-
-Validator Errors:
-${JSON.stringify(validatorErrors, null, 2)}
+${
+  warnings && warnings.length ?
+    `Warnings (filtered, not applied in the previous step):\n${warnings
+      .map((w) => {
+        const removed =
+          w.invalid && w.invalid.length ?
+            ` — removed: ${w.invalid.map((i) => `${safeScalar(i.system)}|${safeScalar(i.code)}`).join(', ')}`
+          : '';
+        const partialMsg = w.partials && w.partials.length ? ' — dropped partial property edits' : '';
+        const msg = w.message ? ` — ${w.message}` : '';
+        return `- pointer: ${w.pointer}${removed}${partialMsg}${msg}`;
+      })
+      .join('\n')}`
+  : ''
+}
+  
+  Validator Errors:
+  ${JSON.stringify(validatorErrors, null, 2)}
 
 Prior Attempts (per pointer):
 ${JSON.stringify(attempts, null, 2)}

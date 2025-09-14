@@ -169,7 +169,8 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
       note_text,
       references,
       subjectRef,
-      encounterRef
+      encounterRef,
+      authorRefs[0]?.reference as string | undefined
     );
 
     const preHash = await sha256(JSON.stringify(generatedResources));
