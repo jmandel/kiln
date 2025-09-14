@@ -42,11 +42,6 @@ spec:
           ports:
             - containerPort: 3500
               name: http
-          volumeMounts:
-            - name: terminology
-              mountPath: /data
-            - name: job-data
-              mountPath: /app/jobs
           envFrom:
             - configMapRef:
                 name: kiln-config
@@ -129,7 +124,6 @@ metadata:
   namespace: kiln
 spec:
   secretName: kiln-fhir-me-tls
-  commonName: kiln.fhir.me
   dnsNames:
     - kiln.fhir.me
   issuerRef:

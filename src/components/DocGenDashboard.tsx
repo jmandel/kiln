@@ -55,6 +55,7 @@ const defaultState: DocGenState = {
 export default function DocGenDashboard({
   state: controlled,
   initial = defaultState,
+  hasJobs = true,
   onOpenArtifact,
   onRerun,
   onOpenFailed,
@@ -64,6 +65,7 @@ export default function DocGenDashboard({
 }: {
   state?: DocGenState;
   initial?: DocGenState;
+  hasJobs?: boolean;
   onOpenArtifact?: (id: string) => void;
   onRerun?: () => void;
   onOpenFailed?: () => void;
@@ -135,12 +137,13 @@ export default function DocGenDashboard({
 
   return (
     <div className="h-full bg-gray-50">
-      {/* Sticky Header */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 backdrop-blur-sm bg-white/95">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-text-charcoal">{state.title || 'No job selected'}</h1>
+      {/* Sticky Header - Only show when there are jobs */}
+      {hasJobs && (
+        <div className="sticky top-0 z-20 bg-white border-b border-gray-200 backdrop-blur-sm bg-white/95">
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-text-charcoal">{state.title || 'No job selected'}</h1>
               <div className="flex items-center gap-4 mt-2">
                 <StatusBadge status={state.status} />
                 {state.currentPhase && <span className="text-sm text-gray-600">Phase: {state.currentPhase}</span>}
@@ -230,6 +233,7 @@ export default function DocGenDashboard({
           )}
         </div>
       </div>
+      )}
 
       {/* Error Banner (if present) */}
       {state.error && (

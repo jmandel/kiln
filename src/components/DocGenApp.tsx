@@ -547,6 +547,7 @@ export default function DocGenApp(): React.ReactElement {
           <div className="flex-1 overflow-auto content-kiln">
             <DocGenDashboard
               state={dashboardState}
+              hasJobs={docList.length > 0}
               onOpenArtifact={openArtifact}
               onRerun={async () => {
                 if (!stores || !selected) return;
