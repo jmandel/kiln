@@ -68,10 +68,11 @@ Social history and labs (important):
 3) Observations must be specific and single-facet:
    - Each Observation captures one measurable (e.g., LDL-C value, systolic BP) or one assertion (e.g., oxygen therapy used: true).
    - Use \`Observation.component\` only for a single logical observation with parts (e.g., blood pressure with systolic/diastolic). Do NOT put loosely related results in components.
-4) If the note implies a panel or a set of member observations (e.g., "lipid panel", "CBC", "CMP"), include the whole set:
+4) If the note implies a panel or a set of member observations (e.g., "lipid panel", "CBC", "CMP"), include the whole set and preserve grouping order:
    - Create one \`DiagnosticReport\` for the panel (category 'laboratory') and separate \`Observation\`s for each analyte.
    - Optionally, include a panel \`Observation\` that uses \`hasMember\` to reference the analyte Observations (preferred for classic panel representation). If you include the panel Observation, also include the DiagnosticReport to summarize/report the results.
    - For imaging, prefer \`DiagnosticReport\` (category 'imaging') with result Observations for key measurements/findings. Include \`ImagingStudy\` only if the note supports it (e.g., modality/series details).
+   - Ordering requirement (strict): In each section's \`entry[]\`, place the analyte \`Observation\` references immediately AFTER their parent \`DiagnosticReport\` reference so the group is contiguous and easy to follow.
 5) Orders vs. results:
    - If the note says a test was ordered (no results yet) → \`ServiceRequest\` (place under Care Plan/Orders), not an \`Observation\`.
    - If the note reports results → \`DiagnosticReport\` with linked \`Observation\`(s) (place under Results/Measurements).
@@ -79,11 +80,15 @@ Social history and labs (important):
    - Each \`entry\` \`Reference\` MUST have:
      • \`reference\`: "<ResourceType>/<temp-id>" (e.g., "Observation/obs-ldl-1", "DiagnosticReport/report-lipid-1").
      • \`display\`: A concise instruction describing what to generate, including grouping relationships and key facets.
-       For example, for a lipid panel: the DiagnosticReport display MUST explicitly list both the analyte Observation IDs AND their plain-language names, e.g., "Include Observation/obs-ldl-1 (LDL-C), Observation/obs-hdl-1 (HDL-C), Observation/obs-tg-1 (Triglycerides), Observation/obs-totalchol-1 (Total Cholesterol)". Each analyte Observation display should name its analyte (with units if present) and refer back to the panel/report ID.
+      For example, for a lipid panel: the \`DiagnosticReport\` display MUST explicitly list the analyte \`Observation\` IDs AND their plain‑language names, e.g., "Include Observation/obs-ldl-1 (LDL-C), Observation/obs-hdl-1 (HDL-C), Observation/obs-tg-1 (Triglycerides), Observation/obs-totalchol-1 (Total Cholesterol)". Each analyte \`Observation\` display should:
+        • Name its analyte (with units if present), and
+        • Refer back to the parent report ID (e.g., "result in DiagnosticReport/report-lipid-1").
 7) Section narratives: For each section, set \`section.text.div\` to the template variable \`{{Section Title}}\` matching the source note header.
 8) Top-level sections only (strict): Use ONLY the provided Required Section Titles (top-level H2 headers) for \`section[]\`. Do NOT create additional sections for subsections (e.g., headings like \`### Supportive Care\` under Plan). Keep all subsection content under the top-level section (e.g., "Plan").
 9) Title and placeholder hygiene (strict): For each section with title S, set exactly \`"text": { "div": "<div>{{<title>}}</div>" }\`. Do not include Markdown markers (e.g., \`#\`) in titles or placeholders.
-10) Conformance check before returning JSON: Ensure \`section.length\` equals the number of Required Section Titles, titles are in the same order and match exactly, and every \`text.div\` equals \`"<div>{{<title>}}</div>"\`.
+10) Conformance check before returning JSON:
+   - Ensure \`section.length\` equals the number of Required Section Titles, titles are in the same order and match exactly, and every \`text.div\` equals \`"<div>{{<title>}}</div>"\`.
+   - For every \`DiagnosticReport\` reference in \`section[*].entry[]\`, verify there is at least one analyte \`Observation\` reference with matching IDs listed immediately AFTER it in the same \`entry[]\` array, and that the \`DiagnosticReport\` display lists those IDs and names. If not, add the missing \`Observation\` entries and fix displays so IDs match exactly.
 
 Clinical Note:
 <note>

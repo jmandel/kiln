@@ -72,7 +72,7 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               className="input-kiln"
               value={cfg.baseURL}
               onChange={(e) => setCfg({ ...cfg, baseURL: e.target.value })}
-              placeholder={defaults?.baseURL || 'https://openrouter.ai/api/v1'}
+              placeholder={defaults?.baseURL || ''}
             />
             <p className="text-xs text-gray-500 mt-1">Default: {defaults?.baseURL || '…'}</p>
           </div>
@@ -93,7 +93,7 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               className="input-kiln"
               value={cfg.model}
               onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
-              placeholder={defaults?.model || 'provider/model'}
+              placeholder={defaults?.model || ''}
             />
             <p className="text-xs text-gray-500 mt-1">Default: {defaults?.model || '…'}</p>
           </div>
@@ -103,7 +103,7 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               className="input-kiln"
               value={cfg.temperature}
               onChange={(e) => setCfg({ ...cfg, temperature: e.target.value })}
-              placeholder={String(defaults?.temperature ?? '') || '0.2'}
+              placeholder={String(defaults?.temperature ?? '')}
             />
             <p className="text-xs text-gray-500 mt-1">Default: {String(defaults?.temperature ?? '…')}</p>
           </div>
@@ -113,7 +113,7 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               className="input-kiln"
               value={cfg.fhirBaseURL}
               onChange={(e) => setCfg({ ...cfg, fhirBaseURL: e.target.value })}
-              placeholder={defaults?.fhirBaseURL || 'https://kiln.fhir.me'}
+              placeholder={defaults?.fhirBaseURL || ''}
             />
             <p className="text-xs text-gray-500 mt-1">
               Used for Bundle.entry.fullUrl. Relative references like "Observation/abc" will resolve to{' '}
@@ -127,7 +127,7 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               className="input-kiln"
               value={cfg.validationServicesURL}
               onChange={(e) => setCfg({ ...cfg, validationServicesURL: e.target.value })}
-              placeholder={defaults?.validationServicesURL || 'Leave blank for same-origin'}
+              placeholder={defaults?.validationServicesURL || ''}
             />
             <p className="text-xs text-gray-500 mt-1">
               Base used for both <code>/validate</code> and <code>/tx</code> endpoints.
@@ -142,7 +142,7 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               min={1}
               value={cfg.fhirGenConcurrency}
               onChange={(e) => setCfg({ ...cfg, fhirGenConcurrency: e.target.value })}
-              placeholder={String(defaults?.fhirGenConcurrency ?? '1')}
+              placeholder={String(defaults?.fhirGenConcurrency ?? '')}
             />
             <p className="text-xs text-gray-500 mt-1">
               How many FHIR resources to generate/refine in parallel. 1 = sequential (grouped artifacts).

@@ -37,7 +37,7 @@ export function generateConfig(source: 'build-time' | 'runtime' = 'runtime'): Pu
   // Pre-compute values that are reused
   const baseURL = (env.PUBLIC_KILN_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/+$|\/$/g, '');
   const model = env.PUBLIC_KILN_MODEL || 'openai/gpt-oss-120b:free';
-  const temperature = Math.max(0, Math.min(2, Number(env.PUBLIC_KILN_TEMPERATURE || '0.2')));
+  const temperature = Math.max(0, Math.min(2, Number(env.PUBLIC_KILN_TEMPERATURE || '0.8')));
 
   const fhirBaseURL = (env.PUBLIC_KILN_FHIR_BASE_URL || 'https://kiln.fhir.me').replace(/\/+$|\/$/g, '');
   const validationServicesURL = env.PUBLIC_KILN_VALIDATION_SERVICES_URL || '';
@@ -116,4 +116,3 @@ export function getServerConfig(): PublicConfig {
 
 // Type exports
 export type { PublicConfig as _PublicConfig };
-

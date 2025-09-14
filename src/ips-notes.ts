@@ -247,6 +247,35 @@ export const IPS_NOTES: IPSNotes = {
 }`,
   },
 
+  ServiceRequest: {
+    profile: 'http://hl7.org/fhir/uv/ips/StructureDefinition/ServiceRequest-uv-ips',
+    requirements: [
+      'subject: Reference(Patient)',
+      'code: SNOMED CT procedure (1..1)',
+      'intent: order | plan (as appropriate)',
+      'status: active | completed | revoked | on-hold (as appropriate)',
+      'occurrence[x]: dateTime or Period when known',
+      'performer: Reference(Practitioner|Organization) when known',
+      'reasonCode/reasonReference: include clinical indication when present',
+      'priority/category: optional but helpful for scheduling context',
+      'Guidance: when searching for a procedure code, include queries that contain the word "procedure" (e.g., "appendectomy procedure") to bias results toward SNOMED CT Procedure hierarchy.',
+    ],
+    example: `{
+  "resourceType": "ServiceRequest",
+  "id": "sr-1",
+  "status": "active",
+  "intent": "order",
+  "code": {
+    "coding": [ { "system": "http://snomed.info/sct", "code": "80146002", "display": "Appendectomy (procedure)" } ],
+    "text": "Appendectomy"
+  },
+  "subject": { "reference": "Patient/pat-1" },
+  "occurrenceDateTime": "2023-09-20T09:00:00Z",
+  "reasonCode": [ { "coding": [ { "system": "http://snomed.info/sct", "code": "74400008", "display": "Acute appendicitis" } ] } ],
+  "performer": [ { "reference": "Organization/org-1", "display": "General Surgery" } ]
+}`,
+  },
+
   Medication: {
     profile: 'http://hl7.org/fhir/uv/ips/StructureDefinition/Medication-uv-ips',
     requirements: ['code: RxNorm (ingredient or clinical drug as supported)', 'form/ingredient: include when known'],

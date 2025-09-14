@@ -24,24 +24,6 @@ export interface Config {
 let resolvedConfig: Config | null = null;
 let initPromise: Promise<void> | null = null;
 
-const DEFAULTS: Config = {
-  baseURL: 'https://openrouter.ai/api/v1',
-  model: 'openai/gpt-oss-120b:free',
-  temperature: 0.2,
-  apiKeyHint: 'not-configured',
-  fhirBaseURL: 'https://kiln.fhir.me',
-  validationServicesURL: '',
-  fhirGenConcurrency: 1,
-  debugMode: false,
-  maxRetries: 3,
-  llmMaxConcurrency: 4,
-  generatedAt: new Date().toISOString(),
-  version: '1.0',
-  source: 'fallback',
-  environment: 'unknown',
-  basePath: '/',
-};
-
 export const config = {
   async init(): Promise<void> {
     if (initPromise) return initPromise;
@@ -70,8 +52,9 @@ export const config = {
         resolvedConfig = data as Config;
         console.log(`✅ Loaded: ${resolvedConfig.model} (${resolvedConfig.source})`);
       } catch (err) {
-        console.error('[Config] Failed to load – using defaults', err);
-        resolvedConfig = { ...DEFAULTS, source: 'error', environment: 'error' };
+        console.error('[Config] Failed to load', err);
+        // Re-throw to let app bootstrap handle errors (no client defaults)
+        throw err;
       } finally {
         try {
           Object.defineProperty(window as any, '__kilnConfig', {
@@ -89,22 +72,62 @@ export const config = {
     return this.init();
   },
   get(): Config {
-    return (resolvedConfig as Config) || DEFAULTS;
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig;
   },
-  baseURL: (): string => (resolvedConfig?.baseURL ?? DEFAULTS.baseURL),
-  model: (): string => (resolvedConfig?.model ?? DEFAULTS.model),
-  temperature: (): number => (resolvedConfig?.temperature ?? DEFAULTS.temperature),
-  apiKeyHint: (): Config['apiKeyHint'] => (resolvedConfig?.apiKeyHint ?? DEFAULTS.apiKeyHint),
-  fhirBaseURL: (): string => (resolvedConfig?.fhirBaseURL ?? DEFAULTS.fhirBaseURL),
-  validationServicesURL: (): string => (resolvedConfig?.validationServicesURL ?? DEFAULTS.validationServicesURL),
-  fhirGenConcurrency: (): number => (resolvedConfig?.fhirGenConcurrency ?? DEFAULTS.fhirGenConcurrency),
-  debugMode: (): boolean => (resolvedConfig?.debugMode ?? DEFAULTS.debugMode),
-  maxRetries: (): number => (resolvedConfig?.maxRetries ?? DEFAULTS.maxRetries),
-  llmMaxConcurrency: (): number => (resolvedConfig?.llmMaxConcurrency ?? DEFAULTS.llmMaxConcurrency),
-  environment: (): string => (resolvedConfig?.environment ?? DEFAULTS.environment),
-  source: (): Config['source'] => (resolvedConfig?.source ?? DEFAULTS.source),
-  basePath: (): string => (resolvedConfig?.basePath ?? DEFAULTS.basePath),
-  isReady: (): boolean => !!resolvedConfig && resolvedConfig.source !== 'fallback',
+  baseURL: (): string => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.baseURL;
+  },
+  model: (): string => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.model;
+  },
+  temperature: (): number => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.temperature;
+  },
+  apiKeyHint: (): Config['apiKeyHint'] => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.apiKeyHint;
+  },
+  fhirBaseURL: (): string => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.fhirBaseURL;
+  },
+  validationServicesURL: (): string => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.validationServicesURL;
+  },
+  fhirGenConcurrency: (): number => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.fhirGenConcurrency;
+  },
+  debugMode: (): boolean => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.debugMode;
+  },
+  maxRetries: (): number => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.maxRetries;
+  },
+  llmMaxConcurrency: (): number => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.llmMaxConcurrency;
+  },
+  environment: (): string => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.environment;
+  },
+  source: (): Config['source'] => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.source;
+  },
+  basePath: (): string => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.basePath;
+  },
+  isReady: (): boolean => !!resolvedConfig,
   isLoading: (): boolean => !!initPromise && !resolvedConfig,
 };
 
@@ -135,4 +158,3 @@ export function useConfig(): ConfigState {
   if (!ctx) throw new Error('useConfig must be used within ConfigProvider');
   return ctx;
 }
-
