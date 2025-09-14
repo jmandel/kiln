@@ -6,6 +6,7 @@ import DocGenDashboard from './DocGenDashboard';
 import ArtifactDetails from './ArtifactDetails';
 import StepDetails from './StepDetails';
 import { pretty, tryJson } from './ui';
+import logoUrl from '../../public/logo.png';
 // New jobs-first API (no runs in UI)
 import {
   createJob,
@@ -391,7 +392,7 @@ export default function DocGenApp(): React.ReactElement {
   const BRAND = {
     name: 'Kiln',
     tagline: 'Clinical content from raw clay',
-    logo: '/public/logo.png',
+    logo: logoUrl,
   } as const;
 
   const createFromHeader = async () => {
@@ -526,15 +527,17 @@ export default function DocGenApp(): React.ReactElement {
       </header>
 
       <div className="flex flex-1">
-        {/* Sidebar - Jobs List */}
-        <div className="w-96 sidebar-kiln flex flex-col">
-          <div className="p-4 border-b border-gray-200">
-            <h2 className="font-semibold text-text-charcoal">Jobs</h2>
+        {/* Sidebar - Jobs List - Only show if there are jobs */}
+        {docList.length > 0 && (
+          <div className="w-96 sidebar-kiln flex flex-col">
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="font-semibold text-text-charcoal">Jobs</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              <JobsList jobs={docList} selected={selected} onSelect={setSelected} onDelete={handleDeleteJob} />
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-2">
-            <JobsList jobs={docList} selected={selected} onSelect={setSelected} onDelete={handleDeleteJob} />
-          </div>
-        </div>
+        )}
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col">

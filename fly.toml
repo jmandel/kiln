@@ -17,7 +17,7 @@ primary_region = 'iad'
   processes = ['app']
 
 [env]
-  VALIDATOR_HEAP=512M
+  VALIDATOR_HEAP='512M'
 
 [[vm]]
   memory = '1gb'

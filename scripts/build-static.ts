@@ -9,6 +9,7 @@
 import { $ } from 'bun';
 import { mkdir, cp, readdir, writeFile, stat } from 'fs/promises';
 import { resolve, join, basename } from 'path';
+import tailwind from 'bun-plugin-tailwind';
 
 async function ensureDir(p: string) {
   await mkdir(p, { recursive: true }).catch(() => {});
@@ -16,7 +17,15 @@ async function ensureDir(p: string) {
 
 async function buildHtml() {
   console.log('🧱 bundling html -> dist');
-  await $`bun build index.html viewer.html --outdir dist`;
+
+  await Bun.build({
+    plugins: [tailwind],
+    outdir: './dist',
+    entrypoints: ['./index.html', './viewer.html'],
+    target: 'browser',
+    sourcemap: 'linked',
+    minify: true,
+  });
 }
 
 async function copyExamples() {
