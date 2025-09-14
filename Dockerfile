@@ -56,6 +56,9 @@ COPY server/README.md ./server/
 
 # Copy pre-built vocabulary database
 COPY --from=vocab-builder /app/server/db ./server/db
+# Ensure the runtime user (UID 1000 in k8s) can write WAL/SHM files
+RUN chown -R 1000:1000 ./server/db && \
+    chmod -R u+rwX,g+rwX ./server/db
 
 # Download validator JAR
 RUN curl -L -o ./server/validator.jar https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar

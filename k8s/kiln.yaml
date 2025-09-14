@@ -74,6 +74,7 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 30  # Allow up to 5 minutes for startup
+      
 ---
 apiVersion: v1
 kind: Service

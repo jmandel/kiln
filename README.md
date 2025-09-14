@@ -126,6 +126,60 @@ Configure these in your shell or `.env` file. Defaults are shown for local devel
 
 Reload the environment after changes or restart the server.
 
+### Configuration (Unified Defaults)
+Kiln uses a unified configuration system that works at build time (for static assets) and at runtime (via the Bun server). This provides sensible defaults without leaking secrets and keeps the UI, build, and server in sync.
+
+- Build-time defaults: When running the static build (`bun run build:static`), non-secret defaults are injected into the bundle as `DEFAULT_VALUES` via Bun’s `define`. These include model, temperature, FHIR base URL, validation services URL, and concurrency.
+- Runtime defaults: The dev/prod server exposes `GET /api/config/defaults`, returning public environment variables for the client to read. The API never includes secrets.
+- UI behavior: The Settings modal shows any build/runtime defaults and uses them as fallbacks when fields are blank. LocalStorage values override defaults.
+
+Public environment variables (read at build-time and/or runtime):
+
+```
+PUBLIC_KILN_BASE_URL                # LLM API base URL (e.g., https://openrouter.ai/api/v1)
+PUBLIC_KILN_MODEL                   # LLM model id (e.g., openai/gpt-4)
+PUBLIC_KILN_TEMPERATURE             # Default temperature (e.g., 0.2)
+PUBLIC_KILN_FHIR_BASE_URL           # Base for Bundle.entry.fullUrl (e.g., https://kiln.fhir.me)
+PUBLIC_KILN_VALIDATION_SERVICES_URL # Base URL for /validate and /tx ('' for same-origin)
+PUBLIC_KILN_FHIR_GEN_CONCURRENCY    # Parallel FHIR generation (e.g., 1)
+# PUBLIC_KILN_API_KEY               # Not exposed via runtime endpoint; do not embed in builds
+```
+
+Client-side LocalStorage keys (override defaults in the browser):
+
+```
+TASK_DEFAULT_BASE_URL
+TASK_DEFAULT_API_KEY
+TASK_DEFAULT_MODEL
+TASK_DEFAULT_TEMPERATURE
+FHIR_BASE_URL
+VALIDATION_SERVICES_URL
+FHIR_GEN_CONCURRENCY
+```
+
+Notes:
+- Security: API keys are never embedded in static assets, and the runtime `/api/config/defaults` endpoint excludes `PUBLIC_KILN_API_KEY`. Provide the key via the UI or browser storage.
+- Same-origin validation: Leave `VALIDATION_SERVICES_URL` blank to call the server’s own `/validate` and `/tx` endpoints.
+- Diagnostics: The Settings modal prints any build/runtime defaults (from `window.DEFAULT_VALUES`) to help confirm the effective configuration.
+
+Example development env file (`.env.local`):
+
+```
+PUBLIC_KILN_BASE_URL=https://openrouter.ai/api/v1
+PUBLIC_KILN_MODEL=openai/gpt-4
+PUBLIC_KILN_TEMPERATURE=0.7
+PUBLIC_KILN_FHIR_BASE_URL=https://kiln.fhir.me
+PUBLIC_KILN_VALIDATION_SERVICES_URL=http://localhost:3500
+PUBLIC_KILN_FHIR_GEN_CONCURRENCY=3
+```
+
+Run with your env loaded (or export vars in your shell):
+
+```
+# Example: pass an env file to Bun
+bun --env-file .env.local run dev
+```
+
 ### Docker (Alternative)
 For a containerized setup with all dependencies pre-installed:
 
@@ -395,4 +449,3 @@ Kiln is written by Josh Mandel, MD. It incorporates the HAPI FHIR validator (Apa
 - **Prettier**: MIT License (code formatting).
 
 All dependencies are included in `package.json` and follow their respective licenses. No proprietary or restrictive licenses are used in the core codebase.
-
