@@ -225,10 +225,14 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
       for (const section of finalComposition.section)
         if (Array.isArray(section.entry)) for (const entry of section.entry) delete entry.display;
 
-    const fhirBase =
-      (typeof localStorage !== 'undefined' &&
-        (localStorage.getItem('FHIR_BASE_URL') || localStorage.getItem('FHIR_BASE'))) ||
-      'https://kiln.fhir.me';
+    const { config } = await import('../../config');
+    let fhirBase = '';
+    try {
+      const o = (typeof localStorage !== 'undefined' && localStorage.getItem('OVERRIDE_FHIR_BASE_URL')) || '';
+      fhirBase = (o && o.trim()) || config.fhirBaseURL();
+    } catch {
+      fhirBase = config.fhirBaseURL();
+    }
     const base = String(fhirBase).replace(/\/$/, '');
     try {
       if (finalComposition?.id) {

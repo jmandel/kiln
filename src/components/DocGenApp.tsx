@@ -7,6 +7,7 @@ import ArtifactDetails from './ArtifactDetails';
 import StepDetails from './StepDetails';
 import { pretty, tryJson } from './ui';
 import logoUrl from '../../public/logo.png';
+import { config as appConfig } from '../config';
 // New jobs-first API (no runs in UI)
 import {
   createJob,
@@ -43,6 +44,22 @@ function guessKind(kind: string): 'draft' | 'outline' | 'assets' | 'review' | 'f
 // Configuration Modal Component
 function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: any) => void; onClose: () => void }) {
   const [cfg, setCfg] = useState(config);
+  const [defaults, setDefaults] = useState<{ [k: string]: any } | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        await appConfig.ready();
+        setDefaults({
+          baseURL: appConfig.baseURL(),
+          model: appConfig.model(),
+          temperature: appConfig.temperature(),
+          fhirBaseURL: appConfig.fhirBaseURL(),
+          validationServicesURL: appConfig.validationServicesURL() || '[same-origin]',
+          fhirGenConcurrency: appConfig.fhirGenConcurrency(),
+        });
+      } catch {}
+    })();
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
@@ -55,8 +72,9 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               className="input-kiln"
               value={cfg.baseURL}
               onChange={(e) => setCfg({ ...cfg, baseURL: e.target.value })}
-              placeholder="https://openrouter.ai/api/v1"
+              placeholder={defaults?.baseURL || 'https://openrouter.ai/api/v1'}
             />
+            <p className="text-xs text-gray-500 mt-1">Default: {defaults?.baseURL || '…'}</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-text-charcoal mb-1">API Key</label>
@@ -67,6 +85,7 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               onChange={(e) => setCfg({ ...cfg, apiKey: e.target.value })}
               placeholder="sk-..."
             />
+            <p className="text-xs text-gray-500 mt-1">Stored only in your browser. Not sent to server.</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-text-charcoal mb-1">Model</label>
@@ -74,8 +93,9 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               className="input-kiln"
               value={cfg.model}
               onChange={(e) => setCfg({ ...cfg, model: e.target.value })}
-              placeholder="openai/gpt-4"
+              placeholder={defaults?.model || 'provider/model'}
             />
+            <p className="text-xs text-gray-500 mt-1">Default: {defaults?.model || '…'}</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-text-charcoal mb-1">Temperature</label>
@@ -83,8 +103,9 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               className="input-kiln"
               value={cfg.temperature}
               onChange={(e) => setCfg({ ...cfg, temperature: e.target.value })}
-              placeholder="0.7"
+              placeholder={String(defaults?.temperature ?? '') || '0.2'}
             />
+            <p className="text-xs text-gray-500 mt-1">Default: {String(defaults?.temperature ?? '…')}</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-text-charcoal mb-1">FHIR Base URL</label>
@@ -92,12 +113,13 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               className="input-kiln"
               value={cfg.fhirBaseURL}
               onChange={(e) => setCfg({ ...cfg, fhirBaseURL: e.target.value })}
-              placeholder="https://kiln.fhir.me"
+              placeholder={defaults?.fhirBaseURL || 'https://kiln.fhir.me'}
             />
             <p className="text-xs text-gray-500 mt-1">
               Used for Bundle.entry.fullUrl. Relative references like "Observation/abc" will resolve to{' '}
               <code>FHIR Base URL</code>/Observation/abc.
             </p>
+            <p className="text-xs text-gray-500 mt-1">Default: {defaults?.fhirBaseURL || '…'}</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-text-charcoal mb-1">Validation Services URL</label>
@@ -105,11 +127,12 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               className="input-kiln"
               value={cfg.validationServicesURL}
               onChange={(e) => setCfg({ ...cfg, validationServicesURL: e.target.value })}
-              placeholder="Leave blank for same-origin (e.g., http://localhost:3500)"
+              placeholder={defaults?.validationServicesURL || 'Leave blank for same-origin'}
             />
             <p className="text-xs text-gray-500 mt-1">
               Base used for both <code>/validate</code> and <code>/tx</code> endpoints.
             </p>
+            <p className="text-xs text-gray-500 mt-1">Default: {defaults?.validationServicesURL || '[same-origin]'}</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-text-charcoal mb-1">FHIR Generation Concurrency</label>
@@ -119,11 +142,12 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
               min={1}
               value={cfg.fhirGenConcurrency}
               onChange={(e) => setCfg({ ...cfg, fhirGenConcurrency: e.target.value })}
-              placeholder="1"
+              placeholder={String(defaults?.fhirGenConcurrency ?? '1')}
             />
             <p className="text-xs text-gray-500 mt-1">
               How many FHIR resources to generate/refine in parallel. 1 = sequential (grouped artifacts).
             </p>
+            <p className="text-xs text-gray-500 mt-1">Default: {String(defaults?.fhirGenConcurrency ?? '1')}</p>
           </div>
         </div>
         <div className="flex justify-end gap-3 mt-6">
@@ -160,13 +184,13 @@ export default function DocGenApp(): React.ReactElement {
   const [failedStep, setFailedStep] = useState<Step | null>(null);
   const urlCache = React.useRef<Map<string, string>>(new Map());
   const [cfg, setCfg] = useState({
-    baseURL: localStorage.getItem('TASK_DEFAULT_BASE_URL') || 'https://openrouter.ai/api/v1',
+    baseURL: localStorage.getItem('OVERRIDE_BASE_URL') || '',
     apiKey: localStorage.getItem('TASK_DEFAULT_API_KEY') || '',
-    model: localStorage.getItem('TASK_DEFAULT_MODEL') || 'openai/gpt-oss-120b:nitro',
-    temperature: localStorage.getItem('TASK_DEFAULT_TEMPERATURE') || '0.2',
-    fhirBaseURL: localStorage.getItem('FHIR_BASE_URL') || 'https://kiln.fhir.me',
-    validationServicesURL: localStorage.getItem('VALIDATION_SERVICES_URL') || '',
-    fhirGenConcurrency: localStorage.getItem('FHIR_GEN_CONCURRENCY') || '1',
+    model: localStorage.getItem('OVERRIDE_MODEL') || '',
+    temperature: localStorage.getItem('OVERRIDE_TEMPERATURE') || '',
+    fhirBaseURL: localStorage.getItem('OVERRIDE_FHIR_BASE_URL') || '',
+    validationServicesURL: localStorage.getItem('OVERRIDE_VALIDATION_SERVICES_URL') || '',
+    fhirGenConcurrency: localStorage.getItem('OVERRIDE_FHIR_GEN_CONCURRENCY') || '',
   });
 
   useEffect(() => {
@@ -248,18 +272,20 @@ export default function DocGenApp(): React.ReactElement {
   };
 
   const saveConfig = (newCfg: typeof cfg) => {
-    localStorage.setItem('TASK_DEFAULT_BASE_URL', newCfg.baseURL);
-    localStorage.setItem('TASK_DEFAULT_API_KEY', newCfg.apiKey);
-    localStorage.setItem('TASK_DEFAULT_MODEL', newCfg.model);
-    localStorage.setItem('TASK_DEFAULT_TEMPERATURE', newCfg.temperature);
-    localStorage.setItem('FHIR_BASE_URL', newCfg.fhirBaseURL);
-    // Single canonical key used by both /validate and /tx
-    if (newCfg.validationServicesURL) {
-      localStorage.setItem('VALIDATION_SERVICES_URL', newCfg.validationServicesURL);
-    } else {
-      localStorage.removeItem('VALIDATION_SERVICES_URL');
-    }
-    localStorage.setItem('FHIR_GEN_CONCURRENCY', String(newCfg.fhirGenConcurrency || '1'));
+    const setOrRemove = (k: string, v: any) => {
+      const s = String(v ?? '').trim();
+      if (s) localStorage.setItem(k, s);
+      else localStorage.removeItem(k);
+    };
+    // Store overrides only when provided; else use server defaults
+    setOrRemove('OVERRIDE_BASE_URL', newCfg.baseURL);
+    setOrRemove('OVERRIDE_MODEL', newCfg.model);
+    setOrRemove('OVERRIDE_TEMPERATURE', newCfg.temperature);
+    setOrRemove('OVERRIDE_FHIR_BASE_URL', newCfg.fhirBaseURL);
+    setOrRemove('OVERRIDE_VALIDATION_SERVICES_URL', newCfg.validationServicesURL);
+    setOrRemove('OVERRIDE_FHIR_GEN_CONCURRENCY', newCfg.fhirGenConcurrency);
+    // API key remains local-only
+    setOrRemove('TASK_DEFAULT_API_KEY', newCfg.apiKey);
     setCfg(newCfg);
   };
 

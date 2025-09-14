@@ -1,4 +1,4 @@
-import type { Config } from './types';
+import { config } from './config';
 
 export const nowIso = (): string => new Date().toISOString();
 
@@ -43,34 +43,59 @@ export function toEnvKey(taskKind: string | undefined): string | undefined {
     .replace(/[^A-Z0-9]+/g, '_');
 }
 
-export function resolveTaskConfig(taskKind: string | undefined): Config {
+export function resolveTaskConfig(
+  taskKind: string | undefined
+): { baseURL: string; apiKey: string; model: string; temperature: number } {
+  if (!config.isReady()) throw new Error('Configuration not loaded');
   const key = toEnvKey(taskKind);
-  const baseDefault = localStorage.getItem('TASK_DEFAULT_BASE_URL') ?? 'https://openrouter.ai/api/v1';
-  const apiKeyDefault = localStorage.getItem('TASK_DEFAULT_API_KEY') ?? '';
-  const modelDefault = localStorage.getItem('TASK_DEFAULT_MODEL') ?? 'openai/gpt-oss-120b:nitro';
-  const tempDefault = Number(localStorage.getItem('TASK_DEFAULT_TEMPERATURE') ?? 0.2);
-
-  const baseURL = (key && localStorage.getItem(`TASK_${key}_BASE_URL`)) || baseDefault;
-  const apiKey = (key && localStorage.getItem(`TASK_${key}_API_KEY`)) || apiKeyDefault;
-  const model = (key && localStorage.getItem(`TASK_${key}_MODEL`)) || modelDefault;
-  const temperature = Number((key && localStorage.getItem(`TASK_${key}_TEMPERATURE`)) || tempDefault);
+  // User overrides (optional)
+  const ov = (k: string): string | null => {
+    try {
+      const v = localStorage.getItem(k);
+      return v != null && String(v).trim() !== '' ? String(v) : null;
+    } catch {
+      return null;
+    }
+  };
+  const baseURL = ov('OVERRIDE_BASE_URL') || config.baseURL();
+  const model = ov('OVERRIDE_MODEL') || config.model();
+  const temperature = ((): number => {
+    const t = ov('OVERRIDE_TEMPERATURE');
+    if (t == null) return config.temperature();
+    const n = Number(t);
+    return Number.isFinite(n) ? n : config.temperature();
+  })();
+  // API key continues to be stored locally in the browser
+  const apiKeyDefault = ((): string => {
+    try {
+      return localStorage.getItem('TASK_DEFAULT_API_KEY') || '';
+    } catch {
+      return '';
+    }
+  })();
+  const apiKey = ((): string => {
+    try {
+      return (key && localStorage.getItem(`TASK_${key}_API_KEY`)) || apiKeyDefault;
+    } catch {
+      return apiKeyDefault;
+    }
+  })();
   return { baseURL, apiKey, model, temperature };
 }
 
 // Resolve the Terminology Server base URL consistently across environments
 
 export function getTerminologyServerURL(): string {
-  // Single greenfield setting: VALIDATION_SERVICES_URL
-  // Browser: use configured value or same-origin
+  // Prefer explicit user override if present
   try {
-    if (typeof window !== 'undefined') {
-      const v = localStorage.getItem('VALIDATION_SERVICES_URL');
-      if (v && v.trim()) return v;
-      return '';
-    }
+    const o = localStorage.getItem('OVERRIDE_VALIDATION_SERVICES_URL');
+    if (o && o.trim()) return o.trim();
   } catch {}
-  // Non-browser default for local dev/tests
-  return 'http://localhost:3500';
+  // Fall back to server-provided value; empty => same-origin
+  try {
+    if (config.isReady()) return config.validationServicesURL() || '';
+  } catch {}
+  return '';
 }
 
 // Base URL for FHIR validation (type-level endpoints are appended)

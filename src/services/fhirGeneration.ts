@@ -8,6 +8,7 @@ import { runLLMTask } from '../llmTask';
 import { emitJsonArtifact } from './artifacts';
 import { sha256 } from '../helpers';
 import type { Context } from '../types';
+import { config } from '../config';
 
 export async function generateAndRefineResources(
   ctx: Context,
@@ -17,7 +18,20 @@ export async function generateAndRefineResources(
   encounterRef?: string,
   authorRef?: string
 ): Promise<any[]> {
-  const GEN_CONC = Math.max(1, Number(localStorage.getItem('FHIR_GEN_CONCURRENCY') || 1));
+  const GEN_CONC = ((): number => {
+    try {
+      const ov = (typeof localStorage !== 'undefined' && localStorage.getItem('OVERRIDE_FHIR_GEN_CONCURRENCY')) || '';
+      if (ov && String(ov).trim()) {
+        const n = Number(ov);
+        if (Number.isFinite(n) && n >= 1) return n;
+      }
+    } catch {}
+    try {
+      return config.isReady() ? Math.max(1, Number(config.fhirGenConcurrency())) : 1;
+    } catch {
+      return 1;
+    }
+  })();
   const generatedResources: any[] = new Array(references.length);
 
   const processOne = async (ref: { reference: string; display: string }, idx: number) => {

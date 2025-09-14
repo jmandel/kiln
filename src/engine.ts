@@ -1,5 +1,6 @@
 import type { ID, Artifact, Step, Link, Context, Stores } from './types';
 import { sha256, nowIso, tolerantJsonParse, resolveTaskConfig, toEnvKey } from './helpers';
+import { config as appConfig } from './config';
 import { PROMPTS } from './prompts';
 
 class ConcurrencyPool {
@@ -7,6 +8,10 @@ class ConcurrencyPool {
   private queue: (() => void)[] = [];
 
   constructor(private limit: number) {}
+
+  setLimit(limit: number) {
+    this.limit = Math.max(1, limit);
+  }
 
   async acquire(): Promise<void> {
     if (this.active < this.limit) {
@@ -33,8 +38,24 @@ class ConcurrencyPool {
   }
 }
 
-const llmMaxConcurrency = Number(localStorage.getItem('LLM_MAX_CONCURRENCY') ?? 4);
-const llmPool = new ConcurrencyPool(llmMaxConcurrency);
+const llmPool = new ConcurrencyPool(4);
+// Update concurrency once config is ready
+try {
+  appConfig.ready().then(() => {
+    try {
+      const override = ((): number | null => {
+        try {
+          const v = localStorage.getItem('OVERRIDE_LLM_MAX_CONCURRENCY');
+          const n = v != null ? Number(v) : NaN;
+          return Number.isFinite(n) && n > 0 ? n : null;
+        } catch {
+          return null;
+        }
+      })();
+      llmPool.setLimit(override ?? appConfig.llmMaxConcurrency());
+    } catch {}
+  });
+} catch {}
 
 let currentStepStack: string[] = [];
 
@@ -433,7 +454,13 @@ async function llmCall(
 }> {
   const cfg = resolveTaskConfig(task);
   if (!cfg.apiKey) throw new Error("API key required for LLM; set localStorage 'TASK_DEFAULT_API_KEY'");
-  const retries = Number(localStorage.getItem('TASK_DEFAULT_RETRIES') ?? 3);
+  const retries = ((): number => {
+    try {
+      return appConfig.isReady() ? appConfig.maxRetries() : 3;
+    } catch {
+      return 3;
+    }
+  })();
   let lastRaw = '';
   let lastStatus: number | undefined = undefined;
   const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
