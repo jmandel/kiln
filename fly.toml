@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for kiln on 2025-09-13T21:08:00-04:00
+# fly.toml app configuration file generated for v6-weathered-firefly-345 on 2025-09-13T23:01:12-04:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'kiln'
+app = 'v6-weathered-firefly-345'
 primary_region = 'iad'
 
 [build]
@@ -16,7 +16,10 @@ primary_region = 'iad'
   min_machines_running = 0
   processes = ['app']
 
+[env]
+  VALIDATOR_HEAP=512M
+
 [[vm]]
-  memory = '2gb'
+  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1

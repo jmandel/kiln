@@ -67,8 +67,8 @@ export class SqliteTerminologySearch {
 
     // Query designations FTS table to find matching concepts
     let sql = `
-      SELECT DISTINCT c.system, c.code, c.display, bm25(designations_fts) AS rank
-      FROM designations_fts 
+      SELECT c.system, c.code, c.display, bm25(designations_fts) AS rank
+      FROM designations_fts
       JOIN designations d ON d.id = designations_fts.rowid
       JOIN concepts c ON c.id = d.concept_id
       WHERE designations_fts MATCH ?`;
@@ -82,21 +82,31 @@ export class SqliteTerminologySearch {
       params.push(...systems);
     }
 
-    sql += ` ORDER BY rank ASC LIMIT ?`;
-    params.push(limit);
+    sql += ` ORDER BY rank ASC`;
 
     try {
       const stmt = this.db.query<any>(sql);
       const rows = stmt.all(...params);
-      return rows.map(
-        (r: any) =>
-          ({
+
+      // Deduplicate by keeping only the best score for each concept
+      const seen = new Set<string>();
+      const results: TerminologyHit[] = [];
+
+      for (const r of rows) {
+        const key = `${r.system}|${r.code}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          results.push({
             system: r.system,
             code: String(r.code),
             display: String(r.display ?? ''),
             score: Number(r.rank),
-          }) as TerminologyHit
-      );
+          });
+          if (results.length >= limit) break;
+        }
+      }
+
+      return results;
     } catch (err) {
       console.error('Search error:', err);
       return [];

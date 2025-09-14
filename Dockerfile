@@ -4,11 +4,7 @@ RUN apk add --no-cache curl
 WORKDIR /download
 RUN curl -L -o validator.jar https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
 
-# Stage 2: Clone vocabularies (can be cached separately)
-FROM alpine:latest AS vocab-downloader
-RUN apk add --no-cache git
-WORKDIR /vocab
-RUN git clone --depth 1 https://github.com/jmandel/fhir-concept-publication-demo large-vocabularies
+# Stage 2: Vocabularies are copied from the build context (git submodule)
 
 # Stage 3: Install dependencies (better layer caching)
 FROM oven/bun:1-alpine AS deps
@@ -49,8 +45,8 @@ COPY scripts ./scripts
 # Copy validator from download stage
 COPY --from=validator-downloader /download/validator.jar ./server/validator.jar
 
-# Copy vocabularies and load them
-COPY --from=vocab-downloader /vocab/large-vocabularies ./server/large-vocabularies
+# Copy vocabularies from the build context (git submodule)
+COPY server/large-vocabularies ./server/large-vocabularies
 RUN cd server && \
     mkdir -p db && \
     bun run scripts/load-terminology.ts && \

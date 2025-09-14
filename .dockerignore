@@ -54,4 +54,3 @@ CLAUDE.md
 # Large files that will be downloaded during build
 server/validator.jar
 server/db/*.sqlite
-server/large-vocabularies/

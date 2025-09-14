@@ -11,7 +11,9 @@
     "test:terminology": "bun test tests/terminology.test.ts",
     "test:validator": "bun test tests/validator.test.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "fast-xml-parser": "^5.2.5"
+  },
   "devDependencies": {
     "bun-types": "latest"
   }

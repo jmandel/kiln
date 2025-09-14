@@ -6,6 +6,7 @@
 
 import { Database } from 'bun:sqlite';
 import { existsSync, unlinkSync } from 'fs';
+import { XMLParser } from 'fast-xml-parser';
 
 // Configuration
 const DB_PATH = process.env.TERMINOLOGY_DB_PATH || './db/terminology.sqlite';
@@ -21,6 +22,8 @@ const SYSTEM_URLS = {
 // External sources
 const FHIR_R4_VALUESETS = 'https://hl7.org/fhir/R4/valuesets.json';
 const UTG_IG = 'https://build.fhir.org/ig/HL7/UTG/full-ig.zip';
+const CVX_URL = 'https://www2a.cdc.gov/vaccines/iis/iisstandards/XML2.asp?rpt=cvx';
+const CVX_SYSTEM = 'http://hl7.org/fhir/sid/cvx';
 
 interface CodeSystemHeader {
   resourceType: 'CodeSystem';
@@ -462,6 +465,141 @@ class TerminologyLoader {
   }
 
   /**
+   * Load CVX vaccine codes from CDC
+   */
+  async loadCVX() {
+    console.log(`📥 Downloading CVX vaccine codes from CDC...`);
+
+    try {
+      // Fetch XML from CDC
+      const response = await fetch(CVX_URL);
+      if (!response.ok) {
+        throw new Error(`Failed to download CVX codes: ${response.statusText}`);
+      }
+
+      const xmlText = await response.text();
+
+      // Parse XML
+      const parser = new XMLParser({
+        ignoreAttributes: false,
+        parseTagValue: true,
+        parseAttributeValue: true,
+        trimValues: true,
+      });
+
+      const parsed = parser.parse(xmlText);
+
+      if (!parsed.CVXCodes || !parsed.CVXCodes.CVXInfo) {
+        throw new Error('Invalid CVX XML format');
+      }
+
+      // Ensure CVXInfo is always an array
+      const cvxInfoArray = Array.isArray(parsed.CVXCodes.CVXInfo) ? parsed.CVXCodes.CVXInfo : [parsed.CVXCodes.CVXInfo];
+
+      // Transform to concepts (include all codes, not just active)
+      const concepts = cvxInfoArray
+        .filter((info) => info.CVXCode !== undefined && info.CVXCode !== null)
+        .map((info) => ({
+          code: String(info.CVXCode).padStart(2, '0'), // Ensure 2-digit codes
+          display: info.ShortDescription || '',
+          fullName: info.FullVaccinename || '',
+          notes: info.Notes || '',
+          status: info.Status || 'Unknown',
+          lastUpdated: info.LastUpdated || '',
+        }));
+
+      console.log(
+        `🔍 Found ${concepts.length} CVX codes (${concepts.filter((c) => c.status === 'Active').length} active)`
+      );
+
+      // Prepare statements
+      const insertConcept = this.db.prepare(`
+        INSERT OR REPLACE INTO concepts (system, code, display)
+        VALUES (?, ?, ?)
+      `);
+
+      const insertDesignation = this.db.prepare(`
+        INSERT INTO designations (concept_id, label, use_code)
+        VALUES (?, ?, ?)
+      `);
+
+      const getConceptId = this.db.prepare(`
+        SELECT id FROM concepts WHERE system = ? AND code = ?
+      `);
+
+      // Process in transaction
+      let processedCount = 0;
+      const transaction = this.db.transaction(() => {
+        for (const concept of concepts) {
+          // Insert concept
+          insertConcept.run(CVX_SYSTEM, concept.code, concept.display);
+
+          // Get concept ID
+          const conceptRow = getConceptId.get(CVX_SYSTEM, concept.code) as { id: number };
+          if (!conceptRow) continue;
+
+          // Insert display as primary designation
+          if (concept.display) {
+            insertDesignation.run(conceptRow.id, concept.display, 'short');
+          }
+
+          // Insert full name if different
+          if (concept.fullName && concept.fullName !== concept.display) {
+            insertDesignation.run(conceptRow.id, concept.fullName, 'full');
+          }
+
+          // Insert notes if present
+          if (concept.notes) {
+            insertDesignation.run(conceptRow.id, concept.notes, 'notes');
+          }
+
+          // Add status as a designation for searchability
+          if (concept.status && concept.status !== 'Active') {
+            insertDesignation.run(conceptRow.id, `[${concept.status}] ${concept.display}`, 'status');
+          }
+
+          processedCount++;
+        }
+      });
+
+      transaction();
+
+      // Get latest update date from the data
+      const latestDate =
+        concepts
+          .map((c) => c.lastUpdated)
+          .filter((d) => d)
+          .sort()
+          .reverse()[0] || new Date().toISOString();
+
+      // Update code system record
+      this.db
+        .prepare(
+          `
+        INSERT OR REPLACE INTO code_systems (system, version, name, title, date, concept_count, source)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `
+        )
+        .run(
+          CVX_SYSTEM,
+          latestDate,
+          'CVX',
+          'CDC Vaccine Administered (CVX) Codes',
+          latestDate,
+          processedCount,
+          'CDC IIS Standards'
+        );
+
+      console.log(`✅ Loaded ${processedCount} CVX vaccine codes`);
+      return processedCount;
+    } catch (error) {
+      console.error(`❌ Failed to load CVX codes: ${error}`);
+      // Return 0 but don't fail the entire process
+      return 0;
+    }
+  }
+
+  /**
    * Optimize the database after loading
    */
   optimize() {
@@ -573,11 +711,15 @@ async function main() {
     console.log(`\n📦 Step 3: Loading UTG codesystems...`);
     const utgCount = await loader.loadUTG();
 
-    // 4. Optimize
-    console.log(`\n🔧 Step 4: Optimizing database...`);
+    // 4. Load CVX vaccine codes
+    console.log(`\n📦 Step 4: Loading CVX vaccine codes...`);
+    const cvxCount = await loader.loadCVX();
+
+    // 5. Optimize
+    console.log(`\n🔧 Step 5: Optimizing database...`);
     loader.optimize();
 
-    // 5. Summary
+    // 6. Summary
     loader.printSummary();
   } catch (error) {
     console.error(`\n❌ Error: ${error}`);
