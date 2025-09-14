@@ -1,88 +1,68 @@
-# Stage 1: Download validator (can be cached separately)
-FROM alpine:latest AS validator-downloader
-RUN apk add --no-cache curl
-WORKDIR /download
-RUN curl -L -o validator.jar https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
+# Stage 1: Build vocabulary database (early for better caching)
+FROM oven/bun:1-alpine AS vocab-builder
+RUN apk add --no-cache sqlite
+WORKDIR /app/server
 
-# Stage 2: Vocabularies are copied from the build context (git submodule)
+# Copy only what's needed for vocabulary building
+COPY server/package.json server/bun.lockb* ./
+RUN bun install --frozen-lockfile
 
-# Stage 3: Install dependencies (better layer caching)
-FROM oven/bun:1-alpine AS deps
-WORKDIR /app
-COPY package.json bun.lockb* ./
-COPY server/package.json server/bun.lockb* ./server/
-RUN bun install --frozen-lockfile && \
-    cd server && bun install --frozen-lockfile
+COPY server/scripts ./scripts
+COPY server/tsconfig.json ./
 
-# Stage 4: Build application and load data
-FROM oven/bun:1-alpine AS builder
-RUN apk add --no-cache sqlite openjdk17-jre-headless
-WORKDIR /app
+# Copy vocabularies
+COPY server/large-vocabularies ./large-vocabularies
 
-# Copy dependencies from deps stage
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/server/node_modules ./server/node_modules
-
-# Copy package files (needed for scripts)
-COPY package.json bun.lockb* ./
-COPY server/package.json server/bun.lockb* ./server/
-
-# Copy source code
-COPY src ./src
-COPY bunfig.toml ./
-COPY tailwind.config.js ./
-COPY server/src ./server/src
-COPY server/scripts ./server/scripts
-COPY server/tests ./server/tests
-COPY server/bunfig.toml ./server/
-COPY server/tsconfig.json ./server/
-COPY server/README.md ./server/
-COPY index.html ./
-COPY viewer.html ./
-COPY public ./public
-COPY examples ./examples
-COPY tsconfig.json ./
-COPY scripts ./scripts
-
-# Copy validator from download stage
-COPY --from=validator-downloader /download/validator.jar ./server/validator.jar
-
-# Copy vocabularies from the build context (git submodule)
-COPY server/large-vocabularies ./server/large-vocabularies
-RUN cd server && \
-    mkdir -p db && \
+# Build the database
+RUN mkdir -p db && \
     bun run scripts/load-terminology.ts && \
-    rm -rf large-vocabularies
+    rm -rf large-vocabularies && \
+    sqlite3 db/terminology.sqlite "VACUUM;" && \
+    sqlite3 db/terminology.sqlite "PRAGMA optimize;" && \
+    sqlite3 db/terminology.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"
 
-# Optimize database
-RUN sqlite3 server/db/terminology.sqlite "VACUUM;" && \
-    sqlite3 server/db/terminology.sqlite "PRAGMA optimize;" && \
-    sqlite3 server/db/terminology.sqlite "PRAGMA wal_checkpoint(TRUNCATE);"
-
-# Runtime stage - smaller image
+# Runtime stage
 FROM oven/bun:1-alpine
 
 # Install runtime dependencies
 RUN apk add --no-cache \
     openjdk17-jre-headless \
-    tini
+    tini \
+    curl
 
 WORKDIR /app
 
-# Copy built application from builder
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/bun.lockb* ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/index.html ./
-COPY --from=builder /app/viewer.html ./
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/examples ./examples
-COPY --from=builder /app/scripts ./scripts
-COPY --from=builder /app/tsconfig.json ./
+# Copy package files first (for better caching)
+COPY package.json bun.lockb* ./
+COPY server/package.json server/bun.lockb* ./server/
 
-# Copy server with all setup complete
-COPY --from=builder /app/server ./server
+# Install dependencies (this layer caches if package files don't change)
+RUN bun install --frozen-lockfile && \
+    cd server && bun install --frozen-lockfile
+
+# Copy application source and configs
+COPY src ./src
+COPY index.html ./
+COPY viewer.html ./
+COPY public ./public
+COPY examples ./examples
+COPY scripts ./scripts
+COPY tsconfig.json ./
+
+# Copy server source
+COPY server/src ./server/src
+COPY server/tsconfig.json ./server/
+COPY server/README.md ./server/
+
+# Copy pre-built vocabulary database
+COPY --from=vocab-builder /app/server/db ./server/db
+
+# Download validator JAR
+RUN curl -L -o ./server/validator.jar https://github.com/hapifhir/org.hl7.fhir.core/releases/latest/download/validator_cli.jar
+
+# Copy bunfig.toml files directly (needed for runtime)
+COPY bunfig.toml ./
+COPY server/bunfig.toml ./server/
 
 # Set environment variables
 ENV NODE_ENV=production

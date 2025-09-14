@@ -27,7 +27,7 @@ export const MetricPill = ({
   icon?: string;
 }) => (
   <div className="flex items-center gap-1.5 text-sm bg-warm-paper/50 px-3 py-1.5 rounded-soft">
-    {icon && <span className="text-kiln-ember/60">{icon}</span>}
+    {icon && <span style={{ color: 'var(--kiln-ember)', opacity: 0.6 }}>{icon}</span>}
     <span className="text-gray-600 font-medium">{label}:</span>
     <span className="font-semibold text-text-charcoal">
       {value}
@@ -81,7 +81,8 @@ export const EmptyState = ({ message = 'Create a new job or select one to begin'
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
-      className="mx-auto mb-4 text-kiln-ember/40"
+      className="mx-auto mb-4"
+      style={{ color: 'var(--kiln-ember)', opacity: 0.4 }}
     >
       <path d="M12 2L2 7l10 5 10-5-10-5z" />
       <path d="M2 17l10 5 10-5" />
