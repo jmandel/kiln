@@ -30,6 +30,7 @@ COPY server/package.json server/bun.lockb* ./server/
 # Copy source code
 COPY src ./src
 COPY bunfig.toml ./
+COPY tailwind.config.js ./
 COPY server/src ./server/src
 COPY server/scripts ./server/scripts
 COPY server/tests ./server/tests
