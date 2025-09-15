@@ -292,6 +292,7 @@
       const examplesRef = useRef([]);
       const [showPaste, setShowPaste] = useState(false);
       const [pasteText, setPasteText] = useState("");
+      const exampleHref = React.useCallback((item) => item?.url || item?.file || item?.path || null, []);
 
       // Keep CSS --header-h in sync with actual header height
       useEffect(()=>{
@@ -338,7 +339,7 @@
             try{
               const sel = document.getElementById('exampleSelect');
               const arr = examplesRef.current || [];
-              const idx = arr.findIndex(it => (it.url || it.file) === url);
+              const idx = arr.findIndex(it => exampleHref(it) === url);
               if (sel) sel.value = idx >= 0 ? String(idx) : '';
             }catch{}
           }catch(ex){
@@ -365,8 +366,8 @@
           if (isNaN(idx) || idx < 0) return;
           const item = examplesRef.current[idx];
           try{
-            if (item?.content) { setBundle(item.content); setErr(""); return; }
-            const url = item?.file || item?.url;
+            if (item?.content) { setBundle(item.content); setErr(""); setSearchParam('src', ''); return; }
+            const url = exampleHref(item);
             if (url){
               const res = await fetch(url, {cache:'no-store'});
               if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -440,15 +441,15 @@
                   // If URL has ?src=, try to select matching example; else autoload first
                   const src = getSearchParam('src');
                   if (src){
-                    const matchIdx = arr.findIndex(it => (it.url || it.file) === src);
+                    const matchIdx = arr.findIndex(it => exampleHref(it) === src);
                     if (matchIdx >= 0) { try{ sel.value = String(matchIdx); } catch{} }
                   } else if (!bundleRef.current) {
                     const first = arr[0];
-                    const u = first?.url || first?.file;
+                    const u = exampleHref(first);
                     if (first?.content) {
                       setBundle(first.content);
                       try { sel.value = '0'; } catch {}
-                      setSearchParam('src', 'inline');
+                      setSearchParam('src', '');
                     } else if (u) {
                       try {
                         const res2 = await fetch(u, {cache:'no-store'});
