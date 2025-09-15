@@ -1,0 +1,1664 @@
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "id": "bundle-03f928a8",
+  "timestamp": "2025-09-15T20:49:35.733Z",
+  "identifier": {
+    "value": "composition-aaba6345",
+    "system": "https://kiln.fhir.me/Bundle"
+  },
+  "entry": [
+    {
+      "fullUrl": "https://kiln.fhir.me/Composition/composition-aaba6345",
+      "resource": {
+        "resourceType": "Composition",
+        "status": "final",
+        "type": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "11502-2",
+              "display": "Progress note"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1",
+          "display": "74-year-old male with primary open-angle glaucoma, ocular hypertension, type 2 diabetes, hypertension, hyperlipidemia"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1",
+          "display": "Routine six-month outpatient follow-up for intraocular pressure monitoring in primary open-angle glaucoma"
+        },
+        "date": "2023-10-01T14:00:00Z",
+        "author": [
+          {
+            "reference": "Practitioner/pract-1",
+            "display": "Ophthalmologist, routine follow-up provider"
+          }
+        ],
+        "title": "Routine Follow-up for Primary Open-Angle Glaucoma",
+        "section": [
+          {
+            "title": "Chief Complaint",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>The patient is a 74-year-old male with a history of primary open-angle glaucoma and ocular hypertension, presenting today for routine follow-up of his intraocular pressure (IOP). He endorses no acute visual changes, pain, or redness.</p></div>",
+              "status": "additional"
+            }
+          },
+          {
+            "title": "History of Present Illness",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>The patient is a 74-year-old male with a five-year history of primary open-angle glaucoma and ocular hypertension, presenting today for his routine six-month intraocular pressure (IOP) follow-up. He was initially diagnosed during a routine optometric exam when elevated IOP was noted bilaterally, prompting initiation of topical therapy. He has been compliant with his regimen of latanoprost 0.005% one drop nightly in both eyes (OU) and Cosopt (dorzolamide-timolol) one drop twice daily (BID) OU, reporting excellent tolerance with only occasional transient stinging upon instillation, a common side effect that resolves quickly. There have been no reports of blurred vision, halos, or progression of visual field defects since his last visit. He denies any recent trauma, infections, or changes in systemic health that might impact his ocular condition. Building on this stability, his follow-up aligns with standard monitoring intervals of every 3-6 months for POAG to prevent progression, particularly given his age and comorbidities.</p></div>",
+              "status": "additional"
+            }
+          },
+          {
+            "title": "Past Medical History",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>The patient is a 74-year-old male with a longstanding history of primary open-angle glaucoma (POAG) and ocular hypertension, initially diagnosed five years ago during a routine optometric examination with baseline IOP of 24 mmHg OD and 22 mmHg OS. He also has type 2 diabetes mellitus, well-controlled on metformin with recent HbA1c of 7.1%, hypertension managed with lisinopril, hyperlipidemia on atorvastatin, and a remote history of myocardial infarction status post stenting 10 years ago. These comorbidities, particularly diabetes and vascular disease, heighten his risk for glaucomatous progression due to potential microvascular effects on the optic nerve, underscoring the importance of vigilant IOP surveillance. He has no history of ocular surgery, allergies (NKDA), or other significant conditions.</p></div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Condition/cond-poag-1"
+              },
+              {
+                "reference": "Condition/cond-oht-1"
+              },
+              {
+                "reference": "Condition/cond-t2dm-1"
+              },
+              {
+                "reference": "Condition/cond-htn-1"
+              },
+              {
+                "reference": "Condition/cond-hld-1"
+              },
+              {
+                "reference": "Condition/cond-mi-1"
+              },
+              {
+                "reference": "Observation/obs-hba1c-1"
+              }
+            ]
+          },
+          {
+            "title": "Social History",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>The patient is a 74-year-old retired high school teacher who lives independently with his wife of 45 years in a single-story suburban home in the local community. He reports a strong social support network, including weekly family gatherings and participation in a local senior center book club, which helps maintain his mental acuity and overall well-being. He is a former smoker, having quit 20 years ago after a 30-pack-year history, and denies current tobacco, alcohol, or illicit drug use. His active lifestyle includes daily walks and gardening, supporting his adherence to both ocular and systemic therapies without barriers related to transportation or daily activities.</p></div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Observation/obs-tobacco-1"
+              }
+            ]
+          },
+          {
+            "title": "Review of Systems",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>The patient endorses a comprehensive review of systems notable for overall stability, consistent with his routine follow-up for primary open-angle glaucoma and ocular hypertension. Constitutionally, he feels well with no fatigue, weight changes, or fever. Neurologically, no headaches, dizziness, or focal deficits; he notes stable peripheral vision without new scotomas. Cardiovascularly, no chest pain, palpitations, or edema, aligning with his controlled hypertension. No respiratory symptoms, gastrointestinal issues, or genitourinary complaints. Musculoskeletal review is negative for arthralgias or weakness that might affect medication compliance. Dermatologically, no rashes or lesions, including around the eyes from topical drops. Hematologically and endocrinologically, stable without bruising, bleeding, or glycemic fluctuations beyond his known diabetes control. This unremarkable review reinforces the interplay between his systemic health and ocular stability, with no new concerns prompting urgent intervention.</p></div>",
+              "status": "additional"
+            }
+          },
+          {
+            "title": "Physical Examination",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><h3>Vitals</h3>\n<p>Blood pressure 132/78 mmHg, heart rate 72 bpm and regular, respiratory rate 14 breaths per minute, temperature 98.4°F orally, weight 178 lbs, height 5&#39;10&quot;, BMI 26.1.</p>\n<h3>General</h3>\n<p>Alert, oriented, well-nourished elderly male in no acute distress.</p>\n<h3>Ocular Exam</h3>\n<p>Visual acuity: 20/30 OD, 20/25 OS uncorrected. Confrontation fields full OU. Extraocular movements intact. Pupils equal, round, reactive to light with no afferent pupillary defect. Slit-lamp exam: Lids and lashes clear, conjunctiva white and quiet, corneas clear, anterior chambers deep and quiet, irides flat, lenses clear with mild nuclear sclerosis OU. Intraocular pressure: 15 mmHg OD, 14 mmHg OS by Goldmann applanation tonometry. Gonioscopy: Open angles OU, grade 3-4. Dilated fundus exam: Optic nerves with cup-to-disc ratio 0.7 OU, stable from prior, no hemorrhages or exudates; maculae clear, vessels unremarkable; peripheral retinas intact without tears.</p>\n<h3>Systemic Exam</h3>\n<p>Cardiovascular: Regular rate and rhythm, no murmurs. Pulmonary: Clear to auscultation bilaterally. Abdomen: Soft, nontender, nondistended. Extremities: No edema, full range of motion.</p></div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Observation/obs-bp-1"
+              },
+              {
+                "reference": "Observation/obs-hr-1"
+              },
+              {
+                "reference": "Observation/obs-rr-1"
+              },
+              {
+                "reference": "Observation/obs-temp-1"
+              },
+              {
+                "reference": "Observation/obs-weight-1"
+              },
+              {
+                "reference": "Observation/obs-height-1"
+              },
+              {
+                "reference": "Observation/obs-bmi-1"
+              },
+              {
+                "reference": "Observation/obs-va-od-1"
+              },
+              {
+                "reference": "Observation/obs-va-os-1"
+              },
+              {
+                "reference": "Observation/obs-iop-od-1"
+              },
+              {
+                "reference": "Observation/obs-iop-os-1"
+              },
+              {
+                "reference": "Observation/obs-cdr-ou-1"
+              }
+            ]
+          },
+          {
+            "title": "Assessment",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>The patient is a 74-year-old male with a five-year history of primary open-angle glaucoma (POAG) and ocular hypertension, presenting for routine six-month intraocular pressure (IOP) monitoring. His condition remains stable with well-controlled IOP at 15 mmHg OD and 14 mmHg OS, down from baseline, on current topical therapy without side effects beyond minor, self-resolving stinging. This stability is encouraging in the context of his age and comorbidities, including diabetes and vascular disease, which could exacerbate optic nerve vulnerability; ongoing surveillance every 3-6 months is essential to mitigate progression risks. No acute changes or complications noted, emphasizing the efficacy of preventive care in this multisystem elderly patient.</p></div>",
+              "status": "additional"
+            }
+          },
+          {
+            "title": "Plan",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><ol>\n<li><p><strong>Ocular Management</strong>: Continue current regimen of latanoprost 0.005% one drop nightly OU and Cosopt (dorzolamide-timolol) one drop BID OU, as the patient reports excellent tolerance with minimal transient stinging, a benign side effect. No adjustments needed given stable IOP and visual fields.</p>\n</li>\n<li><p><strong>Monitoring</strong>: Schedule routine follow-up in six months for repeat IOP check, visual field testing, and optic nerve evaluation to ensure no progression, per standard POAG guidelines. Patient educated on reporting any new symptoms such as vision loss or eye pain promptly.</p>\n</li>\n<li><p><strong>Systemic Coordination</strong>: Encourage continued optimization of diabetes and cardiovascular risk factors with primary care, as these influence glaucoma outcomes; no ocular-specific changes recommended.</p>\n</li>\n<li><p><strong>Education and Preventive Care</strong>: Reviewed medication administration technique, potential interactions (none with current meds), and lifestyle measures like avoiding high-risk activities for falls given age. Patient verbalized understanding and agreement with plan.</p>\n</li>\n</ol></div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "MedicationRequest/medreq-latanoprost-1"
+              },
+              {
+                "reference": "MedicationRequest/medreq-cosopt-1"
+              },
+              {
+                "reference": "ServiceRequest/sr-fu-1"
+              }
+            ]
+          }
+        ],
+        "id": "composition-aaba6345",
+        "identifier": {
+          "value": "composition-aaba6345",
+          "system": "https://kiln.fhir.me/Composition"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-poag-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-poag-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "77075001",
+              "display": "Primary open angle glaucoma (disorder)"
+            }
+          ],
+          "text": "Primary open-angle glaucoma — chronic condition, diagnosed 5 years ago with baseline IOP 24 mmHg OD and 22 mmHg OS"
+        },
+        "onsetDateTime": "2019-10-01",
+        "recorder": {
+          "reference": "Practitioner/pract-1"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-oht-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-oht-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "4210003",
+              "display": "Ocular hypertension (disorder)"
+            }
+          ],
+          "text": "Ocular hypertension — associated with POAG"
+        },
+        "onsetDateTime": "2019"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-t2dm-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-t2dm-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "44054006",
+              "display": "Diabetes mellitus type 2 (disorder)"
+            }
+          ],
+          "text": "Type 2 diabetes mellitus — well-controlled on metformin, recent HbA1c 7.1%"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-htn-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-htn-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "59621000",
+              "display": "Essential hypertension (disorder)"
+            }
+          ],
+          "text": "Hypertension"
+        },
+        "note": [
+          {
+            "text": "managed with lisinopril"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-hld-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-hld-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "55822004",
+              "display": "Hyperlipidemia (disorder)"
+            }
+          ],
+          "text": "Hyperlipidemia"
+        },
+        "evidence": [
+          {
+            "detail": [
+              {
+                "reference": "MedicationStatement/med-atorva-1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-mi-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-mi-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "resolved",
+              "display": "Resolved"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "399211009",
+              "display": "History of myocardial infarction (situation)"
+            }
+          ],
+          "text": "Remote myocardial infarction — status post stenting 10 years ago"
+        },
+        "onsetDateTime": "2014"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-hba1c-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-hba1c-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "17856-6",
+              "display": "Hemoglobin A1c/Hemoglobin.total in Blood by HPLC"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-09-15T10:20:00Z",
+        "valueQuantity": {
+          "value": 7.1,
+          "unit": "%",
+          "system": "http://unitsofmeasure.org",
+          "code": "%"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "N",
+                "display": "Normal"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-tobacco-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-tobacco-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "social-history",
+                "display": "Social History"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "72166-2",
+              "display": "Tobacco smoking status"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-09-15T10:20:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "8517006",
+              "display": "Ex-smoker (finding)"
+            }
+          ]
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "67741-9",
+                  "display": "Smoking tobacco use duration"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 30,
+              "unit": "pack-years",
+              "system": "http://unitsofmeasure.org",
+              "code": "{pack_y}"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "74010-0",
+                  "display": "Date quit tobacco smoking"
+                }
+              ]
+            },
+            "valueDateTime": "2003-01-01"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-bp-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-bp-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "85354-9",
+              "display": "Blood pressure panel with all children optional"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 132,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 78,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-hr-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-hr-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8867-4",
+              "display": "Heart rate"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 72,
+          "unit": "/min",
+          "system": "http://unitsofmeasure.org",
+          "code": "/min"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "162999005",
+                  "display": "On examination - pulse rhythm regular (finding)"
+                }
+              ]
+            },
+            "valueCodeableConcept": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "162999005",
+                  "display": "On examination - pulse rhythm regular (finding)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-rr-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-rr-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "9279-1",
+              "display": "Respiratory rate"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 14,
+          "unit": "breaths/minute",
+          "system": "http://unitsofmeasure.org",
+          "code": "/min"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-temp-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-temp-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8310-5",
+              "display": "Body temperature"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 36.88888888888889,
+          "unit": "°F",
+          "system": "http://unitsofmeasure.org",
+          "code": "[degF]"
+        },
+        "method": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "89003005",
+              "display": "Oral temperature taking (procedure)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-weight-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-weight-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "29463-7",
+              "display": "Body weight"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 80.74,
+          "unit": "kg",
+          "system": "http://unitsofmeasure.org",
+          "code": "kg"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-height-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-height-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8302-2",
+              "display": "Body height"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 177.8,
+          "unit": "cm",
+          "system": "http://unitsofmeasure.org",
+          "code": "cm"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-bmi-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-bmi-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "39156-5",
+              "display": "Body mass index (BMI) [Ratio]"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 26.1,
+          "unit": "kg/m2",
+          "system": "http://unitsofmeasure.org",
+          "code": "kg/m2"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "N",
+                "display": "Normal"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-va-od-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-va-od-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "exam",
+                "display": "Exam"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "98505-1",
+              "display": "Visual acuity far uncorrected Right eye"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "424703005",
+              "display": "Distance vision 20/30 (finding)"
+            }
+          ]
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "N",
+                "display": "Normal"
+              }
+            ]
+          }
+        ],
+        "note": [
+          {
+            "text": "Uncorrected"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-va-os-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-va-os-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "exam",
+                "display": "Exam"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "98498-9",
+              "display": "Visual acuity uncorrected Left eye"
+            }
+          ],
+          "text": "Visual acuity OS uncorrected"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-iop-od-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-iop-od-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "procedure",
+                "display": "Procedure"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "79892-6",
+              "display": "Right eye Intraocular pressure"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 15,
+          "unit": "mm[Hg]",
+          "system": "http://unitsofmeasure.org",
+          "code": "mm[Hg]"
+        },
+        "method": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "389152008",
+              "display": "Goldmann applanation tonometry (procedure)"
+            }
+          ]
+        },
+        "bodySite": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "18944008",
+              "display": "Right eye structure (body structure)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-iop-os-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-iop-os-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "procedure",
+                "display": "Procedure"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "79893-4",
+              "display": "Left eye Intraocular pressure"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 14,
+          "unit": "mmHg",
+          "system": "http://unitsofmeasure.org",
+          "code": "mm[Hg]"
+        },
+        "method": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "389152008",
+              "display": "Goldmann applanation tonometry (procedure)"
+            }
+          ]
+        },
+        "bodySite": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "8966001",
+              "display": "Left eye structure (body structure)"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-cdr-ou-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-cdr-ou-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "procedure",
+                "display": "Procedure"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "LP149840-3",
+              "display": "Cup-disc ratio"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "LP149840-3",
+              "display": "Cup-disc ratio"
+            }
+          ]
+        },
+        "bodySite": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "71484-0",
+              "display": "Left optic nerve Cup-disc ratio by Ophthalmoscopy"
+            },
+            {
+              "system": "http://loinc.org",
+              "code": "71485-7",
+              "display": "Right optic nerve Cup-disc ratio by Ophthalmoscopy"
+            }
+          ]
+        },
+        "note": [
+          {
+            "text": "Stable from prior, on dilated fundus exam"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/medreq-latanoprost-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-latanoprost-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "314072",
+              "display": "latanoprost 0.005 % Ophthalmic Solution"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "authoredOn": "2023-10-01",
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "one drop nightly in both eyes",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "54485002",
+                  "display": "Ophthalmic route (qualifier value)"
+                }
+              ]
+            },
+            "method": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "225698005",
+                  "display": "Instillation of eye drops to eye (procedure)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/dose-rate-type",
+                      "code": "ordered",
+                      "display": "Ordered"
+                    }
+                  ]
+                },
+                "doseQuantity": {
+                  "value": 1,
+                  "unit": "drop",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "{drop}"
+                }
+              }
+            ],
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d",
+                "when": [
+                  "HS"
+                ]
+              }
+            },
+            "site": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "40638003",
+                  "display": "Structure of both eyes (body structure)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/medreq-cosopt-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "medreq-cosopt-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "573193",
+              "display": "dorzolamide 20 MG/ML / timolol 5 MG/ML [Cosopt]"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "authoredOn": "2023-10-01",
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "one drop twice daily in both eyes",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "54485002",
+                  "display": "Ophthalmic route (qualifier value)"
+                }
+              ]
+            },
+            "method": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "389909009",
+                  "display": "Instilling eye drops (procedure)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/dose-rate-type",
+                      "code": "ordered",
+                      "display": "Ordered"
+                    }
+                  ]
+                },
+                "doseQuantity": {
+                  "value": 1,
+                  "unit": "drop",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "{drop}"
+                }
+              }
+            ],
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 12,
+                "periodUnit": "h"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/ServiceRequest/sr-fu-1",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sr-fu-1",
+        "status": "active",
+        "intent": "plan",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "252832004",
+              "display": "Intraocular pressure test (procedure)"
+            }
+          ],
+          "text": "Routine follow-up IOP check, visual field testing, optic nerve evaluation"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-1"
+        },
+        "occurrencePeriod": {
+          "start": "2024-04-15"
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "77075001",
+                "display": "Primary open angle glaucoma (disorder)"
+              }
+            ]
+          }
+        ],
+        "performerType": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "422234006",
+              "display": "Ophthalmologist (occupation)"
+            }
+          ]
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Patient/pat-1",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "active": true,
+        "name": [
+          {
+            "family": "Smith",
+            "given": [
+              "John"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1950-01-01",
+        "address": [
+          {
+            "line": [
+              "123 Main Street"
+            ],
+            "city": "Anytown",
+            "state": "CA",
+            "postalCode": "12345",
+            "country": "US"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Encounter/enc-1",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "enc-1",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "type": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "36228007",
+                "display": "Ophthalmic examination and evaluation (procedure)"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "participant": [
+          {
+            "individual": {
+              "reference": "Practitioner/pract-1"
+            }
+          }
+        ],
+        "period": {
+          "start": "2023-10-01T10:00:00Z"
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "252832004",
+                "display": "Intraocular pressure test (procedure)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Practitioner/pract-1",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "pract-1",
+        "identifier": [
+          {
+            "system": "http://www.acme.org/practitioners",
+            "value": "12345",
+            "type": {
+              "coding": [
+                {
+                  "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                  "code": "PRN",
+                  "display": "Provider number"
+                }
+              ]
+            }
+          }
+        ],
+        "name": [
+          {
+            "family": "Smith",
+            "given": [
+              "John"
+            ],
+            "prefix": [
+              "Dr."
+            ]
+          }
+        ],
+        "gender": "male"
+      }
+    }
+  ]
+}

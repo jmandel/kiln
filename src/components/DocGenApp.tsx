@@ -62,8 +62,8 @@ function ConfigModal({ config, onSave, onClose }: { config: any; onSave: (cfg: a
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="card-kiln w-full max-w-md p-6">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="card-kiln w-full max-w-md p-6 max-h-[calc(100vh-2rem)] overflow-y-auto">
         <h2 className="text-lg font-semibold mb-4">API Configuration</h2>
         <div className="space-y-3">
           <div>

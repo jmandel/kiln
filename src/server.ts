@@ -5,7 +5,8 @@ import { join } from 'path';
 import { generateConfig } from './config/generateConfig';
 
 const dbPath = join(import.meta.dir, '..', 'server', 'db', 'terminology.sqlite');
-const { fetch: apiFetch } = createApiFetch({ prefix: '', dbPath });
+const api = createApiFetch({ prefix: '', dbPath });
+const { fetch: apiFetch, shutdown: shutdownServices } = api;
 
 const development = (process.env.NODE_ENV || '').toLowerCase() !== 'production';
 
@@ -145,4 +146,33 @@ if (development) {
   console.log('\n🔒 Production Mode:');
   console.log('   • Config cached: 5 minutes');
   console.log('   • Assets cached: 1 year');
+}
+
+let cleanedUp = false;
+const cleanup = () => {
+  if (cleanedUp) return;
+  cleanedUp = true;
+  try {
+    shutdownServices?.();
+  } catch (error) {
+    console.error('Failed to shut down services:', error);
+  }
+  try {
+    server.stop();
+  } catch {}
+};
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    cleanup();
+  });
+}
+
+const exitSignals = ['SIGINT', 'SIGTERM'] as const;
+for (const signal of exitSignals) {
+  process.on(signal, () => {
+    if (signal === 'SIGINT') console.log('\nShutting down...');
+    cleanup();
+    process.exit(0);
+  });
 }
