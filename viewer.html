@@ -48,6 +48,15 @@
     main.content{padding:1rem 1rem 4rem;min-width:0}
     .card{background:var(--card);border:1px solid var(--border);border-radius:.75rem;padding:1rem;margin-bottom:1rem}
     .meta{display:flex;gap:1rem;flex-wrap:wrap;color:var(--muted);font-size:.9rem}
+    .headerSummary{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.5rem;align-items:flex-start;margin-bottom:.5rem}
+    .headerSummary .segment{min-width:0}
+    .headerSummary .segment-document{grid-column:1 / -1}
+    .headerSummary .label{text-transform:uppercase;font-size:.72rem;letter-spacing:.08em;color:var(--muted);margin-bottom:.2rem}
+    .headerSummary .value{font-size:1.25rem;font-weight:600;margin-bottom:.15rem;color:var(--text)}
+    .headerSummary .aux{color:var(--muted);font-size:.9rem;line-height:1.4}
+    @media (max-width: 640px){
+      .headerSummary{grid-template-columns:1fr}
+    }
     .section{
       scroll-margin-top:calc(var(--header-h) + 16px);margin-bottom:1.25rem;border:1px dashed var(--border);border-radius:.75rem;padding:1rem;background:#f7f9fc
     }
@@ -66,9 +75,20 @@
     }
     .rtitle{font-weight:700}
     .rtitle small{color:var(--muted);font-weight:500}
+    .tabGroup{display:flex;align-items:center;gap:.35rem}
     .tabs{display:flex;gap:.25rem;border:1px solid var(--border);background:var(--bg);border-radius:.5rem;padding:.25rem;cursor:pointer}
-    .tab{padding:.25rem .5rem;border-radius:.35rem;border:1px solid transparent;cursor:pointer}
+    .tab{padding:.25rem .5rem;border-radius:.35rem;border:1px solid transparent;cursor:pointer;background:transparent;color:inherit;font:inherit}
     .tab[aria-selected="true"]{background:var(--card);border-color:var(--border)}
+    .copyBtn{border:1px solid var(--border);background:var(--card);color:var(--muted);padding:.35rem;border-radius:.5rem;display:inline-flex;align-items:center;justify-content:center;transition:background .2s,border-color .2s,color .2s,transform .2s;cursor:pointer}
+    .copyBtn:hover{background:var(--bg);color:var(--text)}
+    .copyBtn svg{width:1rem;height:1rem;display:block}
+    .copyBtn.copied{background:var(--accent);border-color:var(--accent);color:#f8fafc;animation:copyPulse .5s ease-out}
+    .copyBtn.copied:hover{color:#f8fafc}
+    @keyframes copyPulse{
+      0%{transform:scale(1)}
+      40%{transform:scale(1.1)}
+      100%{transform:scale(1)}
+    }
     pre.json{background:var(--code);color:var(--text);border:1px solid var(--border);border-radius:.5rem;padding:.75rem;overflow:auto;max-height:60vh}
     code.kv{background:var(--chip);padding:.1rem .3rem;border:1px solid var(--border);border-radius:.3rem}
     .kvrow{display:flex;gap:.6rem;align-items:baseline;white-space:nowrap}
@@ -99,13 +119,7 @@
     .interp{display:inline-flex;align-items:center;gap:.25rem;margin-left:.25rem}
     .interp .chip{padding:.05rem .35rem}
     .reflist{margin-top:.25rem}
-    .reftable{display:grid;grid-template-columns:140px 1fr;column-gap:1rem;row-gap:.2rem;align-items:baseline}
-    .refkey{color:var(--muted)}
-    .refvals{min-width:200px}
-    .refsep{color:var(--muted);margin:0 .25rem}
-    @media (max-width: 640px){
-      .reftable{grid-template-columns:1fr}
-    }
+    .refRows{display:flex;flex-direction:column;gap:.35rem}
     @media (max-width: 980px){
       .app,.layout{grid-template-columns:1fr}
       aside.nav{position:static;height:auto;order:2;border-right:none;border-top:1px solid var(--border)}
@@ -170,6 +184,25 @@
       const c = (cc.coding && cc.coding[0]) || {};
       return c.display || [c.system, c.code].filter(Boolean).join(" | ");
     };
+
+    const renderCodeableConcept = (cc, fallback = '') => {
+      if (!cc) return fallback || '—';
+      const text = ccDisplay(cc);
+      if (cc.coding?.length > 1) {
+        const extra = cc.coding.slice(1).map((c, i) => (
+          <span key={i} className="muted" style={{marginLeft:'.4rem'}}>
+            {c.display || c.code || c.system}
+          </span>
+        ));
+        return (
+          <span>
+            {text}
+            {extra.length ? <span className="muted" style={{marginLeft:'.4rem'}}>+{extra.length} more</span> : null}
+          </span>
+        );
+      }
+      return text || fallback || '—';
+    };
     const getSearchParam = (k) => {
       try{ return new URL(window.location.href).searchParams.get(k); } catch { return null; }
     };
@@ -186,15 +219,49 @@
       if (s && e) return `${s} → ${e}`;
       return s || e || "";
     };
+    const numberFormatter = new Intl.NumberFormat(undefined, {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+    });
+
     const qtyDisplay = (q) => {
       if (!q) return "";
-      const num = typeof q.value === "number" ? q.value : (q.value || "");
-      return [num, q.unit || q.code].filter(Boolean).join(" ");
+      let num = q.value;
+      if (typeof num === "number") {
+        num = numberFormatter.format(num);
+      } else if (num == null) {
+        num = '';
+      }
+      const unit = q.unit || q.code || '';
+      return [num, unit].filter(Boolean).join(' ');
     };
     const humanName = (p) => {
       if (!p?.name || !p.name[0]) return "";
       const n = p.name[0];
       return [n.prefix?.join(" "), n.given?.join(" "), n.family].filter(Boolean).join(" ").replace(/\s+/g," ").trim();
+    };
+    const formatGender = (g) => g ? g.charAt(0).toUpperCase() + g.slice(1) : "";
+    const calcAgeYears = (birthDate, asOfDate) => {
+      if (!birthDate) return null;
+      const birth = new Date(birthDate);
+      if (Number.isNaN(birth.getTime())) return null;
+      const ref = asOfDate ? new Date(asOfDate) : new Date();
+      if (Number.isNaN(ref.getTime())) return null;
+      let age = ref.getFullYear() - birth.getFullYear();
+      const monthDiff = ref.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && ref.getDate() < birth.getDate())) age--;
+      return age >= 0 ? age : null;
+    };
+    const selectIdentifier = (resource, preferCodes = []) => {
+      const ids = Array.isArray(resource?.identifier) ? resource.identifier : [];
+      if (!ids.length) return null;
+      const match = ids.find((id) => {
+        const coding = Array.isArray(id?.type?.coding) ? id.type.coding : [];
+        return coding.some((c) => preferCodes.includes(c.code));
+      }) || ids[0];
+      if (!match?.value) return null;
+      const assigner = match.assigner?.display || match.assigner?.reference || "";
+      return assigner ? `${match.value} (${assigner})` : match.value;
     };
     const sanitizeHTML = (html) => {
       if (!html) return "";
@@ -209,6 +276,36 @@
       // Remove placeholder tokens like {{Plan}} or {{# Supportive Care}}
       tmp.innerHTML = tmp.innerHTML.replace(/\{\{[^}]+\}\}/g, "");
       return tmp.innerHTML;
+    };
+
+    const fallbackCopyText = (text) => {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    };
+
+    const copyTextToClipboard = (text, onSuccess) => {
+      const done = () => {
+        if (typeof onSuccess === 'function') onSuccess();
+      };
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(() => {
+          if (fallbackCopyText(text)) done();
+        });
+      } else if (fallbackCopyText(text)) {
+        done();
+      }
     };
 
     function buildIndex(bundle){
@@ -230,6 +327,7 @@
 
     function resolveReference(ref, index){
       if (!ref) return null;
+      if (!index) return null;
       if (index.byKey.has(ref)) return index.byKey.get(ref);
       if (index.byFullUrl.has(ref)) return index.byFullUrl.get(ref);
       if (/^https?:/.test(ref)) {
@@ -262,6 +360,37 @@
     }
 
     const resourceKey = (r)=> `${r.resourceType}/${r.id || ""}`;
+
+    const resourceAnchor = (resourceOrRef, fallbackType) => {
+      if (!resourceOrRef) return null;
+      let key;
+      let type;
+      let id;
+
+      if (typeof resourceOrRef === 'string') {
+        key = resourceOrRef;
+        if (resourceOrRef.includes('/')) {
+          const parts = resourceOrRef.split('/');
+          type = parts[0] || fallbackType || 'Resource';
+          id = parts.slice(1).join('/') || resourceOrRef;
+        } else {
+          type = fallbackType || 'Resource';
+          id = resourceOrRef;
+        }
+      } else {
+        key = resourceKey(resourceOrRef);
+        type = resourceOrRef.resourceType || fallbackType || key.split('/')[0] || 'Resource';
+        id = resourceOrRef.id || key.split('/').pop() || key;
+      }
+
+      return <a href={`#${key}`}>{`${type}/${id}`}</a>;
+    };
+
+    const referenceAnchor = (ref, index, fallbackType) => {
+      if (!ref) return null;
+      const target = typeof ref === 'string' ? resolveReference(ref, index) : null;
+      return resourceAnchor(target ?? ref, fallbackType);
+    };
 
     function resourceSummaryText(r){
       const parts=[r.resourceType, r.id];
@@ -550,7 +679,7 @@
             {err && <div className="card error">⚠️ {err}</div>}
             {bundle ? (
               <>
-                <BundleHeader bundle={bundle} />
+                <BundleHeader bundle={bundle} index={index} />
                 {index?.composition && (
                   <CompositionViewer
                     composition={index.composition}
@@ -589,52 +718,264 @@
     }
 
     // ---------- Components ----------
-    function BundleHeader({bundle}){
-      const ident = bundle.identifier ? [bundle.identifier.system, bundle.identifier.value].filter(Boolean).join(" • ") : null;
+    function BundleHeader({bundle, index}){
+      const composition = index?.composition;
+      const subjectRef = composition?.subject?.reference;
+      const encounterRef = composition?.encounter?.reference;
+      const custodianRef = composition?.custodian?.reference;
+      const patient = subjectRef ? resolveReference(subjectRef, index) : index?.all?.find((r) => r.resourceType === 'Patient');
+      const encounter = encounterRef ? resolveReference(encounterRef, index) : index?.all?.find((r) => r.resourceType === 'Encounter');
+      const facilityRef = encounter?.serviceProvider?.reference;
+      const facility = facilityRef ? resolveReference(facilityRef, index) : null;
+      const custodian = custodianRef ? resolveReference(custodianRef, index) : null;
+
+      const docMoment = composition?.date || encounter?.period?.end || encounter?.period?.start || bundle.timestamp;
+      const docTitle = composition?.title || 'Clinical Document';
+      const docType = composition?.type ? ccDisplay(composition.type) : '';
+      const docStatus = composition?.status ? composition.status.charAt(0).toUpperCase() + composition.status.slice(1) : '';
+      const docDate = docMoment ? fmtDate(docMoment) : '';
+
+    const inlineList = (items) =>
+      items.filter(Boolean).map((item, idx) => (
+        <React.Fragment key={idx}>
+          {idx > 0 && <span className="muted"> • </span>}
+          {item}
+        </React.Fragment>
+      ));
+
+    const resourceIdDetail = (label, resource) => resourceAnchor(resource, label ? label[0].toUpperCase() + label.slice(1) : undefined);
+
+      const patientName = patient ? (humanName(patient) || patient.name?.[0]?.text || '') : '';
+      const patientNode = patientName || (patient ? resourceKey(patient) : '—');
+      const patientGender = formatGender(patient?.gender);
+      const patientDob = patient?.birthDate ? fmtDate(patient.birthDate) : '';
+      const patientAge = calcAgeYears(patient?.birthDate, docMoment);
+      const patientMrn = selectIdentifier(patient, ['MR', 'MRN', 'MRN1', 'PI', 'PAT']);
+      const patientDetailsParts = [
+        patientGender,
+        patientDob ? `DOB ${patientDob}${typeof patientAge === 'number' ? ` (${patientAge}y)` : ''}` : (typeof patientAge === 'number' ? `${patientAge}y` : ''),
+        patientMrn ? `MRN ${patientMrn}` : '',
+        resourceIdDetail('patient', patient),
+      ];
+
+      const encClass = encounter?.class?.display || encounter?.class?.code || '';
+      const encType = Array.isArray(encounter?.type) && encounter.type[0] ? ccDisplay(encounter.type[0]) : '';
+      const encounterTitle = [encClass, encType].filter(Boolean).join(' • ') || (encounter ? 'Encounter' : 'Document');
+      const encounterNode = encounterTitle || (encounter ? resourceKey(encounter) : '—');
+      const encounterStatus = encounter?.status ? encounter.status.charAt(0).toUpperCase() + encounter.status.slice(1) : '';
+      const encounterWhen = encounter?.period ? fmtRange(encounter.period.start, encounter.period.end) : docDate;
+      const encounterReason = Array.isArray(encounter?.reasonCode) && encounter.reasonCode[0] ? ccDisplay(encounter.reasonCode[0]) : '';
+      const facilityName = facility ? (facility.name || humanName(facility) || resourceKey(facility)) : (encounter?.serviceProvider?.display || '');
+      const encounterDetailsParts = [
+        encounterStatus,
+        encounterWhen,
+        encounterReason ? `Reason: ${encounterReason}` : '',
+        facilityName ? `Facility: ${facilityName}` : '',
+        resourceIdDetail('encounter', encounter),
+        resourceIdDetail('facility', facility),
+      ];
+
+      const authorRefs = Array.isArray(composition?.author) ? composition.author : [];
+      let providerEntries = authorRefs
+        .map((author) => {
+          if (author.reference) {
+            const r = resolveReference(author.reference, index);
+            const name = r ? (humanName(r) || r.name?.text || r.title || resourceKey(r)) : (author.display || author.reference);
+            if (!name) return null;
+            return { name, resource: r, tag: 'author', prefix: null, detail: null };
+          }
+          if (author.display) return { name: author.display, resource: null, tag: 'author', prefix: null, detail: null };
+          return null;
+        })
+        .filter(Boolean);
+      if (!providerEntries.length && Array.isArray(encounter?.participant)) {
+        providerEntries = encounter.participant
+          .map((p) => {
+            const refRef = p.individual?.reference || p.actor?.reference;
+            const ref = refRef ? resolveReference(refRef, index) : null;
+            const role = Array.isArray(p.type) && p.type[0] ? ccDisplay(p.type[0]) : '';
+            const display = p.individual?.display || p.actor?.display || '';
+            const name = ref ? (humanName(ref) || ref.name?.text || resourceKey(ref)) : display;
+            if (!name) return null;
+            return { name, resource: ref, detail: role, tag: 'participant', prefix: null };
+          })
+          .filter(Boolean);
+      }
+
+      let providerPrimaryEntry = providerEntries[0] || null;
+      const secondaryProviderEntries = providerEntries.slice(1);
+      const custodianName = custodian ? (custodian.name || humanName(custodian) || resourceKey(custodian)) : (composition?.custodian?.display || '');
+      const custodianEntry = custodianName ? { name: custodianName, resource: custodian, prefix: 'Facility', tag: 'facility', detail: null } : null;
+      if (!providerPrimaryEntry && custodianEntry) {
+        providerPrimaryEntry = custodianEntry;
+      } else if (custodianEntry) {
+        secondaryProviderEntries.push(custodianEntry);
+      }
+
+      const describeProvider = (entry) => {
+        if (!entry) return '';
+        let label = entry.name;
+        if (entry.prefix) label = `${entry.prefix}: ${label}`;
+        else if (entry.detail) label = `${label} (${entry.detail})`;
+        return label;
+      };
+
+      const providerPrimaryNode = providerPrimaryEntry ? describeProvider(providerPrimaryEntry) : '—';
+      const secondaryProviderNodesRaw = secondaryProviderEntries
+        .map((entry) => {
+          const label = describeProvider(entry);
+          if (!label && !entry.resource) return null;
+          if (entry.resource) {
+            const link = resourceIdDetail(entry.tag || entry.resource?.resourceType || 'Resource', entry.resource);
+            return link ? (
+              <span>
+                {label && <span>{label} </span>}
+                {link}
+              </span>
+            ) : label;
+          }
+          return label;
+        })
+        .filter(Boolean);
+      const authorDetailsParts = [resourceIdDetail('author', providerPrimaryEntry?.resource), ...secondaryProviderNodesRaw].filter(Boolean);
+
+      const docNode = docTitle;
+      const docDetailsParts = [
+        docType,
+        docStatus ? `Status: ${docStatus}` : '',
+        docDate ? `Finalized ${docDate}` : '',
+        resourceIdDetail('composition', composition),
+      ];
+
+      const bundleIdent = bundle.identifier ? [bundle.identifier.system, bundle.identifier.value].filter(Boolean).join(' • ') : '';
+      const entryCount = bundle.entry?.length ?? 0;
+
       return (
         <div className="card">
-          <h2 style={{margin:"0 0 .25rem"}}>Bundle <small className="muted">({bundle.type || "—"})</small></h2>
+          <div className="headerSummary">
+            <div className="segment segment-document">
+              <div className="label">Document</div>
+              <div className="value">{docNode}</div>
+              {docDetailsParts.some(Boolean) && <div className="aux">{inlineList(docDetailsParts)}</div>}
+            </div>
+            <div className="segment">
+              <div className="label">Patient</div>
+              <div className="value">{patientNode}</div>
+              {patientDetailsParts.some(Boolean) && <div className="aux">{inlineList(patientDetailsParts)}</div>}
+            </div>
+            <div className="segment">
+              <div className="label">Encounter</div>
+              <div className="value">{encounterNode}</div>
+              {encounterDetailsParts.some(Boolean) && <div className="aux">{inlineList(encounterDetailsParts)}</div>}
+            </div>
+            <div className="segment">
+              <div className="label">Author</div>
+              <div className="value">{providerPrimaryNode}</div>
+              {authorDetailsParts.some(Boolean) ? <div className="aux">{inlineList(authorDetailsParts)}</div> : null}
+            </div>
+          </div>
+          <div className="divider"></div>
           <div className="meta">
-            {bundle.id && <div><span className="badge">id</span> <code className="kv">{bundle.id}</code></div>}
-            {ident && <div><span className="badge">identifier</span> <span>{ident}</span></div>}
-            {bundle.timestamp && <div><span className="badge">timestamp</span> <span>{fmtDate(bundle.timestamp)}</span></div>}
+            {bundle.id && <div><span className="badge">Bundle ID</span> <code className="kv">{bundle.id}</code></div>}
+            {bundleIdent && <div><span className="badge">Identifier</span> <span>{bundleIdent}</span></div>}
+            {bundle.timestamp && <div><span className="badge">Received</span> <span>{fmtDate(bundle.timestamp)}</span></div>}
+            <div><span className="badge">Entries</span> <code className="kv">{entryCount}</code></div>
           </div>
         </div>
       );
     }
 
     function CompositionViewer({composition, index}){
+      const [showJSON, setShowJSON] = useState(false);
+      const [copied, setCopied] = useState(false);
+      const copyTimerRef = useRef(null);
       const subject = composition.subject?.reference && resolveReference(composition.subject.reference, index);
       const encounter = composition.encounter?.reference && resolveReference(composition.encounter.reference, index);
+      const jsonText = useMemo(
+        () => JSON.stringify(composition, (k, v) => (k === '__anchor' ? undefined : v), 2),
+        [composition]
+      );
+
+      useEffect(() => {
+        return () => {
+          if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+        };
+      }, []);
+
+      const handleCopy = () => {
+        const finalize = () => {
+          setCopied(true);
+          if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+          copyTimerRef.current = setTimeout(() => setCopied(false), 500);
+        };
+        copyTextToClipboard(jsonText, finalize);
+      };
+
       return (
         <div className="card resource" id={resourceKey(composition)}>
           <div className="rhead">
             <div className="rtitle">Composition <small>{composition.title || ""}</small></div>
-            <div className="muted">{fmtDate(composition.date)}</div>
+            <div className="tabGroup">
+              <div
+                className="tabs"
+                role="group"
+                aria-label="Toggle JSON"
+                onClick={() => setShowJSON((v) => !v)}
+                title="Toggle summary / JSON"
+              >
+                <button className="tab" aria-selected={!showJSON}>Summary</button>
+                <button className="tab" aria-selected={showJSON}>JSON</button>
+              </div>
+              <button
+                className={`copyBtn${copied ? ' copied' : ''}`}
+                aria-label="Copy composition JSON"
+                title={copied ? 'Copied!' : 'Copy composition JSON'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopy();
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
+            </div>
           </div>
-          <div className="grid" style={{marginBottom:".5rem"}}>
-            <div className="kvrow"><span className="badge">status</span> <code className="kv">{composition.status || "—"}</code></div>
-            {subject && <div className="kvrow"><span className="badge">subject</span> <a href={`#${resourceKey(subject)}`}>{subject.id || resourceKey(subject)}</a></div>}
-            {encounter && <div className="kvrow"><span className="badge">encounter</span> <a href={`#${resourceKey(encounter)}`}>{encounter.id || resourceKey(encounter)}</a></div>}
-            {composition.author?.length ? (
-              <div className="kvrow"><span className="badge">author</span> <span>
-                {composition.author.map((a,i)=>{
-                  const r = a.reference && resolveReference(a.reference, index);
-                  return <span key={i} style={{marginRight:".5rem"}}>{r ? <a href={`#${resourceKey(r)}`}>{r.id || resourceKey(r)}</a> : (a.display || a.reference)}</span>;
-                })}
-              </span></div>
-            ) : null}
-          </div>
+          <div className="summary" style={{display: showJSON ? 'none' : 'block'}}>
+            <div className="muted" style={{marginBottom:'.5rem'}}>{fmtDate(composition.date)}</div>
+            <div className="grid" style={{marginBottom:".5rem"}}>
+              <div className="kvrow"><span className="badge">status</span> <code className="kv">{composition.status || "—"}</code></div>
+              {subject && <div className="kvrow"><span className="badge">subject</span> {resourceAnchor(subject, 'Subject')}</div>}
+              {encounter && <div className="kvrow"><span className="badge">encounter</span> {resourceAnchor(encounter, 'Encounter')}</div>}
+              {composition.author?.length ? (
+                <div className="kvrow"><span className="badge">author</span> <span>
+                  {composition.author.map((a,i)=>{
+                    const r = a.reference && resolveReference(a.reference, index);
+                    const link = r ? resourceAnchor(r) : resourceAnchor(a.reference || '', 'Author');
+                    return <span key={i} style={{marginRight:".5rem"}}>{link || (a.display || a.reference)}</span>;
+                  })}
+                </span></div>
+              ) : null}
+            </div>
 
-          {composition.section?.length ? (
-            <>
-              <div className="divider"></div>
-              <h3 style={{margin:"0 0 .5rem"}}>Sections</h3>
-              {composition.section.map((s, i) => (
-                <SectionBlock key={i} s={s} i={i} index={index} />
-              ))}
-            </>
-          ) : <div className="muted">No sections.</div>}
+            {composition.section?.length ? (
+              <>
+                <div className="divider"></div>
+                <h3 style={{margin:"0 0 .5rem"}}>Sections</h3>
+                {composition.section.map((s, i) => (
+                  <SectionBlock key={i} s={s} i={i} index={index} />
+                ))}
+              </>
+            ) : <div className="muted">No sections.</div>}
+          </div>
+          <div className="jsonview" style={{display: showJSON ? 'block' : 'none'}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".5rem"}}>
+              <span className="muted">Pretty‑printed JSON</span>
+              {copied && <span className="badge" role="status">Copied</span>}
+            </div>
+            <pre className="json"><code>{jsonText}</code></pre>
+          </div>
         </div>
       );
     }
@@ -664,45 +1005,65 @@
     }
 
     function ReferencesList({refs, index}){
-      const groups = new Map();
-      const unresolved = [];
-      for (const rr of refs){
-        const target = resolveReference(rr.ref, index);
-        if (target) {
-          const rt = target.resourceType || 'Other';
-          if (!groups.has(rt)) groups.set(rt, []);
-          groups.get(rt).push(target);
-        } else {
-          unresolved.push(rr.ref);
-        }
-      }
       const order = [
         'Subject','Patient','Encounter','Practitioner','Condition','Observation','ServiceRequest','MedicationRequest','MedicationStatement','Procedure','Composition'
       ];
-      const sorted = [...groups.entries()].sort(([a],[b])=>{
-        const ai = order.indexOf(a); const bi = order.indexOf(b);
-        return (ai===-1?999:ai) - (bi===-1?999:bi) || a.localeCompare(b);
+      const resolved = [];
+      const unresolved = [];
+      for (const rr of refs) {
+        const target = resolveReference(rr.ref, index);
+        if (target) {
+          resolved.push(target);
+        } else if (rr.ref) {
+          unresolved.push(rr.ref);
+        }
+      }
+      const sorted = resolved.sort((a, b) => {
+        const aIdx = order.indexOf(a.resourceType);
+        const bIdx = order.indexOf(b.resourceType);
+        return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx) || resourceKey(a).localeCompare(resourceKey(b));
       });
-      const join = (arr) => arr.flatMap((node,i)=> i? [<span key={'s'+i} className="refsep">,</span>, node] : [node]);
-      const rows = [];
-      for (const [rt, list] of sorted){
-        rows.push(
-          <span key={rt+':k'} className="refkey badge">{rt}</span>,
-          <span key={rt+':v'} className="refvals">{join(list.map(r=> <a key={resourceKey(r)} href={`#${resourceKey(r)}`}>{r.id || resourceKey(r)}</a>))}</span>
-        );
-      }
-      if (unresolved.length){
-        rows.push(
-          <span key={'Unresolved:k'} className="refkey badge">Unresolved</span>,
-          <span key={'Unresolved:v'} className="refvals">{join(unresolved.map((u,i)=> <span key={i} title="Unresolved reference">{u}</span>))}</span>
-        );
-      }
-      return <div className="reftable">{rows}</div>;
+
+      return (
+        <div className="refRows">
+          {sorted.map((target) => {
+            const key = resourceKey(target);
+            const link = resourceAnchor(target);
+            return link ? (
+              <div key={key}>{link}</div>
+            ) : null;
+          })}
+          {unresolved.map((ref, idx) => (
+            <div className="kvrow" key={`unresolved-${idx}`}>
+              <span className="muted">Unresolved</span>
+              <span className="muted">{ref}</span>
+            </div>
+          ))}
+        </div>
+      );
     }
 
     function ResourceCard({resource, index}){
       const [showJSON, setShowJSON] = useState(false);
+      const [copied, setCopied] = useState(false);
+      const copyTimerRef = useRef(null);
       const refs = useMemo(()=> collectReferences(resource), [resource]);
+
+      useEffect(()=>{
+        return ()=>{
+          if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+        };
+      },[]);
+
+      const handleCopy = () => {
+        const txt = JSON.stringify(resource, (k, v) => (k === '__anchor' ? undefined : v), 2);
+        const finalize = () => {
+          setCopied(true);
+          if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+          copyTimerRef.current = setTimeout(()=>setCopied(false), 500);
+        };
+        copyTextToClipboard(txt, finalize);
+      };
 
       const Summary = renderSummary(resource, index);
 
@@ -710,19 +1071,32 @@
         <article className="card resource" id={resourceKey(resource)} aria-label={`${resource.resourceType} ${resource.id || ""}`}>
           <div className="rhead">
             <div className="rtitle">{resource.resourceType} {resource.id && <small>— {resource.id}</small>}</div>
-            <div
-              className="tabs"
-              role="group"
-              aria-label="Toggle JSON"
-              onClick={()=>setShowJSON(v=>!v)}
-              title="Click to show/hide JSON below"
-            >
-              <button className="tab" aria-selected="true">Summary</button>
-              <button className="tab" aria-selected={showJSON}>JSON</button>
+            <div className="tabGroup">
+              <div
+                className="tabs"
+                role="group"
+                aria-label="Toggle JSON"
+                onClick={()=>setShowJSON(v=>!v)}
+                title="Toggle summary / JSON"
+              >
+                <button className="tab" aria-selected={!showJSON}>Summary</button>
+                <button className="tab" aria-selected={showJSON}>JSON</button>
+              </div>
+              <button
+                className={`copyBtn${copied ? ' copied' : ''}`}
+                aria-label="Copy resource JSON"
+                title={copied ? 'Copied!' : 'Copy resource JSON'}
+                onClick={(e)=>{ e.stopPropagation(); handleCopy(); }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+              </button>
             </div>
           </div>
 
-          <div className="summary" style={{display: "block"}}>
+          <div className="summary" style={{display: showJSON ? 'none' : 'block'}}>
             {Summary}
             {refs.length ? (
               <>
@@ -736,16 +1110,7 @@
           <div className="jsonview" style={{display: showJSON ? "block" : "none"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:".5rem"}}>
               <span className="muted">Pretty‑printed JSON</span>
-              <button className="btnlink" onClick={()=>{
-                const txt = JSON.stringify(resource, (k, v) => k === '__anchor' ? undefined : v, 2);
-                if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>alert("Copy failed."));
-                else {
-                  // fallback
-                  const ta = document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select();
-                  try{ document.execCommand("copy"); } catch{}
-                  document.body.removeChild(ta);
-                }
-              }}>Copy JSON</button>
+              {copied && <span className="badge" role="status">Copied</span>}
             </div>
             <pre className="json"><code>{JSON.stringify(resource, (k, v) => k === '__anchor' ? undefined : v, 2)}</code></pre>
           </div>
@@ -842,7 +1207,7 @@
           </div>
           {meta && <div className="muted" style={{marginBottom:'.25rem'}}>{meta}</div>}
           <div className="kvlist">
-            {r.serviceProvider?.reference && <KV k="provider" v={r.serviceProvider.reference} />}
+            {r.serviceProvider?.reference && <KV k="provider" v={resourceAnchor(r.serviceProvider.reference, 'Organization')} />}
           </div>
         </>
       );
@@ -867,22 +1232,36 @@
       );
     }
 
-    function ObservationSummary({r}){
-      const value =
-        r.valueQuantity ? qtyDisplay(r.valueQuantity) :
-        r.valueCodeableConcept ? ccDisplay(r.valueCodeableConcept) :
-        r.valueString ? r.valueString : null;
+    function ObservationSummary({r, index}){
+      const codeText = ccDisplay(r.code) || r.code?.text || r.id;
+      const valueQuantity = r.valueQuantity ? qtyDisplay(r.valueQuantity) : null;
+      const valueString = r.valueString || null;
+      const valueConcept = r.valueCodeableConcept ? renderCodeableConcept(r.valueCodeableConcept) : null;
+      const distinctConcept = valueConcept && valueConcept !== codeText ? valueConcept : null;
+      const headlineValue = valueQuantity || valueString || distinctConcept;
+      const subjectLink = referenceAnchor(r.subject?.reference, index, 'Subject');
+      const encounterLink = referenceAnchor(r.encounter?.reference, index, 'Encounter');
+      const performerLinks = (r.performer || [])
+        .map((p, i) => referenceAnchor(p.reference, index, 'Performer'))
+        .filter(Boolean)
+        .map((node, i) => <span key={i} style={{marginRight:'.5rem'}}>{node}</span>);
+      const bodySiteText = r.bodySite ? renderCodeableConcept(r.bodySite) : null;
       return (
         <>
           <div className="bigRow">
-            <div className="bigLabel">{ccDisplay(r.code)}</div>
-            {value && <div className="bigValue">{value}</div>}
+            <div className="bigLabel">{codeText}</div>
+            {headlineValue && <div className="bigValue">{headlineValue}</div>}
           </div>
           <div className="kvlist">
             <KV k="status" v={r.status} />
             <KV k="effective" v={fmtDate(r.effectiveDateTime || r.effectiveInstant || r.effectivePeriod?.start)} />
             {r.interpretation?.[0] && <KV k="interpretation" v={r.interpretation[0].coding?.[0]?.display || r.interpretation[0].coding?.[0]?.code} />}
             {r.category?.[0] && <KV k="category" v={r.category[0].coding?.[0]?.display} />}
+            {distinctConcept && headlineValue !== distinctConcept && <KV k="value" v={distinctConcept} />}
+            {bodySiteText && <KV k="bodySite" v={bodySiteText} />}
+            {subjectLink && <KV k="subject" v={subjectLink} />}
+            {encounterLink && <KV k="encounter" v={encounterLink} />}
+            {performerLinks.length ? <KV k="performer" v={performerLinks} /> : null}
           </div>
           {r.component?.length ? (
             <>
@@ -893,7 +1272,7 @@
                   <div key={i} style={{border:"1px solid var(--border)",borderRadius:".5rem",padding:".5rem"}}>
                     <div className="kvrow"><span className="badge">code</span> <span>{ccDisplay(c.code)}</span></div>
                     {c.valueQuantity && <div className="kvrow"><span className="badge">value</span> <span>{qtyDisplay(c.valueQuantity)}</span></div>}
-                    {c.valueCodeableConcept && <div className="kvrow"><span className="badge">value</span> <span>{ccDisplay(c.valueCodeableConcept)}</span></div>}
+                    {c.valueCodeableConcept && <div className="kvrow"><span className="badge">value</span> <span>{renderCodeableConcept(c.valueCodeableConcept)}</span></div>}
                     {c.valueString && <div className="kvrow"><span className="badge">value</span> <span>{c.valueString}</span></div>}
                   </div>
                 ))}
@@ -1154,8 +1533,8 @@
     }
 
     function CompositionSummary({r, index}){
-      const subj = r.subject?.reference && resolveReference(r.subject.reference, index);
-      const enc = r.encounter?.reference && resolveReference(r.encounter.reference, index);
+      const subjLink = referenceAnchor(r.subject?.reference, index, 'Subject');
+      const encLink = referenceAnchor(r.encounter?.reference, index, 'Encounter');
       const meta = [r.status, ccDisplay(r.type)].filter(Boolean).join(" • ");
       return (
         <>
@@ -1165,11 +1544,11 @@
           </div>
           {meta && <div className="muted" style={{marginBottom:".4rem"}}>{meta}</div>}
           <div className="kvlist">
-            {subj && <KV k="subject" v={<a href={`#${resourceKey(subj)}`}>{subj.id || resourceKey(subj)}</a>} />}
-            {enc && <KV k="encounter" v={<a href={`#${resourceKey(enc)}`}>{enc.id || resourceKey(enc)}</a>} />}
+            {subjLink && <KV k="subject" v={subjLink} />}
+            {encLink && <KV k="encounter" v={encLink} />}
             {r.author?.length && <KV k="author" v={(r.author || []).map((a,i)=>{
-              const pr = a.reference && resolveReference(a.reference, index);
-              return <span key={i} style={{marginRight:".5rem"}}>{pr ? <a href={`#${resourceKey(pr)}`}>{pr.id || resourceKey(pr)}</a> : (a.display || a.reference)}</span>;
+              const link = referenceAnchor(a.reference, index, 'Author');
+              return <span key={i} style={{marginRight:".5rem"}}>{link || (a.display || a.reference)}</span>;
             })} />}
           </div>
         </>
