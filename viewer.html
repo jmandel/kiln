@@ -25,7 +25,6 @@
       border-bottom:1px solid var(--border);backdrop-filter:saturate(1.2) blur(6px)
     }
     .brand{font-weight:700;letter-spacing:.2px}
-    .brand .pill{padding:.18rem .5rem;border:1px solid var(--border);border-radius:999px;background:var(--card);margin-left:.5rem;font-size:.75rem;color:var(--muted)}
     .controls{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
     .controls input[type="text"]{min-width:280px}
     .controls input[type="text"], .controls input[type="url"], .controls .button, .controls label.button{
@@ -124,7 +123,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">FHIR Document Viewer <span class="pill">static • ESM</span></div>
+    <div class="brand">FHIR Document Viewer</div>
     <div class="controls">
       <select id="exampleSelect" class="button" title="Load example" style="display:none">
         <option value="">Examples…</option>
@@ -395,7 +394,7 @@
           searchEl.removeEventListener("input", onSearch);
           jsonBtn.removeEventListener("click", onOpenBundleJson);
         };
-      },[]);
+      },[exampleHref]);
 
       // Keep bundle ref up-to-date for handlers outside React tree
       useEffect(()=>{ bundleRef.current = bundle; }, [bundle]);
@@ -468,7 +467,7 @@
             }
           } catch {}
         })();
-      },[]);
+      },[exampleHref]);
 
       const index = useMemo(()=> bundle ? buildIndex(bundle) : null, [bundle]);
       const filtered = useMemo(()=>{
