@@ -11,6 +11,7 @@ import { $ } from 'bun';
 import { mkdir, writeFile, cp, readdir, stat } from 'fs/promises';
 import { resolve, join, basename } from 'path';
 import { generateConfig } from '../src/config/generateConfig';
+import tailwind from 'bun-plugin-tailwind';
 
 async function ensureDir(p: string) {
   await mkdir(p, { recursive: true }).catch(() => {});
@@ -35,14 +36,25 @@ async function generateStaticConfig() {
 
 async function buildHtmlAndAssets() {
   console.log('🧱 Building HTML and assets...');
-  const sourcemap = process.env.NODE_ENV === 'production' ? 'external' : 'linked';
-  try {
-    await $`bun build --target=browser --format=esm --sourcemap=${sourcemap} --outdir=./dist ./src/app.tsx ./index.html ./viewer.html`;
-    console.log('✅ HTML and assets built successfully');
-  } catch (err) {
-    console.error('❌ bun build failed');
-    throw err;
+  const sourcemap = process.env.NODE_ENV === 'production' ? 'external' : 'inline';
+  const result = await Bun.build({
+    entrypoints: ['./src/app.tsx', './index.html', './viewer.html'],
+    outdir: './dist',
+    target: 'browser',
+    format: 'esm',
+    minify: process.env.NODE_ENV === 'production',
+    sourcemap,
+    plugins: [tailwind],
+  });
+
+  if (!result.success) {
+    console.error('❌ Bun.build failed');
+    for (const message of result.logs ?? []) {
+      console.error(message);
+    }
+    throw new Error('Static asset build failed');
   }
+  console.log('✅ HTML and assets built successfully');
 }
 
 async function copyPublicAssets() {
