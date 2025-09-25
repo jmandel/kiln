@@ -481,21 +481,25 @@ async function llmCall(
       });
       let response: Response;
       try {
+        const payload: Record<string, unknown> = {
+          ...cfg.requestOptions,
+          model: cfg.model,
+          temperature: temperature ?? cfg.temperature ?? 0.2,
+          messages: [
+            {
+              role: 'system',
+              content: expect === 'json' ? 'Return only JSON. No commentary.' : 'You write narrative text.',
+            },
+            { role: 'user', content: prompt },
+          ],
+        };
+        if (expect === 'json') {
+          payload.response_format = { type: 'json_object' };
+        }
         response = await fetch(`${cfg.baseURL}/chat/completions`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${cfg.apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: cfg.model,
-            temperature: temperature ?? cfg.temperature ?? 0.2,
-            messages: [
-              {
-                role: 'system',
-                content: expect === 'json' ? 'Return only JSON. No commentary.' : 'You write narrative text.',
-              },
-              { role: 'user', content: prompt },
-            ],
-            response_format: expect === 'json' ? { type: 'json_object' } : undefined,
-          }),
+          body: JSON.stringify(payload),
         });
       } catch (netErr: any) {
         lastRaw = String(netErr?.message || netErr || 'fetch failed');

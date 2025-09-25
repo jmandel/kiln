@@ -134,6 +134,8 @@ All configuration for Kiln is handled via environment variables prefixed with `P
 
 - **PUBLIC_KILN_TEMPERATURE** (optional, default 0.8): Controls LLM creativity. Range: 0.0 (deterministic) to 2.0 (more varied). Values outside 0-2 are clamped. Useful for narrative generation (higher for creative sketches) vs. FHIR (lower for precision).
 
+- **PUBLIC_KILN_LLM_REQUEST_OPTIONS** (optional, default `{}`): JSON blob merged into each `/chat/completions` request. Use this to enable provider-specific features like OpenRouter's reasoning API (`{"reasoning":{"enabled":true}}`). Must decode to a JSON object.
+
 - **PUBLIC_KILN_FHIR_BASE_URL** (required): The base URL for generating `fullUrl` in FHIR Bundles (e.g., `https://kiln.fhir.me` or your live FHIR server). This ensures valid references in static bundles; no runtime calls are made unless configured. Must start with `http://` or `https://`.
 
 - **PUBLIC_KILN_VALIDATION_SERVICES_URL** (optional, default empty): URL for a remote FHIR validator (e.g., `https://your-fhir-server/validate`). If empty, the app auto-detects same-origin (e.g., `/validate` on the server). Use for advanced profiles or live server validation.
@@ -198,6 +200,7 @@ If issues are found (e.g., missing URLs), it will list them and suggest fixes.
   PUBLIC_KILN_LLM_URL=https://openrouter.ai/api/v1
   PUBLIC_KILN_MODEL=openai/gpt-4o-mini
   PUBLIC_KILN_TEMPERATURE=0.7
+  PUBLIC_KILN_LLM_REQUEST_OPTIONS={"reasoning":{"enabled":true}}
   PUBLIC_KILN_FHIR_BASE_URL=https://kiln.fhir.me
   PUBLIC_KILN_VALIDATION_SERVICES_URL=
   PUBLIC_KILN_FHIR_GEN_CONCURRENCY=2
@@ -741,4 +744,3 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ### Disclaimer
 
 This software is provided for research and educational purposes only. It is not intended for clinical decision-making, patient care, or any production use in healthcare settings. The author, contributors, and distributors make no representations or warranties regarding the accuracy, reliability, or suitability of the software for any purpose, including medical or clinical applications. Users assume all risks associated with its use. Always validate outputs against official standards and consult qualified healthcare professionals for clinical decisions.
-

@@ -45,7 +45,7 @@ export function toEnvKey(taskKind: string | undefined): string | undefined {
 
 export function resolveTaskConfig(
   taskKind: string | undefined
-): { baseURL: string; apiKey: string; model: string; temperature: number } {
+): { baseURL: string; apiKey: string; model: string; temperature: number; requestOptions: Record<string, unknown> } {
   if (!config.isReady()) throw new Error('Configuration not loaded');
   const key = toEnvKey(taskKind);
   // User overrides (optional)
@@ -84,7 +84,16 @@ export function resolveTaskConfig(
       return apiKeyDefault;
     }
   })();
-  return { baseURL, apiKey, model, temperature };
+  const requestOptions = ((): Record<string, unknown> => {
+    try {
+      const extras = config.llmRequestOptions?.();
+      if (!extras || typeof extras !== 'object') return {};
+      return { ...extras };
+    } catch {
+      return {};
+    }
+  })();
+  return { baseURL, apiKey, model, temperature, requestOptions };
 }
 
 // Resolve the Terminology Server base URL consistently across environments

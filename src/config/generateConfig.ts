@@ -9,6 +9,7 @@ export interface PublicConfig {
   baseURL: string;
   model: string;
   temperature: number;
+  llmRequestOptions: Record<string, unknown>;
   apiKeyHint: 'set-in-localstorage' | 'embedded' | 'not-configured';
   publicApiKey?: string | null;
 
@@ -39,6 +40,20 @@ export function generateConfig(source: 'build-time' | 'runtime' = 'runtime'): Pu
   const baseURL = (env.PUBLIC_KILN_LLM_URL || 'https://openrouter.ai/api/v1').replace(/\/+$|\/$/g, '');
   const model = env.PUBLIC_KILN_MODEL || 'openai/gpt-oss-120b:free';
   const temperature = Math.max(0, Math.min(2, Number(env.PUBLIC_KILN_TEMPERATURE || '0.8')));
+  const llmRequestOptions = (() => {
+    const raw = env.PUBLIC_KILN_LLM_REQUEST_OPTIONS || '{}';
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed === null) return {};
+      if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+        throw new Error('must be a JSON object');
+      }
+      return parsed as Record<string, unknown>;
+    } catch (error: any) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Invalid PUBLIC_KILN_LLM_REQUEST_OPTIONS: ${msg}`);
+    }
+  })();
 
   const fhirBaseURL = (env.PUBLIC_KILN_FHIR_BASE_URL || 'https://kiln.fhir.me').replace(/\/+$|\/$/g, '');
   const validationServicesURL = env.PUBLIC_KILN_VALIDATION_SERVICES_URL || '';
@@ -61,6 +76,7 @@ export function generateConfig(source: 'build-time' | 'runtime' = 'runtime'): Pu
     baseURL,
     model,
     temperature,
+    llmRequestOptions,
     // API Key handling (always embedded per simplified policy)
     apiKeyHint: 'embedded',
     publicApiKey,

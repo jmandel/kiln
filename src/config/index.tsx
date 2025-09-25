@@ -7,6 +7,7 @@ export interface Config {
   baseURL: string;
   model: string;
   temperature: number;
+  llmRequestOptions: Record<string, unknown>;
   apiKeyHint: 'set-in-localstorage' | 'embedded' | 'not-configured';
   publicApiKey?: string | null;
   fhirBaseURL: string;
@@ -25,6 +26,19 @@ export interface Config {
 let resolvedConfig: Config | null = null;
 let initPromise: Promise<void> | null = null;
 
+function coerceConfig(raw: unknown): Config {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Invalid configuration format');
+  }
+  const cfg = raw as Partial<Config> & Record<string, unknown>;
+  const llmRequestOptions = (() => {
+    const candidate = cfg.llmRequestOptions;
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return {};
+    return candidate as Record<string, unknown>;
+  })();
+  return { ...cfg, llmRequestOptions } as Config;
+}
+
 export const config = {
   async init(): Promise<void> {
     if (initPromise) return initPromise;
@@ -33,7 +47,7 @@ export const config = {
       try {
         const anyWin = window as any;
         if (anyWin && anyWin.STATIC_CONFIG) {
-          resolvedConfig = anyWin.STATIC_CONFIG as Config;
+          resolvedConfig = coerceConfig(anyWin.STATIC_CONFIG);
           console.log('[Config] Using STATIC_CONFIG');
           return;
         }
@@ -50,7 +64,7 @@ export const config = {
         if (!data || typeof data !== 'object' || !(data as any).model || !(data as any).baseURL) {
           throw new Error('Invalid configuration format');
         }
-        resolvedConfig = data as Config;
+        resolvedConfig = coerceConfig(data);
         console.log(`✅ Loaded: ${resolvedConfig.model} (${resolvedConfig.source})`);
       } catch (err) {
         console.error('[Config] Failed to load', err);
@@ -87,6 +101,10 @@ export const config = {
   temperature: (): number => {
     if (!resolvedConfig) throw new Error('Configuration not loaded');
     return resolvedConfig.temperature;
+  },
+  llmRequestOptions: (): Record<string, unknown> => {
+    if (!resolvedConfig) throw new Error('Configuration not loaded');
+    return resolvedConfig.llmRequestOptions || {};
   },
   apiKeyHint: (): Config['apiKeyHint'] => {
     if (!resolvedConfig) throw new Error('Configuration not loaded');
