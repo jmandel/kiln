@@ -34,15 +34,17 @@ export interface Step {
 // Document Types & Inputs
 // =============================
 
-export type DocumentType = 'narrative' | 'fhir';
+export type DocumentType = 'narrative' | 'fhir' | 'trajectory';
 
 export interface NarrativeInputs {
   sketch: string;
+  extraContext?: string;
 }
 
 export interface Source {
   jobId: ID;
   artifactId?: ID;
+  title?: string;
 }
 
 export interface FhirInputs {
@@ -50,7 +52,11 @@ export interface FhirInputs {
   source?: Source;
 }
 
-export type InputsUnion = NarrativeInputs | FhirInputs;
+export interface TrajectoryInputs {
+  trajectorySketch: string;
+}
+
+export type InputsUnion = NarrativeInputs | FhirInputs | TrajectoryInputs;
 
 // =============================
 // Jobs (new top-level entity)
@@ -69,6 +75,7 @@ export interface Job {
   updatedAt: string;
   lastRunAt?: string;
   runCount?: number;
+  tags?: Record<string, any>;
 }
 
 export function isNarrativeInputs(inputs: unknown): inputs is NarrativeInputs {
@@ -86,6 +93,10 @@ export function isFhirInputs(inputs: unknown): inputs is FhirInputs {
       typeof (src as any).jobId === 'string' &&
       ((src as any).artifactId == null || typeof (src as any).artifactId === 'string'));
   return noteTextOk && srcOk;
+}
+
+export function isTrajectoryInputs(inputs: unknown): inputs is TrajectoryInputs {
+  return !!inputs && typeof inputs === 'object' && typeof (inputs as any).trajectorySketch === 'string';
 }
 
 // =============================
@@ -165,10 +176,11 @@ export interface DocumentTypeDef<T extends InputsUnion> {
   }>;
   buildWorkflow: (inputs: T) => DocumentWorkflow<T>;
   previewComponent?: React.FC<{ document: { inputs: T } }>;
+  getTitle?: (inputs: T) => string;
 }
 
 // Simple document type registry interface
-export type RegisteredType = 'narrative' | 'fhir';
+export type RegisteredType = DocumentType;
 export type AnyDef = DocumentTypeDef<InputsUnion>;
 export interface DocumentTypeRegistry {
   register: <T extends InputsUnion>(type: RegisteredType, def: DocumentTypeDef<T>) => void;

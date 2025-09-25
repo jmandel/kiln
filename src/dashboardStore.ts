@@ -28,6 +28,8 @@ export type DashboardView = {
   error?: string;
   phases: Array<{ id: string; label: string; done: number; total: number; pct: number }>;
   stepTypes: string[];
+  extraContext?: string;
+  tags?: Record<string, any>;
 };
 
 const defaultView: DashboardView = {
@@ -39,6 +41,8 @@ const defaultView: DashboardView = {
   events: [],
   phases: [],
   stepTypes: [],
+  extraContext: undefined,
+  tags: undefined,
 };
 
 function guessKind(kind: string): 'draft' | 'outline' | 'assets' | 'review' | 'final' | string {
@@ -259,6 +263,8 @@ export class DashboardStore {
       error,
       phases,
       stepTypes,
+      extraContext: (doc?.inputs as any)?.extraContext,
+      tags: (doc as any)?.tags || undefined,
     };
 
     this.views.set(jobId, view);
@@ -463,9 +469,16 @@ export class DashboardStore {
       } else {
         try {
           const job = await this.stores.jobs.get(docId);
-          if (job && (job as any).status === 'failed' && (job as any).lastError) {
-            view.error = String((job as any).lastError);
-          } else {
+          const extraBlock = (job?.inputs as any)?.extraContext;
+      view.extraContext =
+        typeof extraBlock === 'string' && extraBlock.trim().length > 0 ? extraBlock : undefined;
+      view.tags = (() => {
+        const jobTags = (job as any)?.tags;
+        return jobTags && Object.keys(jobTags).length > 0 ? jobTags : undefined;
+      })();
+      if (job && (job as any).status === 'failed' && (job as any).lastError) {
+        view.error = String((job as any).lastError);
+      } else {
             const failedCount = Number(view.metrics.stepCounts.failed || 0);
             if (failedCount === 0) {
               view.error = undefined;

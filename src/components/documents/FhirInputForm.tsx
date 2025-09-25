@@ -10,6 +10,7 @@ export const FhirInputForm: React.FC<{
   const [noteText, setNoteText] = useState(initialInputs?.noteText || '');
   const [sourceJobId, setSourceJobId] = useState(initialInputs?.source?.jobId || '');
   const [sourceArtId, setSourceArtId] = useState(initialInputs?.source?.artifactId || '');
+  const [sourceTitle, setSourceTitle] = useState(initialInputs?.source?.title || '');
   const [availableDocs, setAvailableDocs] = useState<Array<{ id: string; title: string }>>([]);
 
   useEffect(() => {
@@ -25,14 +26,17 @@ export const FhirInputForm: React.FC<{
     if (!stores || !jobId) {
       setSourceJobId('');
       setSourceArtId('');
+      setSourceTitle('');
       return;
     }
     const arts = await stores.artifacts.listByJob(jobId, (a) => a.kind === 'ReleaseCandidate');
     const latest = arts.sort((a, b) => b.version - a.version)[0];
+    const selected = availableDocs.find((d) => d.id === jobId);
     if (latest?.content) {
       setNoteText(latest.content);
       setSourceJobId(jobId);
       setSourceArtId(latest.id);
+      setSourceTitle(selected?.title || '');
     }
   };
 
@@ -60,7 +64,7 @@ export const FhirInputForm: React.FC<{
       </div>
       {sourceJobId && sourceArtId && (
         <div className="text-xs text-green-700 p-2 bg-green-50 rounded">
-          Chained from: {sourceJobId.slice(-8)} / {sourceArtId.slice(-8)}
+          Chained from: {sourceTitle || sourceJobId.slice(-8)}
         </div>
       )}
       <div className="flex justify-end gap-2">
@@ -73,7 +77,10 @@ export const FhirInputForm: React.FC<{
             if (noteText.trim())
               onSubmit({
                 noteText,
-                source: sourceJobId && sourceArtId ? { jobId: sourceJobId, artifactId: sourceArtId } : undefined,
+                source:
+                  sourceJobId && sourceArtId ?
+                    { jobId: sourceJobId, artifactId: sourceArtId, title: sourceTitle }
+                  : undefined,
               });
           }}
         >

@@ -4,6 +4,7 @@ import DocGenApp from './components/DocGenApp';
 import './index.css';
 import './documentTypes/narrative';
 import './documentTypes/fhir';
+import './documentTypes/trajectory';
 import { config, ConfigProvider } from './config';
 import faviconUrl from '../public/favicon-32x32.png';
 

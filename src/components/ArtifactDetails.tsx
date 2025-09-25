@@ -196,6 +196,28 @@ export default function ArtifactDetails({
         </div>
       </div>
 
+      {!!tags && Object.keys(tags).length > 0 && (
+        <div className="border rounded p-2 mb-3 text-sm">
+          <h3 className="font-medium mb-1">Tags</h3>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
+            {Object.entries(tags).map(([key, value]) => (
+              <React.Fragment key={key}>
+                <dt className="font-semibold text-gray-600 break-words">{key}</dt>
+                <dd className="text-gray-800 break-words">
+                  {(() => {
+                    const raw =
+                      typeof value === 'object' && value !== null ?
+                        JSON.stringify(value)
+                      : String(value);
+                    return raw.length > 100 ? `${raw.slice(0, 100)}…` : raw;
+                  })()}
+                </dd>
+              </React.Fragment>
+            ))}
+          </dl>
+        </div>
+      )}
+
       <div className="border rounded p-2 mb-3">
         <h3 className="font-medium mb-1">Steps</h3>
         {stepList.length === 0 ?

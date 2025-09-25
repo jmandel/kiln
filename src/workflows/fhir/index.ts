@@ -1,4 +1,4 @@
-import type { Context, DocumentWorkflow, FhirInputs } from '../../types';
+import type { Context, DocumentWorkflow, FhirInputs, Artifact } from '../../types';
 import { extractSections, renderSectionNarrative } from '../../sections';
 import { runLLMTask } from '../../llmTask';
 import { IPS_NOTES } from '../../ips-notes';
@@ -44,7 +44,11 @@ function stitchSectionNarratives(compositionPlan: any, noteText: string): any {
   }
   // Pass 2: stitch narratives for the remaining sections
   if (Array.isArray(compositionPlan.section)) {
+    let lastSeenSection: any = null;
     for (const section of compositionPlan.section) {
+      if (section.title && typeof section.title === 'string' && section.title.trim()) {
+        lastSeenSection = section;
+      }
       if (section.text?.div) {
         const m = String(section.text.div).match(/\{\{\s*(?:##\s*)?(.*?)\s*\}\}/);
         if (m && m[1]) {
@@ -54,8 +58,14 @@ function stitchSectionNarratives(compositionPlan: any, noteText: string): any {
             section.text.div = rendered;
             section.text.status = 'additional';
           } else {
-            section.text.div = `<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Narrative for section '${title}' not found in source note.</p></div>`;
-            section.text.status = 'additional';
+            section.text.div = '';
+            section.text.status = 'generated';
+            if (lastSeenSection && lastSeenSection !== section) {
+              const entriesToMove = Array.isArray(section.entry) ? section.entry.slice() : [];
+              lastSeenSection.entry = Array.isArray(lastSeenSection.entry) ? lastSeenSection.entry : [];
+              for (const e of entriesToMove) lastSeenSection.entry.push(e);
+              section.entry = [];
+            }
           }
         }
       }
@@ -72,6 +82,45 @@ function stitchSectionNarratives(compositionPlan: any, noteText: string): any {
   return compositionPlan;
 }
 
+async function collectPriorFhirBundles(ctx: Context): Promise<Array<{ episodeNumber: number; bundle: any }>> {
+  const currentJob = await ctx.stores.jobs.get(ctx.jobId);
+  const tags = (currentJob as any)?.tags || {};
+  const parentId = tags?.trajectoryParentId;
+  const episodeNumber = Number(tags?.trajectoryEpisodeNumber);
+  if (!parentId || !Number.isFinite(episodeNumber)) return [];
+
+  const allJobs = await ctx.stores.jobs.all();
+  const priorJobs = allJobs
+    .filter(
+      (job: any) =>
+        job.type === 'fhir' &&
+        job.tags?.trajectoryParentId === parentId &&
+        Number(job.tags?.trajectoryEpisodeNumber) < episodeNumber
+    )
+    .sort(
+      (a: any, b: any) =>
+        Number(a.tags?.trajectoryEpisodeNumber || 0) - Number(b.tags?.trajectoryEpisodeNumber || 0)
+    );
+
+  const bundles: Array<{ episodeNumber: number; bundle: any }> = [];
+  for (const job of priorJobs) {
+    const artifacts = await ctx.stores.artifacts.listByJob(job.id, (a: Artifact) => a.kind === 'FhirBundle');
+    if (!artifacts.length) continue;
+    const latest = artifacts.sort((a, b) => Number(b.version) - Number(a.version))[0];
+    if (!latest?.content) continue;
+    let bundle: any = latest.content;
+    if (typeof latest.content === 'string') {
+      try {
+        bundle = JSON.parse(latest.content);
+      } catch {
+        bundle = latest.content;
+      }
+    }
+    bundles.push({ episodeNumber: Number(job.tags?.trajectoryEpisodeNumber || 0), bundle });
+  }
+  return bundles;
+}
+
 // Reusable FHIR encoding phase factory: creates a single-phase function using provided note text
 export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promise<void> {
   return async (ctx: Context) => {
@@ -79,21 +128,44 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
     const noteSections = extractSections(note_text);
     const sectionTitles: string[] = [];
     {
+      const seen = new Set<string>();
       const rx = /(?:^|\r?\n)##\s*(.*?)\s*\r?\n/g;
       let m: RegExpExecArray | null;
       while ((m = rx.exec(note_text)) !== null) {
-        const t = (m[1] || '').trim();
-        if (t) sectionTitles.push(t);
+        const rawTitle = (m[1] || '').trim();
+        if (!rawTitle) continue;
+        // Skip subsection-looking titles that inadvertently include extra markdown markers
+        if (/^#+\s+/.test(rawTitle)) continue;
+        if (seen.has(rawTitle)) continue;
+        sectionTitles.push(rawTitle);
+        seen.add(rawTitle);
       }
     }
     const ipsComp = IPS_NOTES?.Composition;
     const ips_notes = Array.isArray(ipsComp?.requirements) ? ipsComp?.requirements : undefined;
     const ips_example = typeof ipsComp?.example === 'string' ? ipsComp.example : undefined;
+    const priorBundles = await collectPriorFhirBundles(ctx);
+    const priorResourceMap = new Map<string, any>();
+    for (const episode of priorBundles) {
+      const entries = Array.isArray(episode?.bundle?.entry) ? episode.bundle.entry : [];
+      for (const entry of entries) {
+        const resource = entry?.resource;
+        const rtype = resource?.resourceType;
+        const rid = resource?.id;
+        if (rtype && rid) priorResourceMap.set(`${rtype}/${rid}`, resource);
+      }
+    }
     const { result: planResult, meta: planMeta } = await runLLMTask<any>(
       ctx,
       'fhir_composition_plan',
       'fhir_composition_plan',
-      { note_text, section_titles: sectionTitles, ips_notes, ips_example },
+      {
+        note_text,
+        section_titles: sectionTitles,
+        ips_notes,
+        ips_example,
+        prior_bundles: priorBundles,
+      },
       { expect: 'json', tags: { phase: 'fhir' } }
     );
     let compositionPlan = stitchSectionNarratives(planResult, note_text);
@@ -170,7 +242,8 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
       references,
       subjectRef,
       encounterRef,
-      authorRefs[0]?.reference as string | undefined
+      authorRefs[0]?.reference as string | undefined,
+      priorResourceMap
     );
 
     const preHash = await sha256(JSON.stringify(generatedResources));

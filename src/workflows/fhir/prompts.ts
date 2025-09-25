@@ -25,6 +25,7 @@ export const FHIR_PROMPTS = {
     encounter_ref,
     ips_notes,
     ips_example,
+    prior_bundles,
   }: {
     note_text: string;
     section_titles?: string[];
@@ -32,7 +33,21 @@ export const FHIR_PROMPTS = {
     encounter_ref?: string;
     ips_notes?: string[];
     ips_example?: string;
+    prior_bundles?: Array<{ episodeNumber: number; bundle: any }>;
   }) => `You are an expert FHIR document architect. Given a clinical note, create a FHIR Composition resource that outlines the necessary sections and resources.
+
+Prior episode bundles (use for continuity):
+${
+  prior_bundles && prior_bundles.length ?
+    `<priorFhirBundles>${JSON.stringify(prior_bundles, null, 2)}</priorFhirBundles>
+
+Continuity instructions:
+- Reuse persistent identifiers (e.g., Patient, Encounter, ongoing MedicationRequest/MedicationStatement) from prior bundles when the same real-world entities continue.
+- Generate new, unique resource ids for new clinical events in this episode (vitals, labs, new orders, updated assessments) so they do not collide with prior data.
+- Avoid altering historical resources from prior episodes; represent changes with new resources and appropriate references.
+`
+  : '<priorFhirBundles />'
+}
 
 High-level goals:
 - Represent results, orders, and performed actions with the correct resource types.
@@ -106,9 +121,10 @@ ${section_titles.map((t) => `- ${t}`).join('\n')}
 
 ${ips_notes && ips_notes.length ? `\nIPS Composition Guidance (shape & constraints):\n${ips_notes.map((n: string) => `- ${n}`).join('\n')}\n` : ''}
 
-${ips_example ? `Example Composition shell (2-space pretty JSON):\n${ips_example}\n` : ''}
+${ips_example ? `Example Composition shell (2-space pretty JSON; additional sections omitted for brevity):\n${ips_example}\n// ... etc (other sections follow this pattern)\n` : ''}
 
-Return ONLY the FHIR Composition resource as a single JSON object. Do not include any other text or explanations.`,
+Return ONLY the FHIR Composition resource as a single JSON object. Do not include any other text or explanations.
+The Composition must faithfully reflect the entire <note> content above while honoring the prior-bundle continuity guidance provided.`,
 
   // Resource generation prompt (restored wording)
   fhir_generate_resource: ({

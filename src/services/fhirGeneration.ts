@@ -16,7 +16,8 @@ export async function generateAndRefineResources(
   references: Array<{ reference: string; display: string }>,
   subjectRef?: string,
   encounterRef?: string,
-  authorRef?: string
+  authorRef?: string,
+  existingResources?: Map<string, any>
 ): Promise<any[]> {
   const GEN_CONC = ((): number => {
     try {
@@ -35,6 +36,26 @@ export async function generateAndRefineResources(
   const generatedResources: any[] = new Array(references.length);
 
   const processOne = async (ref: { reference: string; display: string }, idx: number) => {
+    const existing = existingResources?.get(ref.reference);
+    if (existing) {
+      const reused = JSON.parse(JSON.stringify(existing));
+      generatedResources[idx] = reused;
+      try {
+        await emitJsonArtifact(ctx, {
+          kind: 'FhirResource',
+          title: `${ref.reference} (reused)`,
+          content: reused,
+          tags: {
+            phase: 'fhir',
+            stage: 'reused',
+            resourceType: reused?.resourceType,
+            from: ref?.display,
+          },
+        });
+      } catch {}
+      return;
+    }
+
     const genParams = (function buildGenParams() {
       const rtype = String(ref.reference || '').split('/')[0];
       const ips = (IPS_NOTES as any)[rtype];

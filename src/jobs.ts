@@ -9,10 +9,13 @@ export async function createJob<T extends InputsUnion>(
   type: DocumentType,
   inputs: T,
   title?: string,
-  options: { dependsOn?: ID[] } = {}
+  options: { dependsOn?: ID[]; tags?: Record<string, any> } = {}
 ): Promise<ID> {
   const computedTitle =
-    title || (type === 'narrative' ? `Patient: ${((inputs as any).sketch || '').slice(0, 30)}...` : 'FHIR Bundle');
+    title ||
+    (type === 'narrative' ? `Patient: ${((inputs as any).sketch || '').slice(0, 30)}...`
+      : type === 'trajectory' ? 'Patient Trajectory'
+      : 'FHIR Bundle');
   // Always create a unique id regardless of inputs/title
   const nonce = `:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
   const idSeed = `${type}:${computedTitle}:${JSON.stringify(inputs)}${nonce}`;
@@ -22,6 +25,14 @@ export async function createJob<T extends InputsUnion>(
   try {
     await stores.jobs.create(jobId, computedTitle, type, inputs as any, options.dependsOn || []);
   } catch {}
+  if (options.tags && Object.keys(options.tags).length) {
+    try {
+      const created = await stores.jobs.get(jobId);
+      if (created) {
+        await stores.jobs.upsert({ ...(created as any), tags: { ...(created as any).tags, ...options.tags } });
+      }
+    } catch {}
+  }
   // Apply dependencies (map to tags.blockedOn)
   const dependsOn = Array.isArray(options.dependsOn) ? options.dependsOn.filter(Boolean) : [];
   if (dependsOn.length > 0) {
@@ -57,6 +68,9 @@ export async function startJob(stores: Stores, jobId: ID): Promise<void> {
     inputs: job.inputs as any,
     runCount: (job as any).runCount || 0,
   });
+  try {
+    await triggerReadyJobs(stores);
+  } catch {}
 }
 
 export async function rerunJob(stores: Stores, jobId: ID): Promise<void> {

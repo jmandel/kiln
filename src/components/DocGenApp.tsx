@@ -312,10 +312,23 @@ export default function DocGenApp(): React.ReactElement {
   const convertSelectedToFhir = async () => {
     if (!stores || !selected) return;
     try {
-      // Create a FHIR job that depends on the selected Narrative job; source by jobId
-      const fhirInputs: FhirInputs = { noteText: '', source: { jobId: selected } as any };
-      const docId = await createJob(stores, 'fhir', fhirInputs, 'FHIR Bundle', {
+      const trajectoryTags = (() => {
+        const tags = (selectedDoc as any)?.tags || {};
+        if (tags?.trajectoryParentId == null) return undefined;
+        return {
+          trajectoryParentId: tags.trajectoryParentId,
+          trajectoryEpisodeNumber: tags.trajectoryEpisodeNumber,
+          trajectoryDateOffset: tags.trajectoryDateOffset,
+        };
+      })();
+      const fhirInputs: FhirInputs = {
+        noteText: '',
+        source: { jobId: selected, title: selectedDoc?.title } as any,
+      };
+      const docTitle = selectedDoc?.title ? `FHIR: ${selectedDoc.title}` : 'FHIR Bundle';
+      const docId = await createJob(stores, 'fhir', fhirInputs, docTitle, {
         dependsOn: [selected as ID],
+        tags: trajectoryTags,
       });
       setSelected(docId);
     } catch (e) {
@@ -423,6 +436,11 @@ export default function DocGenApp(): React.ReactElement {
 
   const createFromHeader = async () => {
     if (!stores) return;
+    if (docType === 'trajectory') {
+      setInitialInputs({});
+      setModalOpen(true);
+      return;
+    }
     if (docType === 'narrative') {
       const sketch = (input.sketch || '').trim();
       if (!sketch) {
@@ -431,11 +449,30 @@ export default function DocGenApp(): React.ReactElement {
       }
       const title = input.title || `Patient: ${sketch.slice(0, 30)}...`;
       const narrId = await createJob(stores, 'narrative', { sketch } as NarrativeInputs, title);
-      await startJobApi(stores, narrId);
+      void startJobApi(stores, narrId).catch((err) => console.error('start narrative job failed', err));
       if (alsoFhir) {
-        await createJob(stores, 'fhir', { noteText: '', source: { jobId: narrId } } as any, 'FHIR Bundle', {
-          dependsOn: [narrId],
-        });
+        let trajectoryTags: Record<string, any> | undefined;
+        try {
+          const freshNarrJob = await stores.jobs.get(narrId);
+          const tags = (freshNarrJob as any)?.tags || {};
+          if (tags?.trajectoryParentId != null) {
+            trajectoryTags = {
+              trajectoryParentId: tags.trajectoryParentId,
+              trajectoryEpisodeNumber: tags.trajectoryEpisodeNumber,
+              trajectoryDateOffset: tags.trajectoryDateOffset,
+            };
+          }
+        } catch {}
+        await createJob(
+          stores,
+          'fhir',
+          { noteText: '', source: { jobId: narrId, title } } as any,
+          `FHIR: ${title}`,
+          {
+            dependsOn: [narrId],
+            tags: trajectoryTags,
+          }
+        );
       }
       setSelected(narrId);
       setInput({ title: '', sketch: '' });
@@ -453,12 +490,23 @@ export default function DocGenApp(): React.ReactElement {
       alert('Selected Narrative has no ReleaseCandidate');
       return;
     }
+    const sourceJob = doneNarratives.find((d) => d.id === srcId);
+    const sourceTitle = sourceJob?.title || '';
+    const trajectoryTags = sourceJob?.tags?.trajectoryParentId != null ?
+      {
+        trajectoryParentId: (sourceJob as any).tags.trajectoryParentId,
+        trajectoryEpisodeNumber: (sourceJob as any).tags.trajectoryEpisodeNumber,
+        trajectoryDateOffset: (sourceJob as any).tags.trajectoryDateOffset,
+      }
+    : undefined;
     const inputs: FhirInputs = {
       noteText: latest.content as string,
-      source: { jobId: srcId as ID, artifactId: latest.id as ID },
+      source: { jobId: srcId as ID, artifactId: latest.id as ID, title: sourceTitle },
     };
-    const docId = await createJob(stores, 'fhir', inputs, 'FHIR Bundle', {
+    const docTitle = sourceTitle ? `FHIR: ${sourceTitle}` : 'FHIR Bundle';
+    const docId = await createJob(stores, 'fhir', inputs, docTitle, {
       dependsOn: [srcId as ID],
+      tags: trajectoryTags,
     });
     setSelected(docId);
     setFhirSourceId('');
@@ -481,9 +529,10 @@ export default function DocGenApp(): React.ReactElement {
               onChange={(e) => setDocType(e.target.value as DocumentType)}
             >
               <option value="narrative">Narrative</option>
+              <option value="trajectory">Trajectory</option>
               <option value="fhir">FHIR</option>
             </select>
-            {docType === 'narrative' ?
+            {docType === 'narrative' && (
               <>
                 <input
                   className="flex-1 input-kiln"
@@ -500,7 +549,25 @@ export default function DocGenApp(): React.ReactElement {
                   Start
                 </button>
               </>
-            : <>
+            )}
+            {docType === 'trajectory' && (
+              <>
+                <button
+                  className="btn-kiln"
+                  onClick={() => {
+                    setInitialInputs({});
+                    setModalOpen(true);
+                  }}
+                >
+                  Plan Trajectory…
+                </button>
+                <span className="text-sm text-gray-600">
+                  Provide a longitudinal sketch to spawn sequential episode notes.
+                </span>
+              </>
+            )}
+            {docType === 'fhir' && (
+              <>
                 <select
                   className="input-kiln flex-1"
                   value={fhirSourceId}
@@ -527,7 +594,7 @@ export default function DocGenApp(): React.ReactElement {
                   Paste Text…
                 </button>
               </>
-            }
+            )}
           </div>
 
           <button
@@ -647,6 +714,7 @@ export default function DocGenApp(): React.ReactElement {
                 onChange={(e) => setDocType(e.target.value as DocumentType)}
               >
                 <option value="narrative">Narrative Note</option>
+                <option value="trajectory">Trajectory</option>
                 <option value="fhir">FHIR Bundle</option>
               </select>
             </div>
@@ -672,12 +740,32 @@ export default function DocGenApp(): React.ReactElement {
                   }}
                   onSubmit={async (typedInputs: any) => {
                     try {
+                      const def = registry.get<any>(docType as any);
+                      const customTitle: string | undefined = def?.getTitle?.(typedInputs) as string | undefined;
                       const title =
-                        docType === 'narrative' ?
+                        customTitle ||
+                        (docType === 'narrative' ?
                           `Patient: ${(typedInputs.sketch || '').slice(0, 30)}...`
-                        : 'FHIR Bundle';
-                      const jobId = await createJob(stores, docType as any, typedInputs as any, title);
-                      await startJobApi(stores, jobId);
+                        : docType === 'trajectory' ?
+                          `Trajectory: ${(typedInputs.trajectorySketch || '').slice(0, 40)}...`
+                        : 'FHIR Bundle');
+                      const options: { dependsOn?: ID[]; tags?: Record<string, any> } = {};
+                      if (docType === 'fhir' && typedInputs?.source?.jobId) {
+                        options.dependsOn = [typedInputs.source.jobId as ID];
+                        try {
+                          const sourceJob = await stores.jobs.get(typedInputs.source.jobId as ID);
+                          const tags = (sourceJob as any)?.tags || {};
+                          if (tags?.trajectoryParentId != null) {
+                            options.tags = {
+                              trajectoryParentId: tags.trajectoryParentId,
+                              trajectoryEpisodeNumber: tags.trajectoryEpisodeNumber,
+                              trajectoryDateOffset: tags.trajectoryDateOffset,
+                            };
+                          }
+                        } catch {}
+                      }
+                      const jobId = await createJob(stores, docType as any, typedInputs as any, title, options);
+                      void startJobApi(stores, jobId).catch((err) => console.error('start job failed', err));
                       setSelected(jobId);
                     } catch (e) {
                       console.error(e);

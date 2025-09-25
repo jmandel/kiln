@@ -41,6 +41,8 @@ type DocGenState = {
   error?: string;
   phases?: PhaseInfo[];
   featured?: Artifact[];
+  extraContext?: string;
+  tags?: Record<string, any>;
 };
 
 const defaultState: DocGenState = {
@@ -50,6 +52,8 @@ const defaultState: DocGenState = {
   metrics: { stepCounts: {}, totalTokens: 0, llmInTokens: 0, llmOutTokens: 0, elapsedMs: 0 },
   artifacts: [],
   events: [],
+  extraContext: undefined,
+  tags: undefined,
 };
 
 export default function DocGenDashboard({
@@ -231,8 +235,28 @@ export default function DocGenDashboard({
               <PhaseProgress phases={state.phases} compact />
             </div>
           )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {state.jobId && state.tags && Object.keys(state.tags).length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 pb-2">
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-text-charcoal mb-2">Job Tags</h3>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              {Object.entries(state.tags).map(([key, value]) => {
+                const raw = typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value);
+                const display = raw.length > 100 ? `${raw.slice(0, 100)}…` : raw;
+                return (
+                  <React.Fragment key={key}>
+                    <dt className="font-medium text-gray-600 break-words">{key}</dt>
+                    <dd className="text-gray-800 break-words">{display}</dd>
+                  </React.Fragment>
+                );
+              })}
+            </dl>
+          </div>
+        </div>
       )}
 
       {/* Error Banner (if present) */}

@@ -76,11 +76,13 @@ export function JobsList({ jobs, selected, onSelect, onDelete }: JobsListProps) 
                     className={`uppercase text-[10px] px-2 py-0.5 rounded-full border ${
                       job.type === 'fhir' ?
                         'bg-blue-50 border-blue-200 text-blue-700'
+                      : job.type === 'trajectory' ?
+                        'bg-purple-50 border-purple-200 text-purple-700'
                       : 'bg-gray-100 border-gray-300 text-gray-700'
                     }`}
                     title={`Type: ${job.type}`}
                   >
-                    {job.type === 'fhir' ? 'FHIR' : 'Narrative'}
+                    {job.type === 'fhir' ? 'FHIR' : job.type === 'trajectory' ? 'Trajectory' : 'Narrative'}
                   </span>
                 </div>
               )}

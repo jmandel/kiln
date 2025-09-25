@@ -1,9 +1,23 @@
+function appendExtraContext(base: string, extra?: string): string {
+  if (!extra || !extra.trim()) return base;
+  return `${base}
+
+Additional Context (do not ignore):
+<extraContext>
+${extra}
+</extraContext>
+
+Use the extraContext block for longitudinal grounding. Reference prior episodes verbatim when relevant, keep continuity, and avoid contradictions.`;
+}
+
 export const NARRATIVE_PROMPTS = {
   plan_outline: ({
     sketch,
+    extraContext,
   }: {
     sketch: string;
-  }) => `You are a clinical note planner and medical expert. Given a one-line patient sketch, synthesize a realistic, comprehensive outline for a full clinical note. 
+    extraContext?: string;
+  }) => appendExtraContext(`You are a clinical note planner and medical expert. Given a one-line patient sketch, synthesize a realistic, comprehensive outline for a full clinical note. 
 
 Background:
 <sketch>${sketch}</sketch>
@@ -22,20 +36,22 @@ Output JSON only, no extra text:
 }
 
 Ensure the outline encourages realistic synthesis: Briefs should guide expansion beyond the sketch, promoting consistency and avoiding duplication across sections.`,
-
+  extraContext),
   draft_section: ({
     section,
     brief,
     sketch,
     guidance,
     priorSummary,
+    extraContext,
   }: {
     section: string;
     brief: string;
     sketch: string;
     guidance: string;
     priorSummary: string;
-  }) => `You are a clinical writer synthesizing a realistic patient narrative. Draft the "${section}" section for a clinical note, building on the overall case.
+    extraContext?: string;
+  }) => appendExtraContext(`You are a clinical writer synthesizing a realistic patient narrative. Draft the "${section}" section for a clinical note, building on the overall case.
 
 Background:
 <sketch>${sketch}</sketch>
@@ -45,7 +61,7 @@ Background:
 
 Specific Task: Expand into concise, plausible prose (200-400 words). Synthesize realistically: Infer and add evidence-based details (e.g., if sketch implies chest pain, expand with radiation, triggers, relief; include typical patient quotes or exam findings). Maintain professional tone; ensure flow from priors (e.g., reference but don't duplicate HPI symptoms). Avoid fabrication—align with sketch and guidance.
 
-Output ONLY the section text. No headers, JSON, or commentary.`,
+Output ONLY the section text. No headers, JSON, or commentary.`, extraContext),
 
   critique_section: ({
     section,
@@ -54,6 +70,7 @@ Output ONLY the section text. No headers, JSON, or commentary.`,
     sketch,
     guidance,
     priorSummary,
+    extraContext,
   }: {
     section: string;
     draft: string;
@@ -61,7 +78,8 @@ Output ONLY the section text. No headers, JSON, or commentary.`,
     sketch: string;
     guidance: string;
     priorSummary: string;
-  }) => `You are a clinical editor reviewing for realism, consistency, and synthesis. Critique the "${section}" draft against the brief and overall note.
+    extraContext?: string;
+  }) => appendExtraContext(`You are a clinical editor reviewing for realism, consistency, and synthesis. Critique the "${section}" draft against the brief and overall note.
 
 Background:
 <sketch>${sketch}</sketch>
@@ -74,16 +92,19 @@ Specific Task: Evaluate on a 0-1 score (0.0=poor, 1.0=excellent). Focus on: Real
 
 Output JSON only:
 {"critique": "Detailed feedback (1-2 paragraphs; suggest expansions for realism).", "score": 0.XX}`,
+  extraContext),
 
   assemble_note: ({
     sketch,
     guidance,
     sectionSummaries,
+    extraContext,
   }: {
     sketch: string;
     guidance: string;
     sectionSummaries: string;
-  }) => `You are a clinical synthesizer assembling a full note. Stitch approved sections into a cohesive "NoteDraft".
+    extraContext?: string;
+  }) => appendExtraContext(`You are a clinical synthesizer assembling a full note. Stitch approved sections into a cohesive "NoteDraft".
 
 Background:
 <sketch>${sketch}</sketch>
@@ -97,19 +118,21 @@ Formatting rules (important):
 - Do NOT use bold (**) or other styles for section titles; use only the "## " marker.
 - Keep content beneath each header as normal paragraphs/bullets as appropriate.
 
-Output ONLY the full note text.`,
+Output ONLY the full note text.`, extraContext),
 
   critique_note: ({
     noteDraft,
     sketch,
     guidance,
     sectionSummaries,
+    extraContext,
   }: {
     noteDraft: string;
     sketch: string;
     guidance: string;
     sectionSummaries: string;
-  }) => `You are a senior clinical reviewer. Critique the full note draft for synthesis and realism.
+    extraContext?: string;
+  }) => appendExtraContext(`You are a senior clinical reviewer. Critique the full note draft for synthesis and realism.
 
 Background:
 <sketch>${sketch}</sketch>
@@ -120,21 +143,27 @@ Background:
 Specific Task: Score 0-1 on overall coherence, expansion, and consistency. Feedback: Highlight synthesis strengths/weaknesses (e.g., "Good realism in expansions, but duplication in symptoms").
 
 Output JSON: {"critique": "...", "score": 0.XX}`,
+  extraContext),
 
   finalize_note: ({
     noteDraft,
     sketch,
     guidance,
+    critique,
+    extraContext,
   }: {
     noteDraft: string;
     sketch: string;
     guidance: string;
-  }) => `You are a final clinical polisher. Finalize the note for release.
+    critique?: string;
+    extraContext?: string;
+  }) => appendExtraContext(`You are a final clinical polisher. Finalize the note for release.
 
 Background:
 <sketch>${sketch}</sketch>
 <guidance>${guidance}</guidance>
 <draft>${noteDraft}</draft>
+${critique ? `\n<critique>${critique}</critique>` : ''}
 
 Specific Task: Minor edits for consistency/realism. Ensure no loose ends; expand subtly if needed.
 
@@ -142,7 +171,7 @@ Formatting rules (important):
 - Use Markdown headings for section titles with exactly two hash marks: "## Title".
 - Do NOT use bold (**) or other styles for section titles; use only the "## " marker.
 
-Output ONLY the final text.`,
+Output ONLY the final text.`, extraContext),
 };
 
 export type NarrativePromptKey = keyof typeof NARRATIVE_PROMPTS;

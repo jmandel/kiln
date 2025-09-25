@@ -1,15 +1,21 @@
 import { PROMPTS } from './prompts';
 import { NARRATIVE_PROMPTS } from './workflows/narrative/prompts';
 import { FHIR_PROMPTS } from './workflows/fhir/prompts';
+import { TRAJECTORY_PROMPTS } from './workflows/trajectory/prompts';
 import type { Context, Artifact } from './types';
 
 type GlobalKey = keyof typeof PROMPTS;
 type NarrativeKey = keyof typeof NARRATIVE_PROMPTS;
 type FhirKey = keyof typeof FHIR_PROMPTS;
-export type AnyPromptKey = GlobalKey | NarrativeKey | FhirKey;
+type TrajectoryKey = keyof typeof TRAJECTORY_PROMPTS;
+export type AnyPromptKey = GlobalKey | NarrativeKey | FhirKey | TrajectoryKey;
 
 export function buildPrompt(key: AnyPromptKey, params: any): string {
-  const template = (NARRATIVE_PROMPTS as any)[key] || (FHIR_PROMPTS as any)[key] || (PROMPTS as any)[key];
+  const template =
+    (NARRATIVE_PROMPTS as any)[key] ||
+    (FHIR_PROMPTS as any)[key] ||
+    (TRAJECTORY_PROMPTS as any)[key] ||
+    (PROMPTS as any)[key];
   return template(params as any);
 }
 
