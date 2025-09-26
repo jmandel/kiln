@@ -236,10 +236,25 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
     ensureRef(references, encounterRef, encounterDisplay);
     for (const a of authorRefs) ensureRef(references, a.reference, a.display || 'Author');
 
+    const referenceMap = new Map<string, number>();
+    const uniqueReferences: { reference: string; display: string }[] = [];
+    for (const ref of references) {
+      const key = ref.reference?.trim();
+      if (!key) continue;
+      const existingIdx = referenceMap.get(key);
+      if (existingIdx != null) {
+        const current = uniqueReferences[existingIdx];
+        if ((!current.display || !current.display.trim()) && ref.display?.trim()) current.display = ref.display;
+        continue;
+      }
+      uniqueReferences.push({ reference: key, display: ref.display });
+      referenceMap.set(key, uniqueReferences.length - 1);
+    }
+
     const generatedResources: any[] = await generateAndRefineResources(
       ctx,
       note_text,
-      references,
+      uniqueReferences,
       subjectRef,
       encounterRef,
       authorRefs[0]?.reference as string | undefined,
@@ -276,7 +291,7 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
 
     for (let i = 0; i < finalResources.length; i++) {
       const r: any = finalResources[i];
-      const ref = references[i];
+      const ref = uniqueReferences[i];
       await emitJsonArtifact(ctx, {
         kind: 'FhirResource',
         title: ref?.reference || `${r.resourceType}/${r.id || ''}`,
@@ -321,6 +336,26 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
       }
     } catch {}
     const bundleId = `bundle-${await shortHash((ctx as any).jobId)}`;
+    const bundleEntries: Array<{ fullUrl: string; resource: any }> = [];
+    const seenResourceKeys = new Set<string>();
+    const pushEntry = (resource: any, fullUrl: string) => {
+      if (!resource || !resource.resourceType) return;
+      const key = `${resource.resourceType}/${resource.id || ''}`;
+      if (seenResourceKeys.has(key)) return;
+      seenResourceKeys.add(key);
+      bundleEntries.push({ fullUrl, resource });
+    };
+
+    pushEntry(
+      finalComposition,
+      `${base}/${finalComposition.resourceType || 'Composition'}/${finalComposition.id}`
+    );
+
+    for (const r of finalResources) {
+      if (!r || !r.resourceType) continue;
+      pushEntry(r, `${base}/${r.resourceType}/${r.id || ''}`);
+    }
+
     const bundle = {
       resourceType: 'Bundle',
       type: 'document',
@@ -338,16 +373,7 @@ export function makeFhirEncodingPhase(noteText: string): (ctx: Context) => Promi
           : finalComposition.id;
         return { value, system: `${base}/Bundle` } as any;
       })(),
-      entry: [
-        {
-          fullUrl: `${base}/${finalComposition.resourceType || 'Composition'}/${finalComposition.id}`,
-          resource: finalComposition,
-        },
-        ...finalResources.map((r: any) => ({
-          fullUrl: `${base}/${r.resourceType}/${r.id || ''}`,
-          resource: r,
-        })),
-      ],
+      entry: bundleEntries,
     } as any;
     (function pruneDeep(node: any): boolean {
       if (node == null) return true;
