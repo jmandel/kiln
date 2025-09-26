@@ -1,0 +1,4638 @@
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "id": "bundle-56927f7f",
+  "timestamp": "2025-09-25T20:40:56.775Z",
+  "identifier": {
+    "value": "composition-a87d65a9",
+    "system": "https://kiln.fhir.me/Bundle"
+  },
+  "entry": [
+    {
+      "fullUrl": "https://kiln.fhir.me/Composition/composition-a87d65a9",
+      "resource": {
+        "resourceType": "Composition",
+        "status": "final",
+        "type": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "60591-5",
+              "display": "Patient summary Document"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1",
+          "display": "45-year-old male status post deceased-donor kidney transplant for end-stage renal disease due to diabetic nephropathy"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2",
+          "display": "Outpatient transplant clinic follow-up visit at 1 month posttransplant for routine monitoring"
+        },
+        "date": "2023-11-01T10:00:00Z",
+        "author": [
+          {
+            "reference": "Practitioner/pract-1",
+            "display": "Transplant physician"
+          }
+        ],
+        "title": "1-Month Post-Kidney Transplant Follow-Up Summary",
+        "section": [
+          {
+            "title": "Chief Complaint",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>45-year-old male presents for routine 1-month posttransplant follow-up following uncomplicated deceased-donor kidney transplantation for end-stage renal disease secondary to diabetic nephropathy. He reports overall good health and improved quality of life since discharge, with stable energy levels allowing return to light desk work and family activities. Urine output remains consistent at approximately 2 liters per day, without episodes of oliguria or hematuria. He endorses excellent medication adherence, using a pill organizer and daily alarms as instructed, and denies changes in diet, exercise, or missed doses. However, he describes mild intermittent nausea, primarily after meals, onset approximately 2 weeks ago, rated 2/10 in severity, which occasionally disrupts his routine but has not caused vomiting, weight loss (steady at 78 kg), dehydration, or appetite changes. He attributes it to his medications and has been taking it with food as advised, with partial relief; he denies fever, chills, graft site tenderness, dysuria, edema, shortness of breath, chest pain, or new symptoms suggestive of infection or rejection.</p>\n<p>Vital signs are stable and reassuring: blood pressure 124/74 mmHg (right arm, seated), heart rate 78 bpm (regular), temperature 36.7°C orally, respiratory rate 14 breaths per minute, oxygen saturation 98% on room air. Physical exam reveals a well-appearing, alert male in no acute distress, with clean surgical scar without erythema, drainage, or induration; the allograft is nontender and nonpalpably enlarged, with preserved bruit. He expresses satisfaction with his recovery progress, stating, &quot;I&#39;m feeling more like myself every week,&quot; but voices mild concern about the nausea persisting, prompting reassurance and side effect discussion. Baseline labs from discharge (creatinine 1.3 mg/dL, tacrolimus trough 8.2 ng/mL) show positive trends, supporting vigilant monitoring in this critical first posttransplant year per KDIGO guidelines.</p></div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Procedure/proc-transplant-1"
+              },
+              {
+                "reference": "Observation/obs-creat-1"
+              },
+              {
+                "reference": "Observation/obs-tacro-1"
+              }
+            ]
+          },
+          {
+            "title": "History of Present Illness",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>The patient is a 45-year-old male who underwent deceased-donor kidney transplantation approximately four weeks ago for end-stage renal disease secondary to diabetic nephropathy, with immediate graft function and uncomplicated hospital course leading to discharge on postoperative day 7 with a baseline creatinine of 1.3 mg/dL and tacrolimus trough level of 8.2 ng/mL. Since discharge, he has followed the prescribed immunosuppression regimen per KDIGO guidelines, including tacrolimus 4 mg orally twice daily (with home trough levels monitored weekly, most recent at 9.5 ng/mL within the target 8-12 ng/mL range), mycophenolate mofetil 1 g orally twice daily, and a prednisone taper now at 15 mg daily. He has maintained excellent adherence using the pill organizer and daily alarms provided at discharge, reporting no missed doses and consistent intake with meals to minimize gastrointestinal upset. Prophylaxis continues with valganciclovir 450 mg daily and trimethoprim-sulfamethoxazole one double-strength tablet three times weekly, without breakthrough symptoms. His diabetes remains well-controlled on insulin glargine 20 units nightly and aspart per sliding scale, with home fasting glucoses averaging 120 mg/dL, and hypertension is stable on metoprolol succinate 50 mg daily, with average home blood pressures of 125/75 mmHg.</p>\n<p>He endorses a smooth transition home, resuming light desk work and family activities within the first two weeks, with steady urine output of 2 liters per day and no episodes of oliguria, hematuria, edema, or fatigue beyond expected postoperative recovery. Energy levels have progressively improved, allowing him to report, &quot;I&#39;m getting back to my routine, just taking it easy.&quot; However, starting around two weeks post-discharge, he developed mild intermittent nausea, rated 2/10 in severity, typically occurring 1-2 hours after mycophenolate doses and lasting 30-60 minutes. It is postprandial, partially alleviated by taking medications with food as instructed, without associated vomiting, diarrhea, abdominal pain, weight loss (stable at 78 kg), or dehydration. He attributes this to the immunosuppression, consistent with common mycophenolate-related gastrointestinal side effects, and denies fever, chills, graft site tenderness, dysuria, shortness of breath, or other symptoms suggestive of infection or rejection. Complete blood count remains unremarkable, with hemoglobin improved to 11.0 g/dL, and current serum creatinine has improved slightly to 1.2 mg/dL (eGFR approximately 65 mL/min/1.73 m² by CKD-EPI), reflecting expected early graft recovery and positive trending from discharge baseline. Electrolytes, liver function tests, and urinalysis are within normal limits, supporting ongoing stability in this critical first posttransplant month. He expresses mild concern about the nausea but overall optimism, prompting discussion of symptom management strategies, including potential dose timing adjustments if persistent.</p></div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Procedure/proc-transplant-1"
+              },
+              {
+                "reference": "MedicationRequest/mreq-tacro-1"
+              },
+              {
+                "reference": "MedicationRequest/mreq-mmf-1"
+              },
+              {
+                "reference": "MedicationRequest/mreq-pred-1"
+              },
+              {
+                "reference": "MedicationRequest/mreq-valg-1"
+              },
+              {
+                "reference": "MedicationRequest/mreq-smx-1"
+              },
+              {
+                "reference": "MedicationRequest/mreq-glarg-1"
+              },
+              {
+                "reference": "MedicationRequest/mreq-aspart-1"
+              },
+              {
+                "reference": "MedicationRequest/mreq-meto-1"
+              },
+              {
+                "reference": "Observation/obs-tacro-2"
+              }
+            ]
+          },
+          {
+            "title": "Past Medical History",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>The patient is a 45-year-old male with a 15-year history of type 2 diabetes mellitus, diagnosed at age 30, initially managed with oral agents including metformin and glipizide before transitioning to insulin therapy approximately five years ago due to progressive diabetic nephropathy. Pre-transplant, his diabetes was suboptimal with an HbA1c of 8.2%, complicated by mild nonproliferative diabetic retinopathy on annual ophthalmology exams (last dilated fundoscopy three months prior showing microaneurysms without macular edema or vision impairment) and end-stage renal disease requiring initiation of hemodialysis 18 months ago. He has a 20-year history of hypertension, diagnosed in his mid-20s and controlled pre-transplant with lisinopril 20 mg daily (discontinued perioperatively due to acute kidney injury risk) and metoprolol succinate 50 mg daily, with home readings averaging 130/80 mmHg; transthoracic echocardiogram one year ago demonstrated mild concentric left ventricular hypertrophy with preserved ejection fraction of 55% and no valvular abnormalities.</p>\n<p>His end-stage renal disease stems from diabetic nephropathy, with a baseline creatinine of 8.2 mg/dL prompting permanent vascular access creation. Peritoneal dialysis was attempted initially but abandoned after two episodes of bacterial peritonitis (Staphylococcus epidermidis and Escherichia coli, treated with intraperitoneal antibiotics), leading to placement of a left upper extremity arteriovenous fistula 20 months ago, which matured adequately for thrice-weekly in-center hemodialysis (Kt/V consistently &gt;1.2). Dialysis-related complications included chronic anemia (nadir hemoglobin 9.1 g/dL, managed with epoetin alfa 8000 units subcutaneously three times weekly and oral iron supplementation, achieving stable hemoglobin of 10.2 g/dL at discharge), secondary hyperparathyroidism (pre-transplant PTH 450 pg/mL, trending downward to 320 pg/mL postoperatively with calcitriol 0.25 mcg daily and sevelamer carbonate 800 mg with meals for phosphate control at 3.8 mg/dL), and mild metabolic bone disease without fractures. No history of cardiovascular events, cerebrovascular disease, or peripheral vascular disease beyond trace proteinuria on pre-transplant urinalysis.</p>\n<p>Surgical history is limited to two temporary tunneled hemodialysis catheters (right internal jugular, removed after AV fistula maturation) and the recent deceased-donor kidney transplantation. He denies prior abdominal surgeries, malignancies, autoimmune disorders, or chronic infections. Allergies include penicillin (maculopapular rash in childhood). Family history is notable for type 2 diabetes in his mother (onset age 50) and hypertension in his father (complicated by myocardial infarction at age 60). Social history remains stable: former smoker with 5 pack-year history (cessation 10 years ago via nicotine replacement), rare alcohol use (1-2 drinks monthly), no recreational drugs, employed full-time as an accountant with sedentary desk work, married with two school-aged children, and living in an urban apartment with strong familial support for transportation and daily assistance. Immunizations are current, including annual influenza, pneumococcal series, and hepatitis B surface antibody positivity. No changes in these historical elements since discharge, supporting ongoing posttransplant stability without new comorbidities.</p></div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Condition/cond-dm2-1"
+              },
+              {
+                "reference": "Condition/cond-htn-1"
+              },
+              {
+                "reference": "Condition/cond-esrd-1"
+              },
+              {
+                "reference": "Condition/cond-retino-1"
+              },
+              {
+                "reference": "Condition/cond-hpt-1"
+              },
+              {
+                "reference": "AllergyIntolerance/all-pcn-1"
+              },
+              {
+                "reference": "Procedure/proc-fistula-1"
+              },
+              {
+                "reference": "Observation/obs-tobacco-1"
+              },
+              {
+                "reference": "Observation/obs-alcohol-1"
+              }
+            ]
+          },
+          {
+            "title": "Physical Examination",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>The patient is a well-nourished, alert, and oriented 45-year-old male in no acute distress, appearing comfortable and engaged during the outpatient visit. He sits comfortably without guarding or discomfort, denying any exacerbation of his mild nausea during the examination. No signs of dehydration, cachexia, or acute illness are evident, consistent with his reported stable weight and appetite.</p>\n<p>Vital signs are stable and within expected posttransplant parameters: blood pressure 124/74 mmHg (measured in the right arm, seated position, improved from discharge baseline of 128/76 mmHg), heart rate 78 beats per minute (regular rhythm), respiratory rate 14 breaths per minute (unlabored), temperature 36.7°C orally (afebrile), and oxygen saturation 98% on room air. Weight is stable at 78 kg (unchanged from discharge), height 172 cm, yielding a BMI of 26.4 kg/m²; no orthostasis noted on positional change.</p>\n<p>On head and neck examination, the patient is normocephalic and atraumatic, with moist oral mucosa and pink conjunctiva bilaterally, reassuring against volume depletion from nausea. Pupils are equal, round, and reactive to light; extraocular movements are intact without nystagmus. Tympanic membranes are clear and mobile. The neck is supple without thyromegaly, jugular venous distention, or palpable lymphadenopathy; carotid pulses are equal and nontender.</p>\n<p>Cardiovascular examination reveals a regular rhythm with normal rate and no murmurs, rubs, gallops, or heaves; point of maximal impulse is nondisplaced and not sustained. The lungs are clear to auscultation bilaterally with good air entry, no wheezes, rales, or rhonchi, and symmetric chest expansion.</p>\n<p>Abdominal examination demonstrates a soft, nondistended abdomen with active bowel sounds in all quadrants and no tenderness, guarding, rebound, or organomegaly. The right lower quadrant surgical incision is a well-healed 10 cm linear scar, fully epithelialized without erythema, induration, drainage, or dehiscence—indicating appropriate wound healing one month post-transplant. The allograft is nontender to palpation, nonpalpably enlarged, and exhibits a preserved soft systolic bruit without thrill, consistent with stable vascular patency and no evidence of rejection or fluid collection.</p>\n<p>Extremities are warm and well-perfused with no clubbing, cyanosis, or edema; capillary refill is less than 2 seconds, and peripheral pulses are 2+ and symmetric. The left upper extremity arteriovenous fistula remains patent with a palpable thrill and no signs of stenosis or infection. Skin examination shows mild pallor attributable to stable posttransplant anemia (hemoglobin 11.0 g/dL) but no jaundice, petechiae, ecchymoses, or new rashes.</p>\n<p>Neurologic examination is nonfocal: cranial nerves II-XII are intact, strength is 5/5 throughout, sensation is preserved, deep tendon reflexes are 2+ and symmetric, and gait is steady without ataxia or imbalance. Overall, the physical findings corroborate the patient&#39;s reported smooth recovery, stable graft function, and absence of acute complications, supporting continued outpatient monitoring in this early posttransplant period.</p></div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "Observation/obs-bp-2"
+              },
+              {
+                "reference": "Observation/obs-hr-2"
+              },
+              {
+                "reference": "Observation/obs-rr-2"
+              },
+              {
+                "reference": "Observation/obs-temp-2"
+              },
+              {
+                "reference": "Observation/obs-spo2-2"
+              },
+              {
+                "reference": "Observation/obs-bmi-2"
+              }
+            ]
+          },
+          {
+            "title": "Laboratory and Diagnostic Studies",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><h3>Laboratory and Diagnostic Studies</h3>\n<h4>Laboratory Results (1-Month Post-Transplant Follow-Up)</h4>\n<p>Comprehensive metabolic panel demonstrates stable and slightly improved renal function compared to discharge baselines, consistent with expected early graft recovery in the absence of rejection or infection. Serum creatinine is 1.2 mg/dL (down from 1.3 mg/dL at discharge, preoperative baseline 8.2 mg/dL), with an estimated glomerular filtration rate of approximately 65 mL/min/1.73 m² by CKD-EPI equation (improved from ~60 mL/min/1.73 m²), reflecting positive trending and adequate allograft perfusion. Blood urea nitrogen is 25 mg/dL (mildly decreased from 28 mg/dL), supporting stable hydration and protein catabolism. Electrolytes remain within normal limits: sodium 139 mEq/L, potassium 4.1 mEq/L (no hyperkalemia risk given ongoing metoprolol and dietary counseling), chloride 101 mEq/L, bicarbonate 25 mEq/L, indicating resolved posttransplant acidosis.</p>\n<p>Mineral metabolism shows continued improvement in secondary hyperparathyroidism: intact parathyroid hormone 280 pg/mL (downward trend from 320 pg/mL at discharge and pretransplant 450 pg/mL), calcium 9.3 mg/dL (normal), and phosphate 3.6 mg/dL (controlled on sevelamer and renal diet), without evidence of adynamic bone disease or vascular calcification per KDIGO monitoring guidelines. Tacrolimus trough level is 9.5 ng/mL (within therapeutic target of 8-12 ng/mL, up slightly from 8.2 ng/mL at discharge), confirming consistent absorption and adherence to twice-daily dosing with meals to mitigate gastrointestinal side effects like the patient&#39;s reported mild nausea, plausibly attributable to mycophenolate.</p>\n<p>Complete blood count is unremarkable, with hemoglobin 11.0 g/dL (improved from 10.2 g/dL at discharge, likely due to epoetin alfa continuation and reduced dialysis-related losses), hematocrit 33%, mean corpuscular volume 93 fL, white blood cell count 6.5 × 10³/μL (no leukopenia suggestive of over-immunosuppression), and platelets 230 × 10³/μL (stable, no thrombocytopenia). Differential shows normal distribution without eosinophilia or lymphopenia, supporting tolerance to the mycophenolate-prednisone-tacrolimus regimen. Glycemic control remains stable with fasting glucose 132 mg/dL (consistent with home averages of 120 mg/dL on insulin glargine and aspart), and liver function tests are unchanged: AST 25 U/L, ALT 30 U/L, alkaline phosphatase 85 U/L, total bilirubin 0.7 mg/dL, albumin 3.9 g/dL, ruling out hepatotoxicity from prophylaxis agents.</p>\n<p>Urinalysis is benign: clear yellow, specific gravity 1.020, pH 6.0, negative for protein, glucose, ketones, blood, leukocytes, or nitrites, with microscopy showing &lt;5 RBCs/hpf and no casts or crystals, corroborating the absence of glomerulitis, infection, or diabetic recurrence.</p>\n<h4>Diagnostic Studies</h4>\n<p>No new imaging or procedures were indicated at this routine follow-up, given stable clinical status and reassuring labs. Continuity is maintained from discharge renal ultrasound, which demonstrated normal allograft morphology (10.5 cm length, no hydronephrosis, resistive index 0.65, patent vessels), with no symptoms warranting repeat evaluation. Electrocardiogram and chest radiograph from discharge remain normal without interval changes reported.</p>\n<p>These findings affirm excellent early posttransplant stability, with trending improvements in renal function and anemia underscoring effective immunosuppression and adherence. Vigilant monitoring continues per KDIGO protocols to detect subtle shifts in the first year, particularly for infection or rejection risks, while addressing minor side effects to optimize quality of life.</p></div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "DiagnosticReport/report-cmp-2"
+              },
+              {
+                "reference": "Observation/obs-creat-2"
+              },
+              {
+                "reference": "Observation/obs-bun-2"
+              },
+              {
+                "reference": "Observation/obs-na-2"
+              },
+              {
+                "reference": "Observation/obs-k-2"
+              },
+              {
+                "reference": "Observation/obs-cl-2"
+              },
+              {
+                "reference": "Observation/obs-hco3-2"
+              },
+              {
+                "reference": "Observation/obs-ca-2"
+              },
+              {
+                "reference": "Observation/obs-po4-2"
+              },
+              {
+                "reference": "Observation/obs-ast-2"
+              },
+              {
+                "reference": "Observation/obs-alt-2"
+              },
+              {
+                "reference": "Observation/obs-bili-2"
+              },
+              {
+                "reference": "Observation/obs-alb-2"
+              },
+              {
+                "reference": "Observation/obs-glucose-2"
+              },
+              {
+                "reference": "DiagnosticReport/report-cbc-2"
+              },
+              {
+                "reference": "Observation/obs-hb-2"
+              },
+              {
+                "reference": "Observation/obs-hct-2"
+              },
+              {
+                "reference": "Observation/obs-mcv-2"
+              },
+              {
+                "reference": "Observation/obs-wbc-2"
+              },
+              {
+                "reference": "Observation/obs-plt-2"
+              },
+              {
+                "reference": "DiagnosticReport/report-ua-2"
+              },
+              {
+                "reference": "Observation/obs-sg-2"
+              },
+              {
+                "reference": "Observation/obs-uaph-2"
+              },
+              {
+                "reference": "DiagnosticReport/report-tacro-2"
+              },
+              {
+                "reference": "Observation/obs-tacro-2"
+              },
+              {
+                "reference": "Observation/obs-pth-2"
+              },
+              {
+                "reference": "Observation/obs-egfr-2"
+              },
+              {
+                "reference": "DiagnosticReport/report-us-1"
+              },
+              {
+                "reference": "DiagnosticReport/report-ecg-1"
+              },
+              {
+                "reference": "DiagnosticReport/report-cxr-1"
+              }
+            ]
+          },
+          {
+            "title": "Assessment",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>45-year-old male status post deceased-donor kidney transplantation one month ago for end-stage renal disease secondary to diabetic nephropathy, presenting for routine outpatient follow-up with stable clinical course and reassuring laboratory trends consistent with expected early graft recovery. Immediate graft function has been maintained without evidence of rejection, infection, or delayed complications, as evidenced by consistent urine output of approximately 2 liters per day, absence of oliguria, hematuria, or graft tenderness, and physical exam findings of a well-healed incision with preserved allograft bruit and no enlargement or induration. Serum creatinine has improved slightly from discharge baseline of 1.3 mg/dL to 1.2 mg/dL (eGFR ~65 mL/min/1.73 m² by CKD-EPI, up from ~60 mL/min/1.73 m²), with stable BUN at 25 mg/dL and normalized electrolytes, reflecting adequate perfusion and resolving postoperative catabolism per KDIGO monitoring guidelines. Tacrolimus trough level of 9.5 ng/mL remains within the therapeutic target of 8-12 ng/mL, supporting consistent absorption and adherence to the twice-daily regimen with meals; mycophenolate mofetil 1 g BID and prednisone taper to 15 mg daily continue without dose adjustments needed at this stage.</p>\n<p>Complete blood count is unremarkable, with hemoglobin rising to 11.0 g/dL from 10.2 g/dL at discharge, likely attributable to ongoing epoetin alfa therapy and reduced dialysis-related erythropoietin resistance, without leukopenia or thrombocytopenia suggestive of over-immunosuppression. Urinalysis shows no proteinuria, hematuria, or infection, and liver function tests are normal, ruling out hepatotoxicity from prophylaxis agents. Secondary hyperparathyroidism demonstrates further improvement with PTH at 280 pg/mL (down from 320 pg/mL at discharge and pretransplant 450 pg/mL), controlled on calcitriol and sevelamer, with normal calcium and phosphate levels.</p>\n<p>Patient reports excellent medication adherence using the discharge-provided pill organizer and alarms, with no missed doses and proactive intake with food to mitigate gastrointestinal effects. Mild intermittent nausea (2/10 severity, postprandial, lasting 30-60 minutes, onset two weeks ago) is plausibly linked to mycophenolate mofetil, a common side effect in up to 20-30% of recipients, but has not led to vomiting, weight loss (stable at 78 kg), dehydration, or appetite disruption; it partially responds to timing with meals, and patient denies associated abdominal pain, diarrhea, or fever. Diabetes remains well-controlled on insulin glargine 20 units nightly and aspart sliding scale (fasting glucose 132 mg/dL, home averages 120 mg/dL), and hypertension is stable on metoprolol succinate 50 mg daily (clinic BP 124/74 mmHg, home averages 125/75 mmHg), without need for resuming lisinopril at this time. Prophylaxis with valganciclovir 450 mg daily and trimethoprim-sulfamethoxazole DS three times weekly continues without breakthrough symptoms, given D+/R- CMV status.</p>\n<p>Overall, this represents a smooth early posttransplant trajectory with positive lab trends and patient-reported improvements in energy and quality of life, including return to light desk work and family activities. The patient&#39;s optimism (&quot;I&#39;m feeling more like myself every week&quot;) and mild concern about nausea were addressed through reinforcement of adherence strategies and side effect counseling, emphasizing vigilance for progression in the first year. Short-term prognosis is favorable with continued compliance, anticipating sustained eGFR stability and minimization of polypharmacy challenges.</p></div>",
+              "status": "additional"
+            }
+          },
+          {
+            "title": "Plan",
+            "text": {
+              "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Continue current triple immunosuppression regimen per KDIGO guidelines, with tacrolimus 4 mg orally twice daily (target trough 8-12 ng/mL; recent level 9.5 ng/mL confirms therapeutic range and adherence—monitor biweekly for the next month via home draws or clinic visits, transitioning to monthly thereafter to detect subtle fluctuations early in the first posttransplant year). Mycophenolate mofetil remains at 1 g orally twice daily, taken with meals to minimize gastrointestinal upset; patient&#39;s mild intermittent nausea (2/10 severity, postprandial onset, partially relieved by food) is consistent with common MMF side effects in 20-30% of recipients and has not impacted weight, hydration, or appetite—reassure that this often improves with time, advise ondansetron 4 mg orally as needed for breakthrough symptoms (up to twice daily), and consider dose reduction to 750 mg twice daily at the next visit if persistence noted, while ruling out other causes like gastritis if worsening. Prednisone taper proceeds to 10 mg daily starting week 5 (from current 15 mg), with bone density screening planned at month 6 to monitor for osteoporosis risk.</p>\n<p>Maintain opportunistic infection prophylaxis with valganciclovir 450 mg orally daily (for 3-6 months given D+/R- CMV status) and trimethoprim-sulfamethoxazole one double-strength tablet orally three times weekly (for 6-12 months), without evidence of breakthrough infection on current unremarkable CBC (WBC 6.5 × 10³/μL) and urinalysis. Continue cardiovascular and metabolic management: metoprolol succinate 50 mg orally daily for stable hypertension (clinic BP 124/74 mmHg, home averages 125/75 mmHg); resume lisinopril 10 mg orally daily now that creatinine has improved to 1.2 mg/dL (from discharge 1.3 mg/dL), targeting BP &lt;130/80 mmHg while monitoring for hyperkalemia (current K 4.1 mEq/L). Diabetes optimization persists with insulin glargine 20 units subcutaneously nightly and aspart per sliding scale (fasting glucose 132 mg/dL, home averages 120 mg/dL), alongside endocrinology referral for HbA1c review; reinforce low-glycemic renal diet to sustain control.</p>\n<p>Anemia and mineral bone disease therapies remain: epoetin alfa 8000 units subcutaneously three times weekly (hemoglobin improved to 11.0 g/dL from 10.2 g/dL at discharge, reflecting reduced erythropoietin resistance); calcitriol 0.25 mcg orally daily and sevelamer carbonate 800 mg orally with meals as needed (PTH trending down to 280 pg/mL, phosphate 3.6 mg/dL). No changes to aspirin 81 mg daily for graft thrombosis prophylaxis.</p>\n<p>Lifestyle counseling emphasizes vigilance in this critical first year: maintain 2 liters daily fluid intake to support urine output of approximately 2 liters per day, adhere to renal diet (low potassium &lt;3000 mg/day, phosphate &lt;800 mg/day, sodium &lt;2000 mg/day), and progress light exercise (e.g., 20-30 minutes daily walking) to build energy without strain, aligning with patient&#39;s report of returning to desk work and family activities—&quot;I&#39;m feeling more like myself every week.&quot; Reinforce medication adherence using the discharge pill organizer, daily alarms, and a smartphone app for reminders, with education on red flags warranting immediate contact (e.g., fever &gt;100.4°F, reduced urine output &lt;1.5 L/day, worsening nausea with vomiting/dehydration, graft tenderness, or new edema/shortness of breath); provide updated medication list and wallet card for continuity.</p>\n<p>Patient verbalizes understanding and agreement, expressing confidence in the plan after discussion of nausea management and positive lab trends (e.g., eGFR ~65 mL/min/1.73 m² by CKD-EPI, up from ~60 mL/min/1.73 m² at discharge). Follow-up in transplant clinic at month 2 (approximately 8 weeks post-transplant) with repeat labs (CBC, comprehensive metabolic panel, tacrolimus trough, urinalysis) and renal ultrasound if any interval changes; coordinate with primary care for diabetes and hypertension optimization within 2 weeks. Prescriptions refilled; no additional diagnostics indicated given reassuring stability and trajectory toward sustained graft function.</p></div>",
+              "status": "additional"
+            },
+            "entry": [
+              {
+                "reference": "MedicationRequest/mreq-tacro-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-mmf-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-pred-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-valg-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-smx-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-meto-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-lisin-1"
+              },
+              {
+                "reference": "MedicationRequest/mreq-glarg-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-aspart-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-epo-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-calci-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-sevel-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-asa-2"
+              },
+              {
+                "reference": "MedicationRequest/mreq-onda-1"
+              },
+              {
+                "reference": "MedicationRequest/mreq-iron-2"
+              },
+              {
+                "reference": "ServiceRequest/sreq-labs-2"
+              },
+              {
+                "reference": "ServiceRequest/sreq-us-1"
+              }
+            ]
+          }
+        ],
+        "id": "composition-a87d65a9",
+        "identifier": {
+          "value": "composition-a87d65a9",
+          "system": "https://kiln.fhir.me/Composition"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Procedure/proc-transplant-1",
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "proc-transplant-1",
+        "status": "completed",
+        "category": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "48692003",
+              "display": "Surgical procedure (procedure)"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "175902000",
+              "display": "Cadaveric renal transplant (procedure)"
+            }
+          ],
+          "text": "Deceased-donor kidney transplantation"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-creat-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-creat-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2160-0",
+              "display": "Creatinine [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-08-15T10:00:00Z",
+        "valueQuantity": {
+          "value": 1.3,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-tacro-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-tacro-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "11253-2",
+              "display": "Tacrolimus [Mass/volume] in Blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "effectiveDateTime": "2023-10-25T08:00:00Z",
+        "valueQuantity": {
+          "value": 8.2,
+          "unit": "ng/mL",
+          "system": "http://unitsofmeasure.org",
+          "code": "ng/mL"
+        },
+        "note": [
+          {
+            "text": "Discharge baseline for comparison"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Procedure/proc-transplant-1",
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "proc-transplant-1",
+        "status": "completed",
+        "category": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "48692003",
+              "display": "Surgical procedure (procedure)"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "175902000",
+              "display": "Cadaveric renal transplant (procedure)"
+            }
+          ],
+          "text": "Deceased-donor kidney transplantation"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "performedDateTime": "2023-10-01"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-tacro-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-tacro-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "42316",
+              "display": "tacrolimus"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "4 mg orally twice daily",
+            "timing": {
+              "repeat": {
+                "frequency": 2,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 4,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-mmf-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-mmf-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "200060",
+              "display": "mycophenolate mofetil 500 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "authoredOn": "2024-01-15",
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "1 g orally twice daily with meals",
+            "timing": {
+              "repeat": {
+                "frequency": 2,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "type": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/dose-rate-type",
+                      "code": "ordered",
+                      "display": "Ordered"
+                    }
+                  ]
+                },
+                "doseQuantity": {
+                  "value": 1000,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ],
+        "note": [
+          {
+            "text": "Ongoing, potential nausea side effect"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-pred-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-pred-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "8640",
+              "display": "prednisone"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "15 mg PO daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 15,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-valg-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-valg-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "313566",
+              "display": "valGANciclovir HCl 450 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "authoredOn": "2023-10-15",
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "text": "450 mg PO daily",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 450,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-smx-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-smx-1",
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/medicationrequest-category",
+                "code": "outpatient",
+                "display": "Outpatient"
+              }
+            ]
+          }
+        ],
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "198335",
+              "display": "sulfamethoxazole 800 MG / trimethoprim 160 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "one double-strength tablet orally three times weekly",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 1,
+                  "unit": "tablet",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "{tab}"
+                }
+              }
+            ],
+            "timing": {
+              "repeat": {
+                "frequency": 3,
+                "period": 1,
+                "periodUnit": "wk"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-glarg-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-glarg-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "343226",
+              "display": "insulin glargine 100 UNT/ML"
+            }
+          ],
+          "text": "insulin glargine"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "20 units subcutaneously nightly",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d",
+                "timeOfDay": [
+                  "21:00:00"
+                ]
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "34206005",
+                  "display": "Subcutaneous route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 20,
+                  "unit": "U",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "U"
+                }
+              }
+            ]
+          }
+        ],
+        "courseOfTherapyType": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/medicationrequest-course-of-therapy",
+              "code": "continuous",
+              "display": "Continuous long term therapy"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-aspart-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-aspart-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "51428",
+              "display": "insulin aspart, human"
+            }
+          ],
+          "text": "insulin aspart"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "per sliding scale subcutaneously",
+            "asNeededBoolean": true,
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "34206005",
+                  "display": "Subcutaneous route (qualifier value)"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-meto-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-meto-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "866436",
+              "display": "metoprolol succinate 50 MG 24HR Extended Release Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "50 mg PO daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 50,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-tacro-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-tacro-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "32721-3",
+              "display": "Tacrolimus [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-11-15T10:20:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 9.5,
+          "unit": "ng/mL",
+          "system": "http://unitsofmeasure.org",
+          "code": "ng/mL"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "N",
+                "display": "Normal"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-dm2-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-dm2-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "recorder": {
+          "reference": "Practitioner/pract-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "44054006",
+              "display": "Diabetes mellitus type 2 (disorder)"
+            }
+          ],
+          "text": "Type 2 diabetes mellitus, 15-year history, on insulin"
+        },
+        "onsetAge": {
+          "value": 30,
+          "unit": "years",
+          "system": "http://unitsofmeasure.org",
+          "code": "a"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-htn-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-htn-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "recorder": {
+          "reference": "Practitioner/pract-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "59621000",
+              "display": "Essential hypertension (disorder)"
+            }
+          ],
+          "text": "Hypertension, 20-year history, controlled on metoprolol"
+        },
+        "onsetAge": {
+          "value": 20,
+          "unit": "years",
+          "system": "http://unitsofmeasure.org",
+          "code": "a"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-esrd-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-esrd-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "recorder": {
+          "reference": "Practitioner/pract-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "resolved",
+              "display": "Resolved"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "90791000119104",
+              "display": "End stage renal disease on dialysis due to type 2 diabetes mellitus (disorder)"
+            }
+          ],
+          "text": "End-stage renal disease due to diabetic nephropathy, on hemodialysis 18 months pre-transplant"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-retino-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-retino-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "asserter": {
+          "reference": "Practitioner/pract-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "312903003",
+              "display": "Mild nonproliferative retinopathy due to diabetes mellitus (disorder)"
+            }
+          ],
+          "text": "Mild diabetic retinopathy without vision loss"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Condition/cond-hpt-1",
+      "resource": {
+        "resourceType": "Condition",
+        "id": "cond-hpt-1",
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "recorder": {
+          "reference": "Practitioner/pract-1"
+        },
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ]
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ]
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
+                "code": "problem-list-item",
+                "display": "Problem List Item"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "91478007",
+              "display": "Secondary hyperparathyroidism (disorder)"
+            }
+          ],
+          "text": "Secondary hyperparathyroidism, improving post-transplant"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/AllergyIntolerance/all-pcn-1",
+      "resource": {
+        "resourceType": "AllergyIntolerance",
+        "id": "all-pcn-1",
+        "clinicalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+              "code": "active",
+              "display": "Active"
+            }
+          ],
+          "text": "Active"
+        },
+        "verificationStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+              "code": "confirmed",
+              "display": "Confirmed"
+            }
+          ],
+          "text": "Confirmed"
+        },
+        "type": "allergy",
+        "category": [
+          "medication"
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "764146007",
+              "display": "Penicillin (substance)"
+            }
+          ],
+          "text": "Penicillin"
+        },
+        "patient": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "asserter": {
+          "reference": "Practitioner/pract-1"
+        },
+        "reaction": [
+          {
+            "substance": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "764146007",
+                  "display": "Penicillin (substance)"
+                }
+              ],
+              "text": "Penicillin"
+            },
+            "manifestation": [
+              {
+                "coding": [
+                  {
+                    "system": "http://snomed.info/sct",
+                    "code": "47725002",
+                    "display": "Maculopapular rash (morphologic abnormality)"
+                  }
+                ],
+                "text": "Maculopapular rash"
+              }
+            ],
+            "description": "Maculopapular rash in childhood",
+            "severity": "moderate"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Procedure/proc-fistula-1",
+      "resource": {
+        "resourceType": "Procedure",
+        "id": "proc-fistula-1",
+        "status": "completed",
+        "category": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "30904006",
+              "display": "Vascular surgery procedure (procedure)"
+            }
+          ]
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "405331002",
+              "display": "Creation of upper limb arteriovenous fistula (procedure)"
+            }
+          ],
+          "text": "Left upper extremity AV fistula placement for hemodialysis"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "performer": [
+          {
+            "actor": {
+              "reference": "Practitioner/pract-1"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-tobacco-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-tobacco-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "social-history",
+                "display": "Social history"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "72166-2",
+              "display": "Tobacco smoking status"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2024-02-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "8517006",
+              "display": "Ex-smoker (finding)"
+            }
+          ]
+        },
+        "component": [
+          {
+            "code": {
+              "text": "Pack years smoked"
+            },
+            "valueQuantity": {
+              "value": 5,
+              "unit": "pack-years",
+              "system": "http://unitsofmeasure.org",
+              "code": "{pack_year}"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "74010-0",
+                  "display": "Date quit tobacco smoking"
+                }
+              ]
+            },
+            "valueDateTime": "2014-01-01"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-alcohol-1",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-alcohol-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "social-history",
+                "display": "Social History"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "68518-0",
+              "display": "How often do you have a drink containing alcohol"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "228276006",
+              "display": "Occasional drinker (finding)"
+            }
+          ]
+        },
+        "note": [
+          {
+            "text": "No illicit drug use reported; 1-2 drinks monthly."
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-bp-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-bp-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "35094-2",
+              "display": "Blood pressure panel"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "effectiveDateTime": "2024-01-15T14:00:00Z",
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8480-6",
+                  "display": "Systolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 124,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8462-4",
+                  "display": "Diastolic blood pressure"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 74,
+              "unit": "mmHg",
+              "system": "http://unitsofmeasure.org",
+              "code": "mm[Hg]"
+            }
+          }
+        ],
+        "bodySite": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "709435004",
+              "display": "Structure of right upper arm (body structure)"
+            }
+          ],
+          "extension": [
+            {
+              "url": "http://kraken.fhir.me/StructureDefinition/coding-issue",
+              "valueString": "{\"pointer\":\"/bodySite/coding/0\",\"original\":{\"system\":\"http://snomed.info/sct\",\"code\":\"709435004\",\"display\":\"Structure of right upper arm (body structure)\"},\"reason\":\"not_found\",\"note\":\"unresolved_coding\"}"
+            }
+          ]
+        },
+        "note": [
+          {
+            "text": "Measured in seated position"
+          }
+        ],
+        "extension": [
+          {
+            "url": "urn:validation-status",
+            "valueString": "{\"validationErrors\":[{\"severity\":\"error\",\"code\":\"structure\",\"details\":\"BPCode: magic LOINC code 85354-9 required, but not found (from http://hl7.org/fhir/StructureDefinition/bp|4.0.1). Note that other Observation codes are allowed in addition to this required magic code\",\"location\":\"Observation.code\"}]}"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-hr-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-hr-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8867-4",
+              "display": "Heart rate"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "effectiveDateTime": "2024-01-15T14:00:00Z",
+        "valueQuantity": {
+          "value": 78,
+          "unit": "beats/min",
+          "system": "http://unitsofmeasure.org",
+          "code": "/min"
+        },
+        "note": [
+          {
+            "text": "regular"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-rr-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-rr-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "9279-1",
+              "display": "Respiratory rate"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 14,
+          "unit": "breaths/minute",
+          "system": "http://unitsofmeasure.org",
+          "code": "/min"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-temp-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-temp-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "8310-5",
+              "display": "Body temperature"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 36.7,
+          "unit": "°C",
+          "system": "http://unitsofmeasure.org",
+          "code": "Cel"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-spo2-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-spo2-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2708-6",
+              "display": "Oxygen saturation in Arterial blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-11-15T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 98,
+          "unit": "%",
+          "system": "http://unitsofmeasure.org",
+          "code": "%"
+        },
+        "note": [
+          {
+            "text": "on room air"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-bmi-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-bmi-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs",
+                "display": "Vital Signs"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "39156-5",
+              "display": "Body mass index (BMI) [Ratio]"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 26.4,
+          "unit": "kg/m²",
+          "system": "http://unitsofmeasure.org",
+          "code": "kg/m2"
+        },
+        "component": [
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "8302-2",
+                  "display": "Body height"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 172,
+              "unit": "cm",
+              "system": "http://unitsofmeasure.org",
+              "code": "cm"
+            }
+          },
+          {
+            "code": {
+              "coding": [
+                {
+                  "system": "http://loinc.org",
+                  "code": "29463-7",
+                  "display": "Body weight"
+                }
+              ]
+            },
+            "valueQuantity": {
+              "value": 78,
+              "unit": "kg",
+              "system": "http://unitsofmeasure.org",
+              "code": "kg"
+            }
+          }
+        ],
+        "note": [
+          {
+            "text": "stable from prior"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/DiagnosticReport/report-cmp-2",
+      "resource": {
+        "resourceType": "DiagnosticReport",
+        "id": "report-cmp-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                "code": "LAB",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "24323-8",
+              "display": "Comprehensive metabolic 2000 panel - Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15",
+        "issued": "2023-10-15T10:30:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "result": [
+          {
+            "reference": "Observation/obs-creat-2",
+            "display": "Creatinine"
+          },
+          {
+            "reference": "Observation/obs-bun-2",
+            "display": "BUN"
+          },
+          {
+            "reference": "Observation/obs-na-2",
+            "display": "Sodium"
+          },
+          {
+            "reference": "Observation/obs-k-2",
+            "display": "Potassium"
+          },
+          {
+            "reference": "Observation/obs-cl-2",
+            "display": "Chloride"
+          },
+          {
+            "reference": "Observation/obs-hco3-2",
+            "display": "Bicarbonate"
+          },
+          {
+            "reference": "Observation/obs-ca-2",
+            "display": "Calcium"
+          },
+          {
+            "reference": "Observation/obs-po4-2",
+            "display": "Phosphate"
+          },
+          {
+            "reference": "Observation/obs-ast-2",
+            "display": "AST"
+          },
+          {
+            "reference": "Observation/obs-alt-2",
+            "display": "ALT"
+          },
+          {
+            "reference": "Observation/obs-bili-2",
+            "display": "Total bilirubin"
+          },
+          {
+            "reference": "Observation/obs-alb-2",
+            "display": "Albumin"
+          },
+          {
+            "reference": "Observation/obs-glucose-2",
+            "display": "Glucose"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-creat-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-creat-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2160-0",
+              "display": "Creatinine [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:20:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 1.2,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-bun-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-bun-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "3094-0",
+              "display": "Urea nitrogen [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 25,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-na-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-na-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2951-2",
+              "display": "Sodium [Moles/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "issued": "2023-10-15T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 139,
+          "unit": "mEq/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "meq/L"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-k-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-k-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2823-3",
+              "display": "Potassium [Moles/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "valueQuantity": {
+          "value": 4.1,
+          "unit": "mEq/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "meq/L"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-cl-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-cl-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2075-0",
+              "display": "Chloride [Moles/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "issued": "2023-10-15T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 101,
+          "unit": "mEq/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "meq/L"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-hco3-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-hco3-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "1963-8",
+              "display": "Bicarbonate [Moles/volume] in Serum or Plasma"
+            }
+          ],
+          "text": "Bicarbonate"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 25,
+          "unit": "mEq/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "meq/L"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-ca-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-ca-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "17861-6",
+              "display": "Calcium [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 9.3,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-po4-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-po4-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2777-1",
+              "display": "Phosphate [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "valueQuantity": {
+          "value": 3.6,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "interpretation": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+                "code": "N",
+                "display": "Normal"
+              }
+            ]
+          }
+        ],
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-ast-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-ast-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "1920-8",
+              "display": "Aspartate aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "issued": "2023-10-15T10:30:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 25,
+          "unit": "U/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "U/L"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-alt-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-alt-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "1742-6",
+              "display": "Alanine aminotransferase [Enzymatic activity/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2024-01-01T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 30,
+          "unit": "U/L",
+          "system": "http://unitsofmeasure.org",
+          "code": "U/L"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-bili-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-bili-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "1975-2",
+              "display": "Bilirubin.total [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 0.7,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-alb-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-alb-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "1751-7",
+              "display": "Albumin [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ],
+        "valueQuantity": {
+          "value": 3.9,
+          "unit": "g/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "g/dL"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-glucose-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-glucose-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2339-0",
+              "display": "Glucose [Mass/volume] in Blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-01T10:00:00Z",
+        "valueQuantity": {
+          "value": 132,
+          "unit": "mg/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "mg/dL"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cmp-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/DiagnosticReport/report-cbc-2",
+      "resource": {
+        "resourceType": "DiagnosticReport",
+        "id": "report-cbc-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                "code": "LAB",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "58410-2",
+              "display": "CBC panel - Blood by Automated count"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-01",
+        "issued": "2023-10-01T10:30:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "result": [
+          {
+            "reference": "Observation/obs-hb-2",
+            "display": "Hemoglobin 11.0 g/dL"
+          },
+          {
+            "reference": "Observation/obs-hct-2",
+            "display": "Hematocrit 33%"
+          },
+          {
+            "reference": "Observation/obs-mcv-2",
+            "display": "MCV 93 fL"
+          },
+          {
+            "reference": "Observation/obs-wbc-2",
+            "display": "WBC 6.5 x 10^3/μL"
+          },
+          {
+            "reference": "Observation/obs-plt-2",
+            "display": "Platelets 230 x 10^3/μL"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-hb-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-hb-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "718-7",
+              "display": "Hemoglobin [Mass/volume] in Blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 11,
+          "unit": "g/dL",
+          "system": "http://unitsofmeasure.org",
+          "code": "g/dL"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cbc-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-hct-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-hct-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "20570-8",
+              "display": "Hematocrit [Volume Fraction] of Blood"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "valueQuantity": {
+          "value": 33,
+          "unit": "%",
+          "system": "http://unitsofmeasure.org",
+          "code": "%"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cbc-2"
+          }
+        ],
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-mcv-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-mcv-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "787-2",
+              "display": "MCV [Entitic volume] by Automated count"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cbc-2"
+          }
+        ],
+        "effectiveDateTime": "2024-01-15T10:00:00Z",
+        "valueQuantity": {
+          "value": 93,
+          "unit": "fL",
+          "system": "http://unitsofmeasure.org",
+          "code": "fL"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-wbc-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-wbc-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "6690-2",
+              "display": "Leukocytes [#/volume] in Blood by Automated count"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T08:00:00Z",
+        "issued": "2023-10-15T08:05:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 6.5,
+          "unit": "10*3/uL",
+          "system": "http://unitsofmeasure.org",
+          "code": "10*3/uL"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cbc-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-plt-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-plt-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "777-3",
+              "display": "Platelets [#/volume] in Blood by Automated count"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T08:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 230,
+          "unit": "10^3/uL",
+          "system": "http://unitsofmeasure.org",
+          "code": "10*3/uL"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-cbc-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/DiagnosticReport/report-ua-2",
+      "resource": {
+        "resourceType": "DiagnosticReport",
+        "id": "report-ua-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                "code": "LAB",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "24356-8",
+              "display": "Urinalysis complete panel - Urine"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2024-10-01",
+        "issued": "2024-10-01T10:30:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "result": [
+          {
+            "reference": "Observation/obs-sg-2",
+            "display": "Specific gravity"
+          },
+          {
+            "reference": "Observation/obs-uaph-2",
+            "display": "pH"
+          }
+        ],
+        "conclusion": "Negative for protein, glucose, ketones, blood, leukocytes, nitrites."
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-sg-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-sg-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2965-2",
+              "display": "Specific gravity of Urine"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "effectiveDateTime": "2023-10-15T10:20:00Z",
+        "valueQuantity": {
+          "value": 1.02,
+          "system": "http://unitsofmeasure.org",
+          "code": "1"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-ua-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-uaph-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-uaph-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "5803-2",
+              "display": "pH of Urine by Test strip"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "valueQuantity": {
+          "value": 6,
+          "unit": "pH",
+          "system": "http://unitsofmeasure.org",
+          "code": "pH"
+        },
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-ua-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/DiagnosticReport/report-tacro-2",
+      "resource": {
+        "resourceType": "DiagnosticReport",
+        "id": "report-tacro-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                "code": "LAB",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "32721-3",
+              "display": "Tacrolimus [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15",
+        "issued": "2023-10-15T10:30:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "result": [
+          {
+            "reference": "Observation/obs-tacro-2"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-tacro-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-tacro-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "32721-3",
+              "display": "Tacrolimus [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "partOf": [
+          {
+            "reference": "DiagnosticReport/report-tacro-2"
+          }
+        ],
+        "valueQuantity": {
+          "value": 9.5,
+          "unit": "ng/mL",
+          "system": "http://unitsofmeasure.org",
+          "code": "ng/mL"
+        },
+        "referenceRange": [
+          {
+            "low": {
+              "value": 8,
+              "unit": "ng/mL",
+              "system": "http://unitsofmeasure.org",
+              "code": "ng/mL"
+            },
+            "high": {
+              "value": 12,
+              "unit": "ng/mL",
+              "system": "http://unitsofmeasure.org",
+              "code": "ng/mL"
+            },
+            "appliesTo": [
+              {
+                "coding": [
+                  {
+                    "system": "http://snomed.info/sct",
+                    "code": "719352000",
+                    "display": "Kidney transplant recipient (finding)"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-pth-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-pth-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "2731-8",
+              "display": "Parathyrin.intact [Mass/volume] in Serum or Plasma"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2024-01-15T10:00:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "valueQuantity": {
+          "value": 280,
+          "unit": "pg/mL",
+          "system": "http://unitsofmeasure.org",
+          "code": "pg/mL"
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Observation/obs-egfr-2",
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-egfr-2",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory",
+                "display": "Laboratory"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "62238-1",
+              "display": "Glomerular filtration rate/1.73 sq M.predicted [Volume Rate/Area] in Serum, Plasma or Blood by Creatinine-based formula (CKD-EPI)"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-15T10:00:00Z",
+        "valueQuantity": {
+          "value": 65,
+          "unit": "mL/min/1.73 m2",
+          "system": "http://unitsofmeasure.org",
+          "code": "mL/min/{1.73_m2}"
+        },
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/DiagnosticReport/report-us-1",
+      "resource": {
+        "resourceType": "DiagnosticReport",
+        "id": "report-us-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                "code": "RAD",
+                "display": "Radiology"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "43774-9",
+              "display": "US Kidney - bilateral"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-10-08",
+        "issued": "2023-10-08T10:30:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "conclusion": "Normal allograft morphology (10.5 cm length, no hydronephrosis, resistive index 0.65, patent vessels). No new study indicated at 1-month follow-up."
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/DiagnosticReport/report-ecg-1",
+      "resource": {
+        "resourceType": "DiagnosticReport",
+        "id": "report-ecg-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                "code": "EC",
+                "display": "Electrocardiac (e.g., EKG,  EEC, Holter)"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "11524-6",
+              "display": "EKG study"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-09-15",
+        "issued": "2023-09-15T10:30:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "conclusion": "Reference prior ECG (normal, no new study indicated)"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/DiagnosticReport/report-cxr-1",
+      "resource": {
+        "resourceType": "DiagnosticReport",
+        "id": "report-cxr-1",
+        "status": "final",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                "code": "RAD",
+                "display": "Radiology"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "36554-4",
+              "display": "XR Chest Single view"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "effectiveDateTime": "2023-08-15",
+        "issued": "2023-09-15T10:30:00Z",
+        "performer": [
+          {
+            "reference": "Practitioner/pract-1"
+          }
+        ],
+        "conclusion": "Prior chest x-ray normal with no interval changes. No new study indicated."
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-tacro-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-tacro-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "42316",
+              "display": "tacrolimus"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "4 mg PO BID with meals, target trough 8-12 ng/mL, biweekly monitoring",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 4,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ],
+            "timing": {
+              "repeat": {
+                "frequency": 2,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-mmf-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-mmf-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "68149",
+              "display": "mycophenolate mofetil"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "1 g orally twice daily with meals",
+            "timing": {
+              "repeat": {
+                "frequency": 2,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 1000,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-pred-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-pred-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "8640",
+              "display": "prednisone"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "authoredOn": "2024-01-01",
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "15 mg PO daily, taper to 10 mg daily starting week 5",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 15,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-valg-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-valg-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "313566",
+              "display": "valGANciclovir HCl 450 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "450 mg PO daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 450,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-smx-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-smx-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "198335",
+              "display": "sulfamethoxazole 800 MG / trimethoprim 160 MG Oral Tablet"
+            }
+          ],
+          "text": "Trimethoprim-sulfamethoxazole DS"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "authoredOn": "2023-10-15",
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "one double-strength tablet orally three times weekly",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "386359008",
+                  "display": "Administration of drug or medicament via oral route (procedure)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 1,
+                  "unit": "tablet",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "{tablet}"
+                }
+              }
+            ],
+            "timing": {
+              "repeat": {
+                "frequency": 3,
+                "period": 1,
+                "periodUnit": "wk",
+                "duration": 6,
+                "durationUnit": "mo",
+                "boundsPeriod": {
+                  "start": "2023-09-15"
+                }
+              }
+            }
+          }
+        ],
+        "courseOfTherapyType": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/medicationrequest-course-of-therapy",
+              "code": "continuous",
+              "display": "Continuous long term therapy"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-meto-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-meto-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "866436",
+              "display": "metoprolol succinate 50 MG 24HR Extended Release Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "50 mg PO daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 50,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-lisin-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-lisin-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "314076",
+              "display": "lisinopril 10 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "10 mg PO daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 10,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-glarg-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-glarg-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "274783",
+              "display": "insulin glargine"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "text": "20 units SQ nightly",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "34206005",
+                  "display": "Subcutaneous route (qualifier value)"
+                }
+              ]
+            },
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              },
+              "code": {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-TimingEvent",
+                    "code": "HS",
+                    "display": "HS"
+                  }
+                ]
+              }
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 20,
+                  "unit": "U",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "{U}"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-aspart-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-aspart-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "51428",
+              "display": "insulin aspart, human"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "text": "subcutaneous per sliding scale",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "34206005",
+                  "display": "Subcutaneous route (qualifier value)"
+                }
+              ]
+            },
+            "asNeededBoolean": true
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-epo-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-epo-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "105694",
+              "display": "epoetin alfa"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "8000 units SQ TIW",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "34206005",
+                  "display": "Subcutaneous route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 8000,
+                  "unit": "U",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "U"
+                }
+              }
+            ],
+            "timing": {
+              "repeat": {
+                "frequency": 3,
+                "period": 1,
+                "periodUnit": "wk"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-calci-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-calci-2",
+        "status": "active",
+        "intent": "order",
+        "medicationReference": {
+          "reference": "Medication/calci-1",
+          "display": "Calcitriol 0.25 MCG Oral Capsule"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "0.25 mcg orally daily",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 0.25,
+                  "unit": "mcg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "ug"
+                }
+              }
+            ],
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-sevel-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-sevel-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "749206",
+              "display": "sevelamer carbonate 800 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "800 mg PO with meals PRN",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 800,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ],
+            "asNeededBoolean": true
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-asa-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-asa-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "243670",
+              "display": "aspirin 81 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "sequence": 1,
+            "text": "81 mg PO daily",
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 81,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-onda-1",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-onda-1",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "198052",
+              "display": "ondansetron HCl 4 MG Oral Tablet"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "authoredOn": "2023-11-01",
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "text": "4 mg orally as needed for nausea, up to twice daily",
+            "asNeededBoolean": true,
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ]
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 4,
+                  "unit": "mg",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "mg"
+                }
+              }
+            ],
+            "maxDosePerPeriod": {
+              "numerator": {
+                "value": 8,
+                "unit": "mg",
+                "system": "http://unitsofmeasure.org",
+                "code": "mg"
+              },
+              "denominator": {
+                "value": 1,
+                "unit": "d",
+                "system": "http://unitsofmeasure.org",
+                "code": "d"
+              }
+            },
+            "timing": {
+              "repeat": {
+                "frequencyMax": 2,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/MedicationRequest/mreq-iron-2",
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "mreq-iron-2",
+        "status": "active",
+        "intent": "order",
+        "medicationCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+              "code": "310325",
+              "display": "ferrous sulfate 325 MG (iron 65 MG) Oral Tablet"
+            }
+          ],
+          "text": "oral iron supplementation"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "dosageInstruction": [
+          {
+            "text": "oral iron supplementation, continue as previously prescribed",
+            "route": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "26643006",
+                  "display": "Oral route (qualifier value)"
+                }
+              ],
+              "text": "oral"
+            },
+            "timing": {
+              "repeat": {
+                "frequency": 1,
+                "period": 1,
+                "periodUnit": "d"
+              }
+            },
+            "doseAndRate": [
+              {
+                "doseQuantity": {
+                  "value": 1,
+                  "unit": "tablet",
+                  "system": "http://unitsofmeasure.org",
+                  "code": "{tablet}"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/ServiceRequest/sreq-labs-2",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sreq-labs-2",
+        "status": "active",
+        "intent": "order",
+        "priority": "routine",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/service-category",
+                "code": "26",
+                "display": "Specialist Clinical Pathology"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "108252007",
+              "display": "Laboratory procedure (procedure)"
+            }
+          ],
+          "text": "Repeat labs at month 2: CBC, CMP, tacrolimus trough, urinalysis (new follow-up order)"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "439740005",
+                "display": "Postoperative follow-up visit (procedure)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/ServiceRequest/sreq-us-1",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "sreq-us-1",
+        "status": "active",
+        "intent": "plan",
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "241482008",
+              "display": "Renal ultrasound (procedure)"
+            }
+          ],
+          "text": "Renal ultrasound"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "encounter": {
+          "reference": "Encounter/enc-2"
+        },
+        "requester": {
+          "reference": "Practitioner/pract-1"
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "439740005",
+                "display": "Postoperative follow-up visit (procedure)"
+              }
+            ]
+          }
+        ],
+        "priority": "routine",
+        "note": [
+          {
+            "text": "Conditional: perform if any interval changes at month 2 follow-up"
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Patient/pat-1",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-1",
+        "active": true,
+        "name": [
+          {
+            "family": "Doe",
+            "given": [
+              "John"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1978-06-15"
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Encounter/enc-2",
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "enc-2",
+        "status": "finished",
+        "class": {
+          "system": "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+          "code": "AMB",
+          "display": "ambulatory"
+        },
+        "subject": {
+          "reference": "Patient/pat-1"
+        },
+        "participant": [
+          {
+            "type": [
+              {
+                "coding": [
+                  {
+                    "system": "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                    "code": "PPRF",
+                    "display": "primary performer"
+                  }
+                ]
+              }
+            ],
+            "individual": {
+              "reference": "Practitioner/pract-1"
+            }
+          }
+        ],
+        "serviceType": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "439740005",
+              "display": "Postoperative follow-up visit (procedure)"
+            }
+          ]
+        },
+        "reasonCode": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "439740005",
+                "display": "Postoperative follow-up visit (procedure)"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "fullUrl": "https://kiln.fhir.me/Practitioner/pract-1",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "pract-1",
+        "name": [
+          {
+            "family": "Smith",
+            "given": [
+              "John"
+            ],
+            "prefix": [
+              "Dr."
+            ]
+          }
+        ],
+        "qualification": [
+          {
+            "code": {
+              "text": "Transplant Physician"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
